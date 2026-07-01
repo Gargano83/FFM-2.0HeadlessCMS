@@ -7,13 +7,15 @@ metadati salvati nello schema `cms.*` del database).
 
 ## Fasi
 
-- [ ] **1. Core**: schema tabelle di sistema (`cms.EntityDefinition`,
+- [x] **1. Core**: schema tabelle di sistema (`cms.EntityDefinition`,
       `cms.FieldDefinition`, `cms.Page`, `cms.Menu`, `cms.MenuItem`) + `DbContext`
-      del CMS + prima migration.
-- [ ] **2. Scaffolding engine**: lettura schema DB SQL Server (via
-      `IDatabaseModelFactory` di EF Core SqlServer.Design) + wizard di selezione
-      tabelle → popolamento automatico di `EntityDefinition`/`FieldDefinition`
-      con inferenza di `EditorType`.
+      del CMS + prima migration. *(migration applicata con successo)*
+- [x] **2. Scaffolding engine**: lettura schema DB SQL Server tramite query
+      dirette su `sys.tables`/`sys.columns`/`sys.foreign_keys` (niente API
+      interne EF) + `ScaffoldingService` che popola `EntityDefinition`/
+      `FieldDefinition` con inferenza di `EditorType`, idempotente su
+      riesecuzioni. Verificabile con `MyCms.Scaffolding.ConsoleTest` in attesa
+      della UI del wizard (fase 3).
 - [ ] **3. Generic CRUD**: `IGenericEntityRepository` (accesso dati generico via
       SQL parametrico/Dapper, whitelisting colonne dai metadati) + controller
       generico (`/cms-admin/entities/{entityName}`) + editor template Razor

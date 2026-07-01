@@ -6,3 +6,4 @@ obj/
 ## Connection string reale con credenziali: mai in git.
 ## Solo appsettings.example.json (senza segreti) va versionato.
 src/MyCms.Data/appsettings.json
+src/MyCms.Scaffolding.ConsoleTest/appsettings.json

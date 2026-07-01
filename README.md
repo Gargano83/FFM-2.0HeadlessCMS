@@ -69,8 +69,39 @@ CMS, come da `docs/ROADMAP.md`.
 builder.Services.AddMyCmsData(builder.Configuration.GetConnectionString("Default")!);
 ```
 
-## Prossimo step (fase 2 della roadmap)
+## Fase 2: scaffolding engine
 
-Scaffolding engine: lettura schema DB SQL Server tramite
-`IDatabaseModelFactory` e wizard di selezione tabelle per popolare
-`EntityDefinition`/`FieldDefinition` automaticamente.
+`MyCms.Scaffolding` legge lo schema di SQL Server tramite query dirette su
+`sys.tables`/`sys.columns`/`sys.foreign_keys` (nessuna dipendenza da API
+interne di EF Core) e popola `cms.EntityDefinition`/`cms.FieldDefinition`
+con l'`EditorType` dedotto automaticamente dal tipo SQL di ogni colonna.
+
+### Come testarlo
+
+Non abbiamo ancora la UI del wizard (arriverà nella fase 3), quindi il modo
+più rapido per verificare lo scaffolding contro un DB reale è la console
+`MyCms.Scaffolding.ConsoleTest`:
+
+```
+cd src/MyCms.Scaffolding.ConsoleTest
+cp appsettings.example.json appsettings.json
+# valorizza ConnectionStrings:Default con i tuoi dati reali
+dotnet run
+```
+
+La console elenca le tabelle disponibili (tutte tranne lo schema `cms` e
+`__EFMigrationsHistory`), ti chiede quali scaffoldare, e stampa il risultato:
+per ogni entità, le colonne con `EditorType` dedotto e l'eventuale FK
+risolta.
+
+Rilanciandola più volte sulle stesse tabelle l'operazione è **idempotente**:
+aggiorna i metadati strutturali (tipi, nuove colonne, FK) ma preserva le
+personalizzazioni già fatte manualmente in `cms.FieldDefinition`
+(`DisplayName`, `EditorType`, `ShowInList`/`ShowInForm`, `SortOrder`).
+
+## Prossimo step (fase 3 della roadmap)
+
+Generic CRUD: `IGenericEntityRepository` (accesso dati generico via SQL
+parametrico guidato dai metadati) + controller generico + editor template
+Razor, impacchettati nella Razor Class Library `MyCms.Admin` insieme alla UI
+del wizard di scaffolding.
