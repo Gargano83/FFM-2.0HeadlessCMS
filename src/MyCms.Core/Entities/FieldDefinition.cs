@@ -28,6 +28,8 @@ public class FieldDefinition
 
     public bool IsPrimaryKey { get; set; }
 
+    public bool IsIdentity { get; set; }
+
     public bool IsForeignKey { get; set; }
 
     /// <summary>Se IsForeignKey è true, entità di destinazione della FK.</summary>

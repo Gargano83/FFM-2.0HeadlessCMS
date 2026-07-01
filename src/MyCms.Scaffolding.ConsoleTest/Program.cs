@@ -61,6 +61,6 @@ foreach (var entity in entities)
     foreach (var field in entity.Fields.OrderBy(f => f.SortOrder))
     {
         var fkInfo = field.IsForeignKey ? $" -> FK verso EntityDefinitionId={field.ForeignKeyTargetEntityId}" : "";
-        Console.WriteLine($"    {field.ColumnName,-25} {field.SqlDataType,-15} EditorType={field.EditorType,-10} Required={field.IsRequired}{fkInfo}");
+        Console.WriteLine($"    {field.ColumnName,-25} {field.SqlDataType,-15} EditorType={field.EditorType,-10} Required={field.IsRequired} Identity={field.IsIdentity}{fkInfo}");
     }
 }

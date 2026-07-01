@@ -140,6 +140,7 @@ public class ScaffoldingService
                 field.MaxLength = column.MaxLength;
                 field.IsNullable = column.IsNullable;
                 field.IsPrimaryKey = column.IsPrimaryKey;
+                field.IsIdentity = column.IsIdentity;
                 field.IsForeignKey = isForeignKey;
                 field.ForeignKeyTargetEntityId = targetEntity?.Id;
                 field.ForeignKeyDisplayColumn = displayColumn;
