@@ -210,6 +210,47 @@ public class GenericEntityRepository : IGenericEntityRepository
         await command.ExecuteNonQueryAsync(ct);
     }
 
+    public async Task<IReadOnlyList<LookupOption>> GetLookupOptionsAsync(
+        EntityDefinition targetEntity, string? displayColumn, string? searchText, CancellationToken ct = default)
+    {
+        var pkField = GetPrimaryKeyField(targetEntity);
+        var labelColumnName = displayColumn ?? pkField.ColumnName;
+        var qualifiedTable = QualifiedTable(targetEntity);
+
+        var whereClause = string.IsNullOrWhiteSpace(searchText)
+            ? ""
+            : $"WHERE {QuoteIdentifier(labelColumnName)} LIKE @Search";
+
+        // TOP 50: una select FK non deve mai caricare l'intera tabella; oltre
+        // questa soglia l'utente deve affinare la ricerca testuale.
+        var sql = $"""
+            SELECT TOP (50) {QuoteIdentifier(pkField.ColumnName)}, {QuoteIdentifier(labelColumnName)}
+            FROM {qualifiedTable}
+            {whereClause}
+            ORDER BY {QuoteIdentifier(labelColumnName)};
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(sql, connection);
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            command.Parameters.Add(new SqlParameter("@Search", SqlDbType.NVarChar) { Value = $"%{searchText}%" });
+        }
+
+        var results = new List<LookupOption>();
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var value = reader.GetValue(0);
+            var label = reader.IsDBNull(1) ? value.ToString()! : reader.GetValue(1).ToString()!;
+            results.Add(new LookupOption(value.ToString()!, label));
+        }
+
+        return results;
+    }
+
     // --- Helpers -----------------------------------------------------
 
     private static FieldDefinition GetPrimaryKeyField(EntityDefinition entity)

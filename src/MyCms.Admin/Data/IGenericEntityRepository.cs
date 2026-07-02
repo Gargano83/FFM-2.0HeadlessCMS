@@ -31,6 +31,14 @@ public interface IGenericEntityRepository
         EntityDefinition entity, object id, IReadOnlyDictionary<string, string?> formValues, CancellationToken ct = default);
 
     Task DeleteAsync(EntityDefinition entity, object id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Righe minime {Value, Label} per popolare una &lt;select&gt; FK via AJAX.
+    /// Se displayColumn è null, usa la PK anche come label. Il filtro q, se
+    /// presente, fa un LIKE case-insensitive sulla colonna display.
+    /// </summary>
+    Task<IReadOnlyList<LookupOption>> GetLookupOptionsAsync(
+        EntityDefinition targetEntity, string? displayColumn, string? searchText, CancellationToken ct = default);
 }
 
 /// <summary>Risultato paginato per la vista Index del CRUD generico.</summary>
@@ -39,3 +47,6 @@ public sealed record GenericEntityPage(
     int TotalCount,
     int Page,
     int PageSize);
+
+/// <summary>Coppia valore/etichetta per una &lt;select&gt; FK.</summary>
+public sealed record LookupOption(string Value, string Label);

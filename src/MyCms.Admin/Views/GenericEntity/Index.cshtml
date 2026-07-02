@@ -1,0 +1,51 @@
+﻿@model IReadOnlyList<EntityDefinition>
+@{
+    ViewData["Title"] = "Entità";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Entità gestite</h1>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">Nessuna entità scaffoldata. Usa il wizard di scaffolding per iniziare.</div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+        @foreach (var entity in Model)
+        {
+            <div class="col">
+                <a href="/cms-admin/entities/@entity.Id" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-3"
+                                 style="width:48px;height:48px;">
+                                <i class="bi bi-@(entity.Icon ?? "table") fs-4"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold text-dark">@entity.DisplayName</div>
+                                <div class="text-muted small">@entity.QualifiedTableName</div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Popola la sidebar con le stesse entità, per navigazione rapida da qualsiasi pagina.
+        const nav = document.getElementById('cmsEntityNav');
+        const entities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(e => new { e.Id, e.DisplayName, e.Icon })));
+        entities.forEach(e => {
+            const li = document.createElement('li');
+            li.className = 'nav-item';
+            li.innerHTML = `<a href="/cms-admin/entities/${e.id}" class="nav-link"><i class="bi bi-${e.icon ?? 'table'} me-2"></i>${e.displayName}</a>`;
+            nav.appendChild(li);
+        });
+    </script>
+}

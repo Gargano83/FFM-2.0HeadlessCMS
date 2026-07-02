@@ -1,0 +1,116 @@
+﻿@model GenericEntityFormViewModel
+@{
+    var formFields = Model.Entity.Fields.Where(f => f.ShowInForm).OrderBy(f => f.SortOrder).ToList();
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="row g-3">
+    @foreach (var field in formFields)
+    {
+        var value = Model.Values?.GetValueOrDefault(field.ColumnName);
+        <div class="col-12 col-md-6">
+            <label class="form-label fw-medium" for="field_@field.ColumnName">
+                @field.DisplayName
+                @if (field.IsRequired)
+                {
+                    <span class="text-danger">*</span>
+                }
+            </label>
+
+            @switch (field.EditorType)
+            {
+                case EditorType.TextArea:
+                    <textarea class="form-control" id="field_@field.ColumnName" name="@field.ColumnName"
+                              rows="4" maxlength="@field.MaxLength" required="@field.IsRequired">@value</textarea>
+                    break;
+
+                case EditorType.RichText:
+                    <textarea class="form-control cms-richtext" id="field_@field.ColumnName" name="@field.ColumnName"
+                              rows="6">@value</textarea>
+                    break;
+
+                case EditorType.Number:
+                    <input type="number" step="any" class="form-control" id="field_@field.ColumnName"
+                           name="@field.ColumnName" value="@value" required="@field.IsRequired" />
+                    break;
+
+                case EditorType.Checkbox:
+                    var isChecked = value is true;
+                    <div class="form-check form-switch mt-2">
+                        <input type="checkbox" class="form-check-input" id="field_@field.ColumnName"
+                               name="@field.ColumnName" value="true" checked="@isChecked" />
+                    </div>
+                    break;
+
+                case EditorType.Date:
+                    <input type="date" class="form-control" id="field_@field.ColumnName"
+                           name="@field.ColumnName" value="@(value as DateTime?)?.ToString(" yyyy-MM-dd")"
+                           required="@field.IsRequired" />
+                    break;
+
+                case EditorType.DateTime:
+                    <input type="datetime-local" class="form-control" id="field_@field.ColumnName"
+                           name="@field.ColumnName" value="@(value as DateTime?)?.ToString(" yyyy-MM-ddTHH:mm")"
+                           required="@field.IsRequired" />
+                    break;
+
+                case EditorType.Select:
+                    <select class="form-select cms-fk-select" id="field_@field.ColumnName" name="@field.ColumnName"
+                            data-field-id="@field.Id" data-selected-value="@value"
+                            required="@field.IsRequired">
+                        <option value="">-- Seleziona --</option>
+                    </select>
+                    break;
+
+                case EditorType.File:
+                    <input type="file" class="form-control" id="field_@field.ColumnName" name="@field.ColumnName" />
+                    <div class="form-text">Upload non ancora implementato (fase 6 della roadmap).</div>
+                    break;
+
+                case EditorType.Hidden:
+                    <input type="hidden" id="field_@field.ColumnName" name="@field.ColumnName" value="@value" />
+                    break;
+
+                default: // Text
+                         <input type="text" class="form-control" id="field_@field.ColumnName" name="@field.ColumnName"
+                                value="@value" maxlength="@field.MaxLength" required="@field.IsRequired" />
+                    break;
+            }
+        </div>
+    }
+</div>
+
+<div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i> Salva
+    </button>
+    <a href="/cms-admin/entities/@Model.Entity.Id" class="btn btn-outline-secondary">Annulla</a>
+</div>
+
+<script>
+    document.querySelectorAll('.cms-fk-select').forEach(async (select) => {
+        const fieldId = select.dataset.fieldId;
+        const selectedValue = select.dataset.selectedValue;
+        if (!fieldId) return;
+
+        try {
+            const response = await fetch(`/cms-admin/entities/lookup/${fieldId}`);
+            if (!response.ok) return;
+            const options = await response.json();
+
+            options.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.value;
+                optionEl.textContent = opt.label;
+                if (opt.value === selectedValue) optionEl.selected = true;
+                select.appendChild(optionEl);
+            });
+        } catch {
+            // Silenzioso: la select resta con solo "-- Seleziona --".
+        }
+    });
+</script>

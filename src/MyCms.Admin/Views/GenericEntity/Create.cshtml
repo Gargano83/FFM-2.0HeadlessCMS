@@ -1,0 +1,11 @@
+﻿@model GenericEntityFormViewModel
+@{
+    ViewData["Title"] = $"Nuovo — {Model.Entity.DisplayName}";
+}
+
+<h1 class="h3 mb-4">Nuovo — @Model.Entity.DisplayName</h1>
+
+<form method="post" action="/cms-admin/entities/@Model.Entity.Id/create" class="card border-0 shadow-sm p-4">
+    @Html.AntiForgeryToken()
+    <partial name="_EntityForm" model="Model" />
+</form>
