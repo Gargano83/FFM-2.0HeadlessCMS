@@ -169,6 +169,64 @@ public class ScaffoldingService
         return tables.Select(t => entityByQualifiedName[t.QualifiedName]).ToList();
     }
 
+    /// <summary>
+    /// Legge la struttura reale delle tabelle selezionate e la combina con eventuali
+    /// personalizzazioni già salvate (se già scaffoldate in precedenza), SENZA scrivere
+    /// nulla sul database. Usata dal wizard per mostrare lo step di configurazione prima
+    /// del salvataggio definitivo.
+    /// </summary>
+    public async Task<IReadOnlyList<ScaffoldingPreviewEntity>> PreviewAsync(
+        IEnumerable<DatabaseTableInfo> selectedTables, CancellationToken ct = default)
+    {
+        var results = new List<ScaffoldingPreviewEntity>();
+
+        foreach (var table in selectedTables)
+        {
+            var details = await _reader.GetTableDetailsAsync(table.SchemaName, table.TableName, ct);
+
+            var existingEntity = await _db.EntityDefinitions
+                .Include(e => e.Fields)
+                .FirstOrDefaultAsync(e => e.SchemaName == table.SchemaName && e.TableName == table.TableName, ct);
+
+            var fieldPreviews = new List<ScaffoldingPreviewField>();
+            foreach (var column in details.Columns)
+            {
+                var fk = details.ForeignKeys.FirstOrDefault(f =>
+                    string.Equals(f.ColumnName, column.ColumnName, StringComparison.OrdinalIgnoreCase));
+                var isForeignKey = fk is not null;
+
+                var existingField = existingEntity?.Fields.FirstOrDefault(f =>
+                    string.Equals(f.ColumnName, column.ColumnName, StringComparison.OrdinalIgnoreCase));
+
+                fieldPreviews.Add(new ScaffoldingPreviewField(
+                    ColumnName: column.ColumnName,
+                    SqlDataType: column.SqlDataType,
+                    MaxLength: column.MaxLength,
+                    IsNullable: column.IsNullable,
+                    IsPrimaryKey: column.IsPrimaryKey,
+                    IsIdentity: column.IsIdentity,
+                    IsForeignKey: isForeignKey,
+                    ForeignKeyTarget: fk is not null ? $"{fk.ReferencedSchema}.{fk.ReferencedTable}" : null,
+                    DisplayName: existingField?.DisplayName ?? Humanize(column.ColumnName),
+                    EditorType: existingField?.EditorType ?? EditorTypeInferrer.Infer(column.SqlDataType, isForeignKey, column.MaxLength),
+                    ShowInList: existingField?.ShowInList ?? true,
+                    ShowInForm: existingField?.ShowInForm ?? !(column.IsPrimaryKey && column.IsIdentity),
+                    IsRequired: existingField?.IsRequired ?? (!column.IsNullable && !column.IsIdentity && !column.IsPrimaryKey)));
+            }
+
+            results.Add(new ScaffoldingPreviewEntity(
+                SchemaName: table.SchemaName,
+                TableName: table.TableName,
+                EntityId: existingEntity?.Id,
+                DisplayName: existingEntity?.DisplayName ?? Humanize(table.TableName),
+                Icon: existingEntity?.Icon,
+                IsNew: existingEntity is null,
+                Fields: fieldPreviews));
+        }
+
+        return results;
+    }
+
     /// <summary>"OrderDate" -> "Order Date", "order_date" -> "Order date".</summary>
     private static string Humanize(string identifier)
     {

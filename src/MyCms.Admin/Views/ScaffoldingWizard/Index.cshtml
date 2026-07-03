@@ -1,0 +1,367 @@
+﻿@model ScaffoldingTableListViewModel
+@{
+    ViewData["Title"] = "Scaffolding";
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/backoffice/admin">Entità</a></li>
+            <li class="breadcrumb-item active">Scaffolding</li>
+        </ol>
+    </nav>
+    <h1 class="h3 mb-0">Configura tabelle</h1>
+    <p class="text-muted mb-0">
+        Seleziona le tabelle da mappare nel CMS, poi personalizza in un unico passaggio
+        come verranno mostrate nel backoffice. La struttura del database non viene mai
+        alterata da qui: viene solo letta e, se necessario, ri-letta con lo stesso scaffold.
+    </p>
+</div>
+
+<div class="d-flex align-items-center mb-4" id="cmsStepper">
+    <div class="cms-step active" data-step="1">
+        <span class="cms-step-circle">1</span>
+        <span class="cms-step-label">Seleziona tabelle</span>
+    </div>
+    <div class="cms-step-line"></div>
+    <div class="cms-step" data-step="2">
+        <span class="cms-step-circle">2</span>
+        <span class="cms-step-label">Configura e salva</span>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+<!-- STEP 1 -->
+<div id="step1" class="cms-step-panel">
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <input type="search" id="tableFilter" class="form-control mb-3" placeholder="Cerca tabella..." />
+            <div id="tableGroups">
+                @foreach (var schemaGroup in Model.Tables.GroupBy(t => t.SchemaName).OrderBy(g => g.Key))
+                {
+                    <div class="mb-3 cms-schema-group">
+                        <div class="fw-semibold text-uppercase small text-muted mb-2">@schemaGroup.Key</div>
+                        <div class="row row-cols-1 row-cols-md-2 g-2">
+                            @foreach (var table in schemaGroup.OrderBy(t => t.TableName))
+                            {
+                                <div class="col">
+                                    <label class="cms-table-check d-flex align-items-center gap-2 p-2 border rounded-3">
+                                        <input type="checkbox" class="form-check-input cms-table-checkbox"
+                                               data-schema="@table.SchemaName" data-table="@table.TableName" />
+                                        <span class="flex-grow-1">@table.TableName</span>
+                                        @if (table.AlreadyScaffolded)
+                                        {
+                                            <span class="badge bg-success-subtle text-success">Configurata</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary">Nuova</span>
+                                        }
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-end">
+        <button type="button" id="btnGoStep2" class="btn btn-primary" disabled>
+            Avanti <i class="bi bi-arrow-right ms-1"></i>
+        </button>
+    </div>
+</div>
+
+<!-- STEP 2 -->
+<div id="step2" class="cms-step-panel d-none">
+    <div id="entityConfigContainer"></div>
+    <div class="d-flex justify-content-between mt-3 mb-5">
+        <button type="button" id="btnBackStep1" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Indietro
+        </button>
+        <button type="button" id="btnSave" class="btn btn-success">
+            <i class="bi bi-check2-circle me-1"></i> Salva configurazione
+        </button>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .cms-step {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            color: #9aa0ab;
+        }
+
+            .cms-step.active {
+                color: #0d6efd;
+                font-weight: 600;
+            }
+
+        .cms-step-circle {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .85rem;
+        }
+
+        .cms-step.active .cms-step-circle {
+            background: #0d6efd;
+            color: #fff;
+        }
+
+        .cms-step-line {
+            flex: 1;
+            height: 1px;
+            background: #dee2e6;
+            margin: 0 1rem;
+        }
+
+        .cms-table-check {
+            cursor: pointer;
+            transition: background .15s;
+        }
+
+            .cms-table-check:hover {
+                background: #f8f9fa;
+            }
+
+        .cms-field-row td {
+            vertical-align: middle;
+        }
+
+        @@media (max-width: 767.98px) {
+            .cms-step-label {
+                display: none;
+            }
+        }
+    </style>
+    <script>
+        (function () {
+            const EDITOR_TYPES = [
+                [0, "Testo"], [1, "Area di testo"], [2, "Rich text"], [3, "Numero"],
+                [4, "Checkbox"], [5, "Data"], [6, "Data e ora"], [7, "Select (FK)"],
+                [8, "File"], [9, "Nascosto"]
+            ];
+
+            const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            const step1 = document.getElementById('step1');
+            const step2 = document.getElementById('step2');
+            const btnGoStep2 = document.getElementById('btnGoStep2');
+            const btnBackStep1 = document.getElementById('btnBackStep1');
+            const btnSave = document.getElementById('btnSave');
+            const entityConfigContainer = document.getElementById('entityConfigContainer');
+            const stepperEls = document.querySelectorAll('#cmsStepper .cms-step');
+
+            let previewData = [];
+
+            function updateSelectedCount() {
+                const checked = document.querySelectorAll('.cms-table-checkbox:checked');
+                btnGoStep2.disabled = checked.length === 0;
+            }
+
+            document.querySelectorAll('.cms-table-checkbox').forEach(cb => {
+                cb.addEventListener('change', updateSelectedCount);
+            });
+
+            document.getElementById('tableFilter').addEventListener('input', (e) => {
+                const q = e.target.value.trim().toLowerCase();
+                document.querySelectorAll('.cms-schema-group').forEach(group => {
+                    let anyVisible = false;
+                    group.querySelectorAll('.cms-table-check').forEach(label => {
+                        const tableName = label.querySelector('.cms-table-checkbox').dataset.table.toLowerCase();
+                        const match = tableName.includes(q);
+                        label.closest('.col').classList.toggle('d-none', !match);
+                        if (match) anyVisible = true;
+                    });
+                    group.classList.toggle('d-none', !anyVisible);
+                });
+            });
+
+            function setActiveStep(step) {
+                stepperEls.forEach(el => el.classList.toggle('active', Number(el.dataset.step) === step));
+            }
+
+            btnGoStep2.addEventListener('click', async () => {
+                const selected = Array.from(document.querySelectorAll('.cms-table-checkbox:checked'))
+                    .map(cb => `${cb.dataset.schema}.${cb.dataset.table}`);
+
+                const originalLabel = btnGoStep2.innerHTML;
+                btnGoStep2.disabled = true;
+                btnGoStep2.innerHTML = 'Carico struttura... <span class="spinner-border spinner-border-sm ms-1"></span>';
+
+                try {
+                    const res = await fetch('/backoffice/admin/scaffolding/preview?tables=' + encodeURIComponent(selected.join(',')));
+                    if (!res.ok) throw new Error('Errore nel recupero della struttura.');
+                    previewData = await res.json();
+                    renderStep2();
+                    step1.classList.add('d-none');
+                    step2.classList.remove('d-none');
+                    setActiveStep(2);
+                } catch (err) {
+                    alert(err.message);
+                } finally {
+                    btnGoStep2.disabled = false;
+                    btnGoStep2.innerHTML = originalLabel;
+                }
+            });
+
+            btnBackStep1.addEventListener('click', () => {
+                step2.classList.add('d-none');
+                step1.classList.remove('d-none');
+                setActiveStep(1);
+            });
+
+            function renderStep2() {
+                entityConfigContainer.innerHTML = '';
+
+                previewData.forEach((entity, entityIndex) => {
+                    const card = document.createElement('div');
+                    card.className = 'card border-0 shadow-sm mb-3';
+                    card.dataset.entityIndex = entityIndex;
+
+                    const badge = entity.isNew
+                        ? '<span class="badge bg-secondary-subtle text-secondary">Nuova</span>'
+                        : '<span class="badge bg-success-subtle text-success">Aggiornamento</span>';
+
+                    card.innerHTML = `
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <h5 class="mb-0">${entity.schemaName}.${entity.tableName}</h5>
+                                    ${badge}
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small">Nome visualizzato</label>
+                                    <input type="text" class="form-control entity-display-name" value="${entity.displayName}" />
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small">Icona (bootstrap-icons, opzionale)</label>
+                                    <input type="text" class="form-control entity-icon" value="${entity.icon ?? ''}" placeholder="es. table, tags, people" />
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="min-width:140px;">Colonna</th>
+                                            <th style="min-width:180px;">Etichetta</th>
+                                            <th style="min-width:160px;">Editor</th>
+                                            <th class="text-center">Lista</th>
+                                            <th class="text-center">Form</th>
+                                            <th class="text-center">Obbligatorio</th>
+                                            <th>Info</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="cms-field-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+
+                    const tbody = card.querySelector('.cms-field-tbody');
+                    entity.fields.forEach((field, fieldIndex) => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'cms-field-row';
+                        tr.dataset.fieldIndex = fieldIndex;
+
+                        const editorOptions = EDITOR_TYPES.map(([val, label]) =>
+                            `<option value="${val}" ${val === field.editorType ? 'selected' : ''}>${label}</option>`
+                        ).join('');
+
+                        const infoBadges = [
+                            field.isPrimaryKey ? '<span class="badge bg-primary-subtle text-primary">PK</span>' : '',
+                            field.isIdentity ? '<span class="badge bg-info-subtle text-info">Identity</span>' : '',
+                            field.isForeignKey ? `<span class="badge bg-warning-subtle text-warning">FK &rarr; ${field.foreignKeyTarget ?? '?'}</span>` : '',
+                            !field.isNullable ? '<span class="badge bg-secondary-subtle text-secondary">Not null</span>' : ''
+                        ].filter(Boolean).join(' ');
+
+                        tr.innerHTML = `
+                            <td><code>${field.columnName}</code><div class="text-muted small">${field.sqlDataType}</div></td>
+                            <td><input type="text" class="form-control form-control-sm field-display-name" value="${field.displayName}" /></td>
+                            <td><select class="form-select form-select-sm field-editor-type">${editorOptions}</select></td>
+                            <td class="text-center"><input type="checkbox" class="form-check-input field-show-in-list" ${field.showInList ? 'checked' : ''} /></td>
+                            <td class="text-center"><input type="checkbox" class="form-check-input field-show-in-form" ${field.showInForm ? 'checked' : ''} /></td>
+                            <td class="text-center"><input type="checkbox" class="form-check-input field-is-required" ${field.isRequired ? 'checked' : ''} /></td>
+                            <td>${infoBadges}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    entityConfigContainer.appendChild(card);
+                });
+            }
+
+            function collectPayload() {
+                const cards = entityConfigContainer.querySelectorAll(':scope > .card');
+                const entities = Array.from(cards).map(card => {
+                    const entityIndex = Number(card.dataset.entityIndex);
+                    const source = previewData[entityIndex];
+
+                    const fields = Array.from(card.querySelectorAll('.cms-field-row')).map(row => {
+                        const fieldIndex = Number(row.dataset.fieldIndex);
+                        const sourceField = source.fields[fieldIndex];
+                        return {
+                            columnName: sourceField.columnName,
+                            displayName: row.querySelector('.field-display-name').value,
+                            editorType: Number(row.querySelector('.field-editor-type').value),
+                            showInList: row.querySelector('.field-show-in-list').checked,
+                            showInForm: row.querySelector('.field-show-in-form').checked,
+                            isRequired: row.querySelector('.field-is-required').checked
+                        };
+                    });
+
+                    return {
+                        schemaName: source.schemaName,
+                        tableName: source.tableName,
+                        displayName: card.querySelector('.entity-display-name').value,
+                        icon: card.querySelector('.entity-icon').value || null,
+                        fields
+                    };
+                });
+
+                return { entities };
+            }
+
+            btnSave.addEventListener('click', async () => {
+                const originalLabel = btnSave.innerHTML;
+                btnSave.disabled = true;
+                btnSave.innerHTML = 'Salvataggio... <span class="spinner-border spinner-border-sm ms-1"></span>';
+
+                try {
+                    const payload = collectPayload();
+                    const res = await fetch('/backoffice/admin/scaffolding/save', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': antiForgeryToken
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(text || 'Errore durante il salvataggio.');
+                    }
+
+                    const result = await res.json();
+                    window.location.href = result.redirectUrl || '/backoffice/admin';
+                } catch (err) {
+                    alert(err.message);
+                    btnSave.disabled = false;
+                    btnSave.innerHTML = originalLabel;
+                }
+            });
+        })();
+    </script>
+}

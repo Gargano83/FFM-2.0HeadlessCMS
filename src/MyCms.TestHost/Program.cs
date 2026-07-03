@@ -1,5 +1,6 @@
 using MyCms.Admin.Extensions;
 using MyCms.Data.Extensions;
+using MyCms.Scaffolding.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,9 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 // nello stesso database fisico.
 builder.Services.AddMyCmsData(connectionString);
 builder.Services.AddMyCmsAdmin(connectionString);
+builder.Services.AddMyCmsScaffolding(connectionString);
+
+builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 
 builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 

@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MyCms.Core\MyCms.Core.csproj" />
     <ProjectReference Include="..\MyCms.Data\MyCms.Data.csproj" />
+    <ProjectReference Include="..\MyCms.Scaffolding\MyCms.Scaffolding.csproj" />
   </ItemGroup>
 
   <ItemGroup>
