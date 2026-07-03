@@ -172,6 +172,16 @@
                 cb.addEventListener('change', updateSelectedCount);
             });
 
+            const preselect = new URLSearchParams(window.location.search).get('preselect');
+            if (preselect) {
+                preselect.split(',').forEach(key => {
+                    const [schema, table] = key.split('.');
+                    const cb = document.querySelector(`.cms-table-checkbox[data-schema="${schema}"][data-table="${table}"]`);
+                    if (cb) cb.checked = true;
+                });
+                updateSelectedCount();
+            }
+
             document.getElementById('tableFilter').addEventListener('input', (e) => {
                 const q = e.target.value.trim().toLowerCase();
                 document.querySelectorAll('.cms-schema-group').forEach(group => {

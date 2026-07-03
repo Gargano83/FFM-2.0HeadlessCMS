@@ -1,0 +1,156 @@
+﻿@model EntityDefinition
+@{
+    ViewData["Title"] = $"Struttura — {Model.DisplayName}";
+    var fields = Model.Fields.OrderBy(f => f.SortOrder).ToList();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="/backoffice/admin">Entità</a></li>
+                <li class="breadcrumb-item"><a href="/backoffice/admin/@Model.Id">@Model.DisplayName</a></li>
+                <li class="breadcrumb-item active">Struttura</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">@Model.DisplayName</h1>
+        <div class="text-muted small">
+            <code>@Model.QualifiedTableName</code> &middot; PK: <code>@Model.PrimaryKeyColumn</code>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="/backoffice/admin/@Model.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-table me-1"></i> Vai ai dati
+        </a>
+        <a href="/backoffice/admin/scaffolding?preselect=@Uri.EscapeDataString($"{Model.SchemaName}.{Model.TableName}")"
+           class="btn btn-outline-primary">
+            <i class="bi bi-sliders me-1"></i> Modifica configurazione
+        </a>
+        <form method="post" action="/backoffice/admin/@Model.Id/structure/refresh"
+              onsubmit="return confirm('Ri-leggere la struttura da database? Le colonne nuove verranno aggiunte automaticamente. Le personalizzazioni esistenti (etichette, editor, visibilità) non vengono perse.');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-arrow-repeat me-1"></i> Aggiorna struttura
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="alert alert-info d-flex align-items-start gap-2 mb-4">
+    <i class="bi bi-info-circle mt-1"></i>
+    <div>
+        Questa è una vista <strong>di sola lettura</strong> della struttura fisica della tabella.
+        Le colonne e i tipi non sono modificabili da qui: eventuali cambi vanno fatti direttamente
+        sul database e poi importati con <strong>"Aggiorna struttura"</strong>. Per cambiare invece
+        come i campi vengono <em>mostrati</em> nel backoffice (etichette, editor, visibilità nelle
+        liste/form) usa <strong>"Modifica configurazione"</strong>.
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Colonna</th>
+                    <th>Tipo SQL</th>
+                    <th>Lunghezza</th>
+                    <th class="text-center">Null</th>
+                    <th class="text-center">PK</th>
+                    <th class="text-center">Identity</th>
+                    <th>FK</th>
+                    <th>Editor</th>
+                    <th class="text-center">Lista</th>
+                    <th class="text-center">Form</th>
+                    <th class="text-center">Obbl.</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var field in fields)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-medium">@field.ColumnName</div>
+                            <div class="text-muted small">@field.DisplayName</div>
+                        </td>
+                        <td><code>@field.SqlDataType</code></td>
+                        <td>@(field.MaxLength?.ToString() ?? "—")</td>
+                        <td class="text-center">
+                            @if (field.IsNullable)
+                            {
+                                <i class="bi bi-check-lg text-success"></i>
+                            }
+                            else
+                            {
+
+                                <i class="bi bi-dash text-muted"></i>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (field.IsPrimaryKey)
+                            {
+                                <span class="badge bg-primary-subtle text-primary">PK</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (field.IsIdentity)
+                            {
+                                <span class="badge bg-info-subtle text-info">Identity</span>
+                            }
+                        </td>
+                        <td>
+                            @if (field.IsForeignKey)
+                            {
+                                <span class="badge bg-warning-subtle text-warning">
+                                    @(field.ForeignKeyTargetEntity?.DisplayName ?? "?")
+                                    @if (field.ForeignKeyDisplayColumn is not null)
+                                    {
+                                        <span class="opacity-75">(@field.ForeignKeyDisplayColumn)</span>
+                                    }
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td><span class="badge bg-secondary-subtle text-secondary">@field.EditorType</span></td>
+                        <td class="text-center">
+                            @if (field.ShowInList)
+                            {
+                                <i class="bi bi-check-lg text-success"></i>
+                            }
+                            else
+                            {
+
+                                <i class="bi bi-dash text-muted"></i>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (field.ShowInForm)
+                            {
+                                <i class="bi bi-check-lg text-success"></i>
+                            }
+                            else
+                            {
+
+                                <i class="bi bi-dash text-muted"></i>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (field.IsRequired)
+                            {
+                                <i class="bi bi-check-lg text-success"></i>
+                            }
+                            else
+                            {
+
+                                <i class="bi bi-dash text-muted"></i>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

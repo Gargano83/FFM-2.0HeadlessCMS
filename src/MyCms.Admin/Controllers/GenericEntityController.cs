@@ -4,6 +4,8 @@ using MyCms.Admin.Data;
 using MyCms.Admin.ViewModels;
 using MyCms.Core.Entities;
 using MyCms.Data;
+using MyCms.Scaffolding;
+using MyCms.Scaffolding.Models;
 using System.Globalization;
 
 namespace MyCms.Admin.Controllers;
@@ -22,11 +24,13 @@ public class GenericEntityController : Controller
 
     private readonly CmsDbContext _db;
     private readonly IGenericEntityRepository _repository;
+    private readonly ScaffoldingService _scaffoldingService;
 
-    public GenericEntityController(CmsDbContext db, IGenericEntityRepository repository)
+    public GenericEntityController(CmsDbContext db, IGenericEntityRepository repository, ScaffoldingService scaffoldingService)
     {
         _db = db;
         _repository = repository;
+        _scaffoldingService = scaffoldingService;
     }
 
     /// <summary>Elenco delle entità disponibili nel backoffice (menu principale CRUD generico).</summary>
@@ -169,6 +173,40 @@ public class GenericEntityController : Controller
         await _repository.DeleteAsync(entity, pkValue, ct);
 
         return RedirectToAction(nameof(List), new { entityId });
+    }
+
+    /// <summary>Vista di sola lettura della struttura fisica di un'entità già scaffoldata.</summary>
+    [HttpGet("{entityId:guid}/structure")]
+    public async Task<IActionResult> Structure(Guid entityId, CancellationToken ct)
+    {
+        var entity = await LoadEntityAsync(entityId, ct);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        return View(entity);
+    }
+
+    /// <summary>
+    /// Ri-legge la struttura reale della tabella dal database e aggiorna i metadati
+    /// (colonne, tipi, FK). Idempotente: preserva le personalizzazioni di presentazione
+    /// già impostate (DisplayName/EditorType/ShowInList/ShowInForm) sui campi esistenti.
+    /// </summary>
+    [HttpPost("{entityId:guid}/structure/refresh")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RefreshStructure(Guid entityId, CancellationToken ct)
+    {
+        var entity = await LoadEntityAsync(entityId, ct);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        await _scaffoldingService.ScaffoldTablesAsync(new[] { new DatabaseTableInfo(entity.SchemaName, entity.TableName) }, ct);
+
+        TempData["StatusMessage"] = $"Struttura di '{entity.DisplayName}' aggiornata dal database.";
+        return RedirectToAction(nameof(Structure), new { entityId });
     }
 
     [HttpGet("lookup/{fieldId:guid}")]
