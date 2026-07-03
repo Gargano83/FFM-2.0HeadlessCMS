@@ -15,7 +15,7 @@ namespace MyCms.Admin.Controllers;
 /// in TEST), quindi il nome non è un identificatore univoco affidabile
 /// per il routing.
 /// </summary>
-[Route("cms-admin/entities")]
+[Route("backoffice/admin")]
 public class GenericEntityController : Controller
 {
     private const int DefaultPageSize = 20;

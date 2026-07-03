@@ -8,13 +8,13 @@
     <div>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1">
-                <li class="breadcrumb-item"><a href="/cms-admin/entities">Entità</a></li>
+                <li class="breadcrumb-item"><a href="/backoffice/admin">Entità</a></li>
                 <li class="breadcrumb-item active">@Model.Entity.DisplayName</li>
             </ol>
         </nav>
         <h1 class="h3 mb-0">@Model.Entity.DisplayName</h1>
     </div>
-    <a href="/cms-admin/entities/@Model.Entity.Id/create" class="btn btn-primary">
+    <a href="/backoffice/admin/@Model.Entity.Id/create" class="btn btn-primary">
         <i class="bi bi-plus-lg me-1"></i> Nuovo
     </a>
 </div>
@@ -52,10 +52,10 @@
                             </td>
                         }
                         <td class="text-end">
-                            <a href="/cms-admin/entities/@Model.Entity.Id/edit/@recordId" class="btn btn-sm btn-outline-secondary">
+                            <a href="/backoffice/admin/@Model.Entity.Id/edit/@recordId" class="btn btn-sm btn-outline-secondary">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <form method="post" action="/cms-admin/entities/@Model.Entity.Id/delete/@recordId"
+                            <form method="post" action="/backoffice/admin/@Model.Entity.Id/delete/@recordId"
                                   class="d-inline" onsubmit="return confirm('Eliminare questo elemento?');">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -83,7 +83,7 @@
             @for (var p = 1; p <= Model.TotalPages; p++)
             {
                 <li class="page-item @(p == Model.Page ? "active" : "")">
-                    <a class="page-link" href="/cms-admin/entities/@Model.Entity.Id?page=@p">@p</a>
+                    <a class="page-link" href="/backoffice/admin/@Model.Entity.Id?page=@p">@p</a>
                 </li>
             }
         </ul>

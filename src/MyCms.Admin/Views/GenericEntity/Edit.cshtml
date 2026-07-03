@@ -5,7 +5,7 @@
 
 <h1 class="h3 mb-4">Modifica — @Model.Entity.DisplayName</h1>
 
-<form method="post" action="/cms-admin/entities/@Model.Entity.Id/edit/@Model.RecordId" class="card border-0 shadow-sm p-4">
+<form method="post" action="/backoffice/admin/@Model.Entity.Id/edit/@Model.RecordId" class="card border-0 shadow-sm p-4">
     @Html.AntiForgeryToken()
     <partial name="_EntityForm" model="Model" />
 </form>

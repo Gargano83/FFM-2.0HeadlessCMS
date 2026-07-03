@@ -7,3 +7,4 @@ obj/
 ## Solo appsettings.example.json (senza segreti) va versionato.
 src/MyCms.Data/appsettings.json
 src/MyCms.Scaffolding.ConsoleTest/appsettings.json
+/src/MyCms.TestHost/appsettings.json
