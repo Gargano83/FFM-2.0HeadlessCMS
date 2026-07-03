@@ -1,0 +1,50 @@
+﻿@model UserFormViewModel
+
+<div class="row g-3">
+    <div class="col-12 col-md-6">
+        <label class="form-label fw-medium" for="Email">Email <span class="text-danger">*</span></label>
+        <input type="email" class="form-control" id="Email" name="Email" value="@Model.Email" required />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label fw-medium" for="DisplayName">Nome visualizzato</label>
+        <input type="text" class="form-control" id="DisplayName" name="DisplayName" value="@Model.DisplayName" />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label fw-medium" for="Password">
+            Password @if (!Model.IsEdit) {
+            <span class="text-danger">*</span>
+        }
+    </label>
+    <input type="password" class="form-control" id="Password" name="Password" autocomplete="new-password" />
+    @if (Model.IsEdit)
+    {
+        <div class="form-text">Lascia vuoto per non modificare la password attuale.</div>
+    }
+</div>
+<div class="col-12">
+    <label class="form-label fw-medium d-block">Ruoli</label>
+    <div class="d-flex flex-wrap gap-3">
+        @foreach (var role in Model.AvailableRoles)
+        {
+            var isChecked = Model.SelectedRoles.Contains(role);
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="role_@role" name="SelectedRoles"
+                       value="@role" checked="@isChecked" />
+                <label class="form-check-label" for="role_@role">@role</label>
+            </div>
+        }
+    </div>
+</div>
+</div>
+
+@if (Model.Id.HasValue)
+{
+    <input type="hidden" name="Id" value="@Model.Id" />
+}
+
+<div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i> Salva
+    </button>
+    <a href="/backoffice/admin/users" class="btn btn-outline-secondary">Annulla</a>
+</div>

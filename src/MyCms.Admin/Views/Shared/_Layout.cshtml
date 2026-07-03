@@ -38,6 +38,12 @@
             <a href="/backoffice/admin/scaffolding" class="nav-link mb-3">
                 <i class="bi bi-diagram-3 me-2"></i> Scaffolding
             </a>
+            @if (User.IsInRole(CmsRoles.Admin))
+            {
+                <a href="/backoffice/admin/users" class="nav-link mb-3">
+                    <i class="bi bi-people me-2"></i> Utenti
+                </a>
+            }
             <ul class="nav nav-pills flex-column mb-auto" id="cmsEntityNav">
                 <!-- Popolato dalla view Index -->
             </ul>

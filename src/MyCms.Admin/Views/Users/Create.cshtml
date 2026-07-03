@@ -1,0 +1,29 @@
+﻿@model UserFormViewModel
+@{
+    ViewData["Title"] = "Nuovo utente";
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/backoffice/admin/users">Utenti</a></li>
+            <li class="breadcrumb-item active">Nuovo</li>
+        </ol>
+    </nav>
+    <h1 class="h3 mb-0">Nuovo utente</h1>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@error.ErrorMessage</div>
+        }
+    </div>
+}
+
+<form method="post" action="/backoffice/admin/users/create" class="card border-0 shadow-sm p-4">
+    @Html.AntiForgeryToken()
+    <partial name="_UserForm" model="Model" />
+</form>
