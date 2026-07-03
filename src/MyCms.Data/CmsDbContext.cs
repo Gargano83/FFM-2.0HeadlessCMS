@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MyCms.Core.Entities;
 using MyCms.Data.Configurations;
+using MyCms.Data.Identity;
 
 namespace MyCms.Data;
 
@@ -13,7 +16,7 @@ namespace MyCms.Data;
 /// mappate qui: vengono lette/scritte dinamicamente da IGenericEntityRepository
 /// (fase 3 della roadmap) tramite SQL parametrico guidato dai metadati.
 /// </summary>
-public class CmsDbContext : DbContext
+public class CmsDbContext : IdentityDbContext<CmsUser, CmsRole, Guid>
 {
     public const string Schema = "cms";
 
@@ -31,12 +34,26 @@ public class CmsDbContext : DbContext
     {
         modelBuilder.HasDefaultSchema(Schema);
 
+        base.OnModelCreating(modelBuilder);
+
+        // Rinomino le tabelle Identity per coerenza con la naming convention
+        // del resto dello schema cms (niente prefisso "AspNet").
+        modelBuilder.Entity<CmsUser>(b =>
+        {
+            b.ToTable("User");
+            b.Property(u => u.DisplayName).HasMaxLength(200);
+        });
+        modelBuilder.Entity<CmsRole>(b => b.ToTable("Role"));
+        modelBuilder.Entity<IdentityUserRole<Guid>>(b => b.ToTable("UserRole"));
+        modelBuilder.Entity<IdentityUserClaim<Guid>>(b => b.ToTable("UserClaim"));
+        modelBuilder.Entity<IdentityUserLogin<Guid>>(b => b.ToTable("UserLogin"));
+        modelBuilder.Entity<IdentityRoleClaim<Guid>>(b => b.ToTable("RoleClaim"));
+        modelBuilder.Entity<IdentityUserToken<Guid>>(b => b.ToTable("UserToken"));
+
         modelBuilder.ApplyConfiguration(new EntityDefinitionConfiguration());
         modelBuilder.ApplyConfiguration(new FieldDefinitionConfiguration());
         modelBuilder.ApplyConfiguration(new CmsPageConfiguration());
         modelBuilder.ApplyConfiguration(new CmsMenuConfiguration());
         modelBuilder.ApplyConfiguration(new CmsMenuItemConfiguration());
-
-        base.OnModelCreating(modelBuilder);
     }
 }

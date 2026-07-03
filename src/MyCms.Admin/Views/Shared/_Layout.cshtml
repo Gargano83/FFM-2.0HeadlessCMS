@@ -42,7 +42,17 @@
                 <!-- Popolato dalla view Index -->
             </ul>
         </nav>
-
+        <div class="mt-auto pt-3 border-top border-secondary-subtle">
+            <div class="d-flex align-items-center justify-content-between text-white-50 small">
+                <span><i class="bi bi-person-circle me-1"></i> @User.Identity?.Name</span>
+                <form method="post" action="/backoffice/account/logout" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-link text-white-50 p-0" title="Esci">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
         <div class="cms-content">
             <nav class="navbar navbar-light bg-white border-bottom px-3 d-lg-none">
                 <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('cmsSidebar').classList.toggle('show')">

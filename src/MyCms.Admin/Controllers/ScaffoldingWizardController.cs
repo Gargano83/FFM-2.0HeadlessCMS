@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyCms.Admin.ViewModels;
 using MyCms.Data;
+using MyCms.Data.Identity;
 using MyCms.Scaffolding;
 using MyCms.Scaffolding.Models;
 
@@ -15,6 +17,7 @@ namespace MyCms.Admin.Controllers;
 /// cms.EntityDefinition/cms.FieldDefinition.
 /// </summary>
 [Route("backoffice/admin/scaffolding")]
+[Authorize(Policy = CmsAuthConstants.AdminPolicy)]
 public class ScaffoldingWizardController : Controller
 {
     private readonly ScaffoldingService _scaffoldingService;

@@ -1,5 +1,6 @@
 using MyCms.Admin.Extensions;
 using MyCms.Data.Extensions;
+using MyCms.Data.Identity;
 using MyCms.Scaffolding.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,7 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 builder.Services.AddMyCmsData(connectionString);
 builder.Services.AddMyCmsAdmin(connectionString);
 builder.Services.AddMyCmsScaffolding(connectionString);
+builder.Services.AddMyCmsIdentity();
 
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 
@@ -29,11 +31,15 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapDefaultControllerRoute();
 
 app.MapGet("/", () => Results.Redirect("/backoffice/admin"));
+
+await MyCmsIdentitySeeder.SeedAsync(app.Services, app.Configuration);
 
 app.Run();

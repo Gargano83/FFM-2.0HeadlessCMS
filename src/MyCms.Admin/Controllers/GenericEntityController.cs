@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyCms.Admin.Data;
 using MyCms.Admin.ViewModels;
 using MyCms.Core.Entities;
 using MyCms.Data;
+using MyCms.Data.Identity;
 using MyCms.Scaffolding;
 using MyCms.Scaffolding.Models;
 using System.Globalization;
@@ -18,6 +20,7 @@ namespace MyCms.Admin.Controllers;
 /// per il routing.
 /// </summary>
 [Route("backoffice/admin")]
+[Authorize(Policy = CmsAuthConstants.EditorPolicy)]
 public class GenericEntityController : Controller
 {
     private const int DefaultPageSize = 20;
@@ -177,6 +180,7 @@ public class GenericEntityController : Controller
 
     /// <summary>Vista di sola lettura della struttura fisica di un'entità già scaffoldata.</summary>
     [HttpGet("{entityId:guid}/structure")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public async Task<IActionResult> Structure(Guid entityId, CancellationToken ct)
     {
         var entity = await LoadEntityAsync(entityId, ct);
@@ -194,6 +198,7 @@ public class GenericEntityController : Controller
     /// già impostate (DisplayName/EditorType/ShowInList/ShowInForm) sui campi esistenti.
     /// </summary>
     [HttpPost("{entityId:guid}/structure/refresh")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RefreshStructure(Guid entityId, CancellationToken ct)
     {
