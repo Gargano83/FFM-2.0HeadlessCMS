@@ -1,0 +1,14 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/DAMIHeadlessCMS.Core/DAMIHeadlessCMS.Core.csproj" />
+    <Project Path="src/DAMIHeadlessCMS.Data/DAMIHeadlessCMS.Data.csproj" />
+    <Project Path="src/DAMIHeadlessCMS.Scaffolding/DAMIHeadlessCMS.Scaffolding.csproj" />
+    <Project Path="src/DAMIHeadlessCMS.Admin/DAMIHeadlessCMS.Admin.csproj" />
+    <Project Path="src/DAMIHeadlessCMS.TestHost/DAMIHeadlessCMS.TestHost.csproj" />
+  </Folder>
+</Solution>

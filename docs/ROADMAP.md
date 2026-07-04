@@ -1,4 +1,4 @@
-# Roadmap di sviluppo — MyCms
+# Roadmap di sviluppo — DAMIHeadlessCMS
 
 CMS .NET 10, distribuito come libreria (Razor Class Library), integrabile in
 un'applicazione MVC host. Approccio scelto per CRUD/scaffolding: **metadata-driven
@@ -14,8 +14,8 @@ metadati salvati nello schema `cms.*` del database).
       dirette su `sys.tables`/`sys.columns`/`sys.foreign_keys` (niente API
       interne EF) + `ScaffoldingService` che popola `EntityDefinition`/
       `FieldDefinition` con inferenza di `EditorType`, idempotente su
-      riesecuzioni. Verificabile con `MyCms.Scaffolding.ConsoleTest` in attesa
-      della UI del wizard (fase 3).
+      riesecuzioni. Verificabile tramite il wizard di scaffolding nel
+      backoffice (fase 3).
 - [ ] **3. Generic CRUD**: `IGenericEntityRepository` (accesso dati generico via
       SQL parametrico/Dapper, whitelisting colonne dai metadati) + controller
       generico (`/cms-admin/entities/{entityName}`) + editor template Razor

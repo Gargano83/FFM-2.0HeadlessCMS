@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>DAMIHeadlessCMS.Admin</RootNamespace>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DAMIHeadlessCMS.Core\DAMIHeadlessCMS.Core.csproj" />
+    <ProjectReference Include="..\DAMIHeadlessCMS.Data\DAMIHeadlessCMS.Data.csproj" />
+    <ProjectReference Include="..\DAMIHeadlessCMS.Scaffolding\DAMIHeadlessCMS.Scaffolding.csproj" />
+  </ItemGroup>
+
+</Project>
