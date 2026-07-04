@@ -1,5 +1,7 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Data.SqlClient;
 using MyCms.Core.Entities;
+using MyCms.Core.Enums;
 using System.Data;
 using System.Globalization;
 
@@ -8,10 +10,12 @@ namespace MyCms.Admin.Data;
 public class GenericEntityRepository : IGenericEntityRepository
 {
     private readonly string _connectionString;
+    private readonly IFileStorageProvider _fileStorage;
 
-    public GenericEntityRepository(string connectionString)
+    public GenericEntityRepository(string connectionString, IFileStorageProvider fileStorage)
     {
         _connectionString = connectionString;
+        _fileStorage = fileStorage;
     }
 
     public async Task<GenericEntityPage> GetListAsync(
@@ -23,7 +27,6 @@ public class GenericEntityRepository : IGenericEntityRepository
         var listFields = entity.Fields.Where(f => f.ShowInList).OrderBy(f => f.SortOrder).ToList();
         if (listFields.Count == 0)
         {
-            // Fallback: se nessun campo è marcato ShowInList, mostro almeno la PK.
             listFields = entity.Fields.Where(f => f.IsPrimaryKey).ToList();
         }
 
@@ -93,17 +96,15 @@ public class GenericEntityRepository : IGenericEntityRepository
     }
 
     public async Task<object> CreateAsync(
-        EntityDefinition entity, IReadOnlyDictionary<string, string?> formValues, CancellationToken ct = default)
+        EntityDefinition entity,
+        IReadOnlyDictionary<string, string?> formValues,
+        IReadOnlyDictionary<string, IFormFile?> files,
+        CancellationToken ct = default)
     {
         var pkField = GetPrimaryKeyField(entity);
 
-        // Colonne inseribili: quelle marcate ShowInForm. Lo scaffolding imposta
-        // già ShowInForm=false per PK identity, quindi qui non serve un
-        // controllo separato su IsIdentity per l'esclusione dall'INSERT.
         var insertFields = entity.Fields.Where(f => f.ShowInForm).OrderBy(f => f.SortOrder).ToList();
 
-        // PK non-identity (es. uniqueidentifier senza default): se il client
-        // non fornisce un valore, lo generiamo qui se il tipo lo consente.
         object? explicitPkValue = null;
         if (!pkField.IsIdentity && !insertFields.Contains(pkField))
         {
@@ -140,7 +141,7 @@ public class GenericEntityRepository : IGenericEntityRepository
             var field = insertFields[i];
             var value = field == pkField && explicitPkValue is not null
                 ? explicitPkValue
-                : ConvertFormValue(field, formValues.GetValueOrDefault(field.ColumnName));
+                : await ResolveFieldValueAsync(entity, field, formValues, files, ct);
             command.Parameters.Add(BuildParameter($"@p{i}", field, value));
         }
 
@@ -150,13 +151,19 @@ public class GenericEntityRepository : IGenericEntityRepository
     }
 
     public async Task UpdateAsync(
-        EntityDefinition entity, object id, IReadOnlyDictionary<string, string?> formValues, CancellationToken ct = default)
+        EntityDefinition entity,
+        object id,
+        IReadOnlyDictionary<string, string?> formValues,
+        IReadOnlyDictionary<string, IFormFile?> files,
+        CancellationToken ct = default)
     {
         var pkField = GetPrimaryKeyField(entity);
 
-        // La PK non si aggiorna mai via update generico, anche se ShowInForm=true.
+        // La PK non si aggiorna mai via update generico. Un campo File senza un
+        // nuovo file caricato viene escluso dal SET: preserva il valore esistente.
         var updateFields = entity.Fields
             .Where(f => f.ShowInForm && !f.IsPrimaryKey)
+            .Where(f => f.EditorType != EditorType.File || files.GetValueOrDefault(f.ColumnName) is { Length: > 0 })
             .OrderBy(f => f.SortOrder)
             .ToList();
 
@@ -181,7 +188,7 @@ public class GenericEntityRepository : IGenericEntityRepository
         for (var i = 0; i < updateFields.Count; i++)
         {
             var field = updateFields[i];
-            var value = ConvertFormValue(field, formValues.GetValueOrDefault(field.ColumnName));
+            var value = await ResolveFieldValueAsync(entity, field, formValues, files, ct);
             command.Parameters.Add(BuildParameter($"@p{i}", field, value));
         }
         command.Parameters.Add(BuildParameter("@Id", pkField, id));
@@ -221,8 +228,6 @@ public class GenericEntityRepository : IGenericEntityRepository
             ? ""
             : $"WHERE {QuoteIdentifier(labelColumnName)} LIKE @Search";
 
-        // TOP 50: una select FK non deve mai caricare l'intera tabella; oltre
-        // questa soglia l'utente deve affinare la ricerca testuale.
         var sql = $"""
             SELECT TOP (50) {QuoteIdentifier(pkField.ColumnName)}, {QuoteIdentifier(labelColumnName)}
             FROM {qualifiedTable}
@@ -251,6 +256,29 @@ public class GenericEntityRepository : IGenericEntityRepository
         return results;
     }
 
+    public async Task<string?> GetLookupLabelAsync(
+        EntityDefinition targetEntity, string? displayColumn, object id, CancellationToken ct = default)
+    {
+        var pkField = GetPrimaryKeyField(targetEntity);
+        var labelColumnName = displayColumn ?? pkField.ColumnName;
+        var qualifiedTable = QualifiedTable(targetEntity);
+
+        var sql = $"""
+            SELECT {QuoteIdentifier(labelColumnName)}
+            FROM {qualifiedTable}
+            WHERE {QuoteIdentifier(pkField.ColumnName)} = @Id;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add(BuildParameter("@Id", pkField, ConvertIdForLookup(pkField, id)));
+
+        var result = await command.ExecuteScalarAsync(ct);
+        return result is null or DBNull ? null : result.ToString();
+    }
+
     // --- Helpers -----------------------------------------------------
 
     private static FieldDefinition GetPrimaryKeyField(EntityDefinition entity)
@@ -273,6 +301,63 @@ public class GenericEntityRepository : IGenericEntityRepository
             row[names[i]] = value is DBNull ? null : value;
         }
         return row;
+    }
+
+    /// <summary>
+    /// Risolve il valore da persistere per un campo. I campi EditorType.File sono
+    /// gestiti qui separatamente da ConvertFormValue perché richiedono accesso a
+    /// IFormFile (non solo alla stringa del form) e, per le colonne stringa,
+    /// un'operazione asincrona di salvataggio su storage esterno.
+    /// </summary>
+    private async Task<object?> ResolveFieldValueAsync(
+        EntityDefinition entity,
+        FieldDefinition field,
+        IReadOnlyDictionary<string, string?> formValues,
+        IReadOnlyDictionary<string, IFormFile?> files,
+        CancellationToken ct)
+    {
+        if (field.EditorType != EditorType.File)
+        {
+            return ConvertFormValue(field, formValues.GetValueOrDefault(field.ColumnName));
+        }
+
+        var file = files.GetValueOrDefault(field.ColumnName);
+        if (file is null || file.Length == 0)
+        {
+            if (field.IsNullable)
+            {
+                return DBNull.Value;
+            }
+            throw new InvalidOperationException($"Il campo file '{field.ColumnName}' è obbligatorio.");
+        }
+
+        var isBinaryColumn = field.SqlDataType.ToLowerInvariant() is "varbinary" or "binary" or "image";
+        if (isBinaryColumn)
+        {
+            await using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, ct);
+            return ms.ToArray();
+        }
+
+        return await _fileStorage.SaveAsync(file, entity.TableName, ct);
+    }
+
+    private static object ConvertIdForLookup(FieldDefinition pkField, object rawId)
+    {
+        if (rawId is not string s)
+        {
+            return rawId;
+        }
+
+        return pkField.SqlDataType.ToLowerInvariant() switch
+        {
+            "int" => int.Parse(s, CultureInfo.InvariantCulture),
+            "bigint" => long.Parse(s, CultureInfo.InvariantCulture),
+            "smallint" => short.Parse(s, CultureInfo.InvariantCulture),
+            "tinyint" => byte.Parse(s, CultureInfo.InvariantCulture),
+            "uniqueidentifier" => Guid.Parse(s),
+            _ => s
+        };
     }
 
     /// <summary>Converte il valore stringa proveniente dal form nel tipo .NET/parametro SQL corretto.</summary>
@@ -303,7 +388,7 @@ public class GenericEntityRepository : IGenericEntityRepository
 
             "varbinary" or "binary" or "image" =>
                 throw new NotSupportedException(
-                    "Upload file non ancora supportato dal CRUD generico (fase 6 della roadmap)."),
+                    "Le colonne binarie vanno gestite tramite EditorType.File, non come testo."),
 
             _ => raw // varchar/nvarchar/char/nchar/text/ntext
         };

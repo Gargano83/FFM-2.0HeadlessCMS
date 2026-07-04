@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyCms.Admin.Data;
 using MyCms.Admin.ViewModels;
 using MyCms.Core.Entities;
+using MyCms.Core.Enums;
 using MyCms.Data;
 using MyCms.Data.Identity;
 using MyCms.Scaffolding;
@@ -24,6 +26,7 @@ namespace MyCms.Admin.Controllers;
 public class GenericEntityController : Controller
 {
     private const int DefaultPageSize = 20;
+    private const long MaxUploadBytes = 50_000_000; // 50MB, personalizzabile in futuro via options
 
     private readonly CmsDbContext _db;
     private readonly IGenericEntityRepository _repository;
@@ -84,6 +87,7 @@ public class GenericEntityController : Controller
 
     [HttpPost("{entityId:guid}/create")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(MaxUploadBytes)]
     public async Task<IActionResult> CreatePost(Guid entityId, CancellationToken ct)
     {
         var entity = await LoadEntityAsync(entityId, ct);
@@ -93,16 +97,15 @@ public class GenericEntityController : Controller
         }
 
         var formValues = ReadFormValues(entity);
+        var files = ReadFormFiles(entity);
 
         try
         {
-            await _repository.CreateAsync(entity, formValues, ct);
+            await _repository.CreateAsync(entity, formValues, files, ct);
             return RedirectToAction(nameof(List), new { entityId });
         }
         catch (Exception ex) when (ex is FormatException or OverflowException or InvalidOperationException)
         {
-            // Errore di parsing/validazione sui valori inseriti: ripresento il
-            // form con i valori grezzi digitati e un messaggio d'errore.
             return View(new GenericEntityFormViewModel
             {
                 Entity = entity,
@@ -134,6 +137,7 @@ public class GenericEntityController : Controller
 
     [HttpPost("{entityId:guid}/edit/{recordId}")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(MaxUploadBytes)]
     public async Task<IActionResult> EditPost(Guid entityId, string recordId, CancellationToken ct)
     {
         var entity = await LoadEntityAsync(entityId, ct);
@@ -143,11 +147,12 @@ public class GenericEntityController : Controller
         }
 
         var formValues = ReadFormValues(entity);
+        var files = ReadFormFiles(entity);
 
         try
         {
             var pkValue = ParsePrimaryKeyValue(entity, recordId);
-            await _repository.UpdateAsync(entity, pkValue, formValues, ct);
+            await _repository.UpdateAsync(entity, pkValue, formValues, files, ct);
             return RedirectToAction(nameof(List), new { entityId });
         }
         catch (Exception ex) when (ex is FormatException or OverflowException or InvalidOperationException)
@@ -192,11 +197,6 @@ public class GenericEntityController : Controller
         return View(entity);
     }
 
-    /// <summary>
-    /// Ri-legge la struttura reale della tabella dal database e aggiorna i metadati
-    /// (colonne, tipi, FK). Idempotente: preserva le personalizzazioni di presentazione
-    /// già impostate (DisplayName/EditorType/ShowInList/ShowInForm) sui campi esistenti.
-    /// </summary>
     [HttpPost("{entityId:guid}/structure/refresh")]
     [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     [ValidateAntiForgeryToken]
@@ -208,14 +208,16 @@ public class GenericEntityController : Controller
             return NotFound();
         }
 
-        await _scaffoldingService.ScaffoldTablesAsync(new[] { new DatabaseTableInfo(entity.SchemaName, entity.TableName) }, ct);
+        await _scaffoldingService.ScaffoldTablesAsync(
+            new[] { new DatabaseTableInfo(entity.SchemaName, entity.TableName) }, ct);
 
         TempData["StatusMessage"] = $"Struttura di '{entity.DisplayName}' aggiornata dal database.";
         return RedirectToAction(nameof(Structure), new { entityId });
     }
 
+    /// <summary>Autocomplete: suggerimenti filtrati da 'q' per una FK.</summary>
     [HttpGet("lookup/{fieldId:guid}")]
-    public async Task<IActionResult> Lookup(Guid fieldId, CancellationToken ct)
+    public async Task<IActionResult> Lookup(Guid fieldId, [FromQuery] string? q, CancellationToken ct)
     {
         var field = await _db.FieldDefinitions
             .Include(f => f.ForeignKeyTargetEntity)
@@ -228,9 +230,31 @@ public class GenericEntityController : Controller
         }
 
         var options = await _repository.GetLookupOptionsAsync(
-            field.ForeignKeyTargetEntity, field.ForeignKeyDisplayColumn, searchText: null, ct);
+            field.ForeignKeyTargetEntity, field.ForeignKeyDisplayColumn, q, ct);
 
         return Json(options);
+    }
+
+    /// <summary>Etichetta del valore FK già selezionato, per pre-popolare l'autocomplete in Edit.</summary>
+    [HttpGet("lookup/{fieldId:guid}/label")]
+    public async Task<IActionResult> LookupLabel(Guid fieldId, [FromQuery] string id, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return NotFound();
+        }
+
+        var field = await _db.FieldDefinitions
+            .Include(f => f.ForeignKeyTargetEntity)
+            .FirstOrDefaultAsync(f => f.Id == fieldId, ct);
+
+        if (field is null || !field.IsForeignKey || field.ForeignKeyTargetEntity is null)
+        {
+            return NotFound();
+        }
+
+        var label = await _repository.GetLookupLabelAsync(field.ForeignKeyTargetEntity, field.ForeignKeyDisplayColumn, id, ct);
+        return Json(new { label = label ?? id });
     }
 
     // --- Helpers -----------------------------------------------------
@@ -238,6 +262,7 @@ public class GenericEntityController : Controller
     private Task<EntityDefinition?> LoadEntityAsync(Guid entityId, CancellationToken ct)
         => _db.EntityDefinitions
             .Include(e => e.Fields)
+                .ThenInclude(f => f.ForeignKeyTargetEntity)
             .FirstOrDefaultAsync(e => e.Id == entityId && e.IsEnabled, ct);
 
     /// <summary>Legge dal form solo le colonne marcate ShowInForm (whitelist), come si aspetta il repository.</summary>
@@ -245,6 +270,12 @@ public class GenericEntityController : Controller
         => entity.Fields
             .Where(f => f.ShowInForm)
             .ToDictionary(f => f.ColumnName, f => (string?)Request.Form[f.ColumnName].ToString());
+
+    /// <summary>Estrae i file caricati per i soli campi EditorType.File.</summary>
+    private Dictionary<string, IFormFile?> ReadFormFiles(EntityDefinition entity)
+        => entity.Fields
+            .Where(f => f.ShowInForm && f.EditorType == EditorType.File)
+            .ToDictionary(f => f.ColumnName, f => Request.Form.Files.GetFile(f.ColumnName));
 
     /// <summary>Converte il segmento di route recordId nel tipo .NET corretto per la PK di questa entità.</summary>
     private static object ParsePrimaryKeyValue(EntityDefinition entity, string recordId)

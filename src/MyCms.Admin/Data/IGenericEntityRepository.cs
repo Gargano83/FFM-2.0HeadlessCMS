@@ -1,4 +1,5 @@
-﻿using MyCms.Core.Entities;
+﻿using Microsoft.AspNetCore.Http;
+using MyCms.Core.Entities;
 
 namespace MyCms.Admin.Data;
 
@@ -23,22 +24,41 @@ public interface IGenericEntityRepository
     Task<IReadOnlyDictionary<string, object?>?> GetByIdAsync(
         EntityDefinition entity, object id, CancellationToken ct = default);
 
-    /// <summary>Inserisce una riga. Ritorna il valore della PK (generato dal DB se identity).</summary>
+    /// <summary>
+    /// Inserisce una riga. Ritorna il valore della PK (generato dal DB se identity).
+    /// I campi EditorType.File vengono risolti da 'files': se la colonna è
+    /// varbinary/binary/image i byte vanno diretti in colonna, altrimenti il file
+    /// viene salvato tramite IFileStorageProvider e si persiste il percorso.
+    /// </summary>
     Task<object> CreateAsync(
-        EntityDefinition entity, IReadOnlyDictionary<string, string?> formValues, CancellationToken ct = default);
+        EntityDefinition entity,
+        IReadOnlyDictionary<string, string?> formValues,
+        IReadOnlyDictionary<string, IFormFile?> files,
+        CancellationToken ct = default);
 
+    /// <summary>
+    /// Aggiorna una riga. Un campo EditorType.File senza un nuovo file in 'files'
+    /// viene escluso dall'UPDATE (il valore esistente non viene toccato).
+    /// </summary>
     Task UpdateAsync(
-        EntityDefinition entity, object id, IReadOnlyDictionary<string, string?> formValues, CancellationToken ct = default);
+        EntityDefinition entity,
+        object id,
+        IReadOnlyDictionary<string, string?> formValues,
+        IReadOnlyDictionary<string, IFormFile?> files,
+        CancellationToken ct = default);
 
     Task DeleteAsync(EntityDefinition entity, object id, CancellationToken ct = default);
 
     /// <summary>
-    /// Righe minime {Value, Label} per popolare una &lt;select&gt; FK via AJAX.
-    /// Se displayColumn è null, usa la PK anche come label. Il filtro q, se
-    /// presente, fa un LIKE case-insensitive sulla colonna display.
+    /// Righe minime {Value, Label} per popolare l'autocomplete di una FK via AJAX,
+    /// filtrate da searchText (LIKE case-insensitive sulla colonna display).
     /// </summary>
     Task<IReadOnlyList<LookupOption>> GetLookupOptionsAsync(
         EntityDefinition targetEntity, string? displayColumn, string? searchText, CancellationToken ct = default);
+
+    /// <summary>Etichetta di un singolo record FK, usata per pre-popolare l'autocomplete in Edit.</summary>
+    Task<string?> GetLookupLabelAsync(
+        EntityDefinition targetEntity, string? displayColumn, object id, CancellationToken ct = default);
 }
 
 /// <summary>Risultato paginato per la vista Index del CRUD generico.</summary>

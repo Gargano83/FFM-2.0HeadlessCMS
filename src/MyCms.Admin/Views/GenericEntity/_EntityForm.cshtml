@@ -29,8 +29,9 @@
                     break;
 
                 case EditorType.RichText:
-                    <textarea class="form-control cms-richtext" id="field_@field.ColumnName" name="@field.ColumnName"
-                              rows="6">@value</textarea>
+                    <div class="cms-richtext-wrapper">
+                        <textarea class="form-control" id="field_@field.ColumnName" name="@field.ColumnName" rows="6">@value</textarea>
+                    </div>
                     break;
 
                 case EditorType.Number:
@@ -59,16 +60,32 @@
                     break;
 
                 case EditorType.Select:
-                    <select class="form-select cms-fk-select" id="field_@field.ColumnName" name="@field.ColumnName"
-                            data-field-id="@field.Id" data-selected-value="@value"
-                            required="@field.IsRequired">
-                        <option value="">-- Seleziona --</option>
-                    </select>
+                    var fkValue = value?.ToString();
+                    <div class="cms-fk-autocomplete" data-field-id="@field.Id" data-selected-value="@fkValue">
+                        <input type="text" class="form-control cms-fk-search" placeholder="Cerca..." autocomplete="off" />
+                        <input type="hidden" class="cms-fk-value" name="@field.ColumnName" value="@fkValue" />
+                        <div class="cms-fk-dropdown list-group shadow-sm d-none"></div>
+                    </div>
                     break;
 
                 case EditorType.File:
-                    <input type="file" class="form-control" id="field_@field.ColumnName" name="@field.ColumnName" />
-                    <div class="form-text">Upload non ancora implementato (fase 6 della roadmap).</div>
+                    var isBinaryColumn = field.SqlDataType.ToLowerInvariant() is "varbinary" or "binary" or "image";
+                    <input type="file" class="form-control cms-file-input" id="field_@field.ColumnName" name="@field.ColumnName" />
+                    @if (!isBinaryColumn && value is string existingPath && !string.IsNullOrWhiteSpace(existingPath))
+                    {
+                        <div class="form-text">
+                            File attuale: <a href="/@existingPath" target="_blank">@System.IO.Path.GetFileName(existingPath)</a>
+                            <span class="cms-file-current-name"></span>
+                        </div>
+                    }
+                    else if (isBinaryColumn && value is not null)
+                    {
+                        <div class="form-text">File binario già presente in database (download non ancora disponibile).</div>
+                    }
+                    else
+                    {
+                        <div class="form-text"><span class="cms-file-current-name"></span></div>
+                    }
                     break;
 
                 case EditorType.Hidden:
@@ -91,26 +108,108 @@
     <a href="/backoffice/admin/@Model.Entity.Id" class="btn btn-outline-secondary">Annulla</a>
 </div>
 
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<style>
+    .cms-fk-autocomplete {
+        position: relative;
+    }
+
+    .cms-fk-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 20;
+        max-height: 220px;
+        overflow-y: auto;
+    }
+
+    .cms-fk-dropdown .list-group-item {
+        cursor: pointer;
+        font-size: .9rem;
+    }
+</style>
 <script>
-    document.querySelectorAll('.cms-fk-select').forEach(async (select) => {
-        const fieldId = select.dataset.fieldId;
-        const selectedValue = select.dataset.selectedValue;
-        if (!fieldId) return;
+    // --- Autocomplete FK ---
+    document.querySelectorAll('.cms-fk-autocomplete').forEach((wrapper) => {
+        const fieldId = wrapper.dataset.fieldId;
+        const selectedValue = wrapper.dataset.selectedValue;
+        const searchInput = wrapper.querySelector('.cms-fk-search');
+        const hiddenInput = wrapper.querySelector('.cms-fk-value');
+        const dropdown = wrapper.querySelector('.cms-fk-dropdown');
+        let debounceTimer = null;
 
-        try {
-            const response = await fetch(`/backoffice/admin/lookup/${fieldId}`);
-            if (!response.ok) return;
-            const options = await response.json();
-
-            options.forEach(opt => {
-                const optionEl = document.createElement('option');
-                optionEl.value = opt.value;
-                optionEl.textContent = opt.label;
-                if (opt.value === selectedValue) optionEl.selected = true;
-                select.appendChild(optionEl);
-            });
-        } catch {
-            // Silenzioso: la select resta con solo "-- Seleziona --".
+        if (selectedValue) {
+            fetch(`/backoffice/admin/lookup/${fieldId}/label?id=${encodeURIComponent(selectedValue)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) searchInput.value = data.label; })
+            .catch(() => {});
         }
+
+        function renderOptions(options) {
+            dropdown.innerHTML = '';
+            if (options.length === 0) {
+                dropdown.innerHTML = '<div class="list-group-item text-muted small">Nessun risultato</div>';
+            } else {
+                options.forEach(opt => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action';
+                    item.textContent = opt.label;
+                    item.addEventListener('click', () => {
+                        hiddenInput.value = opt.value;
+                        searchInput.value = opt.label;
+                        dropdown.classList.add('d-none');
+                    });
+                    dropdown.appendChild(item);
+                });
+            }
+            dropdown.classList.remove('d-none');
+        }
+
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const q = searchInput.value.trim();
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/backoffice/admin/lookup/${fieldId}?q=${encodeURIComponent(q)}`);
+                    if (!res.ok) return;
+                    renderOptions(await res.json());
+                } catch { /* silenzioso */ }
+            }, 300);
+        });
+
+        searchInput.addEventListener('focus', () => {
+            if (dropdown.children.length > 0) dropdown.classList.remove('d-none');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!wrapper.contains(e.target)) dropdown.classList.add('d-none');
+        });
+    });
+
+    // --- RichText (Quill) ---
+    document.querySelectorAll('.cms-richtext-wrapper').forEach((wrapper) => {
+        const textarea = wrapper.querySelector('textarea');
+        const editorDiv = document.createElement('div');
+        editorDiv.style.minHeight = '160px';
+        editorDiv.style.background = '#fff';
+        wrapper.appendChild(editorDiv);
+        textarea.classList.add('d-none');
+
+        const quill = new Quill(editorDiv, { theme: 'snow' });
+        quill.root.innerHTML = textarea.value || '';
+        quill.on('text-change', () => {
+            textarea.value = quill.root.innerHTML;
+        });
+    });
+
+    // --- File: mostra il nome del file appena selezionato ---
+    document.querySelectorAll('.cms-file-input').forEach((input) => {
+        input.addEventListener('change', () => {
+            const label = input.closest('.col-12')?.querySelector('.cms-file-current-name');
+            if (label) label.textContent = input.files[0] ? `Nuovo file: ${input.files[0].name}` : '';
+        });
     });
 </script>

@@ -45,6 +45,17 @@
                                     var isTrue = row[field.ColumnName] is true;
                                     <span class="badge bg-@(isTrue ? "success" : "secondary")">@(isTrue ? "Sì" : "No")</span>
                                 }
+                                else if (field.EditorType == EditorType.File)
+                                {
+                                    if (row[field.ColumnName] is not null)
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-paperclip"></i> File</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                }
                                 else
                                 {
                                     @row[field.ColumnName]
