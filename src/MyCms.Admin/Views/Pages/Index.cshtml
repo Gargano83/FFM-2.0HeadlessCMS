@@ -1,0 +1,82 @@
+﻿@model IReadOnlyList<PageListItemViewModel>
+@{
+    ViewData["Title"] = "Pagine";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0">Pagine</h1>
+        <p class="text-muted mb-0">Contenuti custom a blocchi, renderizzati dall'app host.</p>
+    </div>
+    <a href="/backoffice/admin/pages/create" class="btn btn-primary">
+        <i class="bi bi-file-earmark-plus me-1"></i> Nuova pagina
+    </a>
+</div>
+
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Titolo</th>
+                    <th>Slug</th>
+                    <th>Genitore</th>
+                    <th class="text-center">Stato</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var pageItem in Model)
+                {
+                    <tr>
+                        <td class="fw-medium">@pageItem.Title</td>
+                        <td><code>/@pageItem.Slug</code></td>
+                        <td>
+                            @if (pageItem.ParentTitle is not null)
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary">@pageItem.ParentTitle</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (pageItem.IsPublished)
+                            {
+                                <span class="badge bg-success-subtle text-success">Pubblicata</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning-subtle text-warning">Bozza</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a href="/backoffice/admin/pages/@pageItem.Id/edit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="post" action="/backoffice/admin/pages/@pageItem.Id/delete" class="d-inline"
+                                  onsubmit="return confirm('Eliminare questa pagina?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Nessuna pagina creata.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,216 @@
+﻿@model PageFormViewModel
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-6">
+        <label class="form-label fw-medium" for="Title">Titolo <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="Title" name="Title" value="@Model.Title" required />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label fw-medium" for="Slug">Slug <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="Slug" name="Slug" value="@Model.Slug" placeholder="es. chi-siamo" required />
+    </div>
+    <div class="col-12 col-md-4">
+        <label class="form-label fw-medium" for="ParentId">Pagina genitore</label>
+        <select class="form-select" id="ParentId" name="ParentId">
+            <option value="">— Nessuna (pagina radice) —</option>
+            @foreach (var option in Model.ParentOptions)
+            {
+                var isSelected = Model.ParentId == option.Id;
+                <option value="@option.Id" selected="@isSelected">@option.Title</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-4">
+        <label class="form-label fw-medium" for="SortOrder">Ordine</label>
+        <input type="number" class="form-control" id="SortOrder" name="SortOrder" value="@Model.SortOrder" />
+    </div>
+    <div class="col-12 col-md-4 d-flex align-items-end">
+        <div class="form-check form-switch">
+            <input type="checkbox" class="form-check-input" id="IsPublished" name="IsPublished" value="true" checked="@Model.IsPublished" />
+            <label class="form-check-label" for="IsPublished">Pubblicata</label>
+        </div>
+    </div>
+</div>
+
+<hr class="my-4" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Contenuto a blocchi</h5>
+    <div class="dropdown">
+        <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-plus-lg me-1"></i> Aggiungi blocco
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><button type="button" class="dropdown-item cms-add-block" data-type="html"><i class="bi bi-file-earmark-richtext me-2"></i>Testo/HTML</button></li>
+            <li><button type="button" class="dropdown-item cms-add-block" data-type="entityList"><i class="bi bi-table me-2"></i>Lista entità</button></li>
+            <li><button type="button" class="dropdown-item cms-add-block" data-type="component"><i class="bi bi-puzzle me-2"></i>Componente esterno</button></li>
+        </ul>
+    </div>
+</div>
+
+<div id="cmsBlocksContainer" class="d-flex flex-column gap-3 mb-3"></div>
+
+<div id="cmsBlocksEmpty" class="alert alert-light border text-center text-muted d-none">
+    Nessun blocco ancora. Usa "Aggiungi blocco" per iniziare a comporre il contenuto della pagina.
+</div>
+
+<input type="hidden" id="ContentJson" name="ContentJson" value="@Model.ContentJson" />
+
+<div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary" id="cmsPageSubmit">
+        <i class="bi bi-check-lg me-1"></i> Salva pagina
+    </button>
+    <a href="/backoffice/admin/pages" class="btn btn-outline-secondary">Annulla</a>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script>
+    (function () {
+        const container = document.getElementById('cmsBlocksContainer');
+        const emptyState = document.getElementById('cmsBlocksEmpty');
+        const contentJsonInput = document.getElementById('ContentJson');
+        const availableEntities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AvailableEntities));
+
+        let blocks = [];
+        try {
+            blocks = JSON.parse(contentJsonInput.value || '[]');
+        } catch {
+            blocks = [];
+        }
+
+        const quillInstances = new Map();
+        let blockSeq = 0;
+        function uid() { return 'blk' + (blockSeq++); }
+
+        function blockLabel(type) {
+            return { html: 'Testo/HTML', entityList: 'Lista entità', component: 'Componente esterno' }[type] || type;
+        }
+        function blockIcon(type) {
+        return { html: 'file-earmark-richtext', entityList: 'table', component: 'puzzle' }[type] || 'question';
+        }
+
+        function render() {
+            container.innerHTML = '';
+            emptyState.classList.toggle('d-none', blocks.length > 0);
+
+            blocks.forEach((block) => {
+                const clientId = block.__clientId || (block.__clientId = uid());
+                const card = document.createElement('div');
+                card.className = 'card border-0 shadow-sm cms-block-card';
+                card.dataset.clientId = clientId;
+
+                let bodyHtml = '';
+                if (block.type === 'html') {
+                    bodyHtml = `<div class="cms-quill-editor" style="min-height:160px;"></div>`;
+                } else if (block.type === 'entityList') {
+                    const options = availableEntities.map(e =>
+                        `<option value="${e.qualifiedName}" ${e.qualifiedName === block.entity ? 'selected' : ''}>${e.displayName}</option>`
+                    ).join('');
+                    bodyHtml = `
+                        <label class="form-label small">Entità da elencare</label>
+                        <select class="form-select block-entity-select">
+                        <option value="">— Seleziona —</option>
+                        ${options}
+                        </select>`;
+                } else if (block.type === 'component') {
+                    bodyHtml = `
+                        <div class="row g-2">
+                        <div class="col-12 col-md-4">
+                        <label class="form-label small">Tag/nome componente</label>
+                        <input type="text" class="form-control block-component-tag" value="${block.tag ?? ''}" placeholder="es. app-widget" />
+                        </div>
+                        <div class="col-12 col-md-8">
+                        <label class="form-label small">Configurazione (JSON)</label>
+                        <textarea class="form-control font-monospace block-component-config" rows="3">${JSON.stringify(block.config ?? {}, null, 2)}</textarea>
+                        </div>
+                        </div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center cms-block-handle" style="cursor:grab;">
+                    <span><i class="bi bi-grip-vertical text-muted me-2"></i><i class="bi bi-${blockIcon(block.type)} me-2"></i>${blockLabel(block.type)}</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger cms-remove-block"><i class="bi bi-trash"></i></button>
+                    </div>
+                    <div class="card-body">${bodyHtml}</div>
+                    `;
+
+                container.appendChild(card);
+
+                if (block.type === 'html') {
+                    const quill = new Quill(card.querySelector('.cms-quill-editor'), { theme: 'snow' });
+                    quill.root.innerHTML = block.html ?? '';
+                    quillInstances.set(clientId, quill);
+                }
+
+                card.querySelector('.cms-remove-block').addEventListener('click', () => {
+                    blocks = blocks.filter(b => b.__clientId !== clientId);
+                    quillInstances.delete(clientId);
+                    render();
+                });
+            });
+
+            new Sortable(container, {
+                handle: '.cms-block-handle',
+                animation: 150,
+                onEnd: syncOrderFromDom
+            });
+        }
+
+        function syncOrderFromDom() {
+            const orderedIds = Array.from(container.children).map(c => c.dataset.clientId);
+            blocks.sort((a, b) => orderedIds.indexOf(a.__clientId) - orderedIds.indexOf(b.__clientId));
+        }
+
+        document.querySelectorAll('.cms-add-block').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                const newBlock = { type, __clientId: uid() };
+                if (type === 'entityList') newBlock.entity = '';
+                if (type === 'component') { newBlock.tag = ''; newBlock.config = {}; }
+                if (type === 'html') newBlock.html = '';
+                blocks.push(newBlock);
+                render();
+            });
+        });
+
+        document.getElementById('cmsPageSubmit').addEventListener('click', (e) => {
+            syncOrderFromDom();
+            let hasError = false;
+
+            container.querySelectorAll('.cms-block-card').forEach(card => {
+                if (hasError) return;
+                const clientId = card.dataset.clientId;
+                const block = blocks.find(b => b.__clientId === clientId);
+                if (!block) return;
+
+                if (block.type === 'html') {
+                    const quill = quillInstances.get(clientId);
+                    if (quill) block.html = quill.root.innerHTML;
+                } else if (block.type === 'entityList') {
+                    block.entity = card.querySelector('.block-entity-select').value;
+                } else if (block.type === 'component') {
+                    block.tag = card.querySelector('.block-component-tag').value;
+                    const raw = card.querySelector('.block-component-config').value;
+                    try {
+                        block.config = raw.trim() ? JSON.parse(raw) : {};
+                    } catch {
+                        hasError = true;
+                        alert('La configurazione del blocco "' + (block.tag || 'componente') + '" non è un JSON valido.');
+                    }
+                }
+            });
+
+            if (hasError) {
+                e.preventDefault();
+                return;
+            }
+
+            const cleanBlocks = blocks.map(({ __clientId, ...rest }) => rest);
+            contentJsonInput.value = JSON.stringify(cleanBlocks);
+        });
+
+        render();
+    })();
+</script>

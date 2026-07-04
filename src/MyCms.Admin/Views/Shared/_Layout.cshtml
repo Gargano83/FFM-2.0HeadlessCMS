@@ -133,6 +133,14 @@
                 </div>
 
                 <div class="cms-nav-section">
+                    <div class="cms-nav-section-title">Contenuti</div>
+                    <a href="/backoffice/admin/pages"
+                       class="cms-nav-link @(IsActive("/backoffice/admin/pages") ? "active" : "")">
+                        <i class="bi bi-file-earmark-text"></i> <span>Pagine</span>
+                    </a>
+                </div>
+
+                <div class="cms-nav-section">
                     <div class="cms-nav-section-title">Dati</div>
                     <ul class="nav nav-pills flex-column list-unstyled mb-0" id="cmsEntityNav">
                         <!-- Popolato da GenericEntity/Index.cshtml -->
