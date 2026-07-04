@@ -124,18 +124,24 @@ public class ScaffoldingService
                 var field = await _db.FieldDefinitions
                     .FirstOrDefaultAsync(f => f.EntityDefinitionId == entity.Id && f.ColumnName == column.ColumnName, ct);
 
-                bool isNew = field is null;
-                if (isNew)
+                if (field is null)
                 {
                     field = new FieldDefinition
                     {
                         Id = Guid.NewGuid(),
                         EntityDefinitionId = entity.Id,
-                        ColumnName = column.ColumnName
+                        ColumnName = column.ColumnName,
+                        DisplayName = Humanize(column.ColumnName),
+                        EditorType = EditorTypeInferrer.Infer(column.SqlDataType, isForeignKey, column.MaxLength),
+                        ShowInList = true,
+                        ShowInForm = !(column.IsPrimaryKey && column.IsIdentity),
+                        IsRequired = (!column.IsNullable && !column.IsIdentity && !column.IsPrimaryKey),
+                        SortOrder = column.ColumnId
                     };
+
+                    _db.FieldDefinitions.Add(field);
                 }
 
-                field.DisplayName = isNew ? Humanize(column.ColumnName) : field.DisplayName;
                 field.SqlDataType = column.SqlDataType;
                 field.MaxLength = column.MaxLength;
                 field.IsNullable = column.IsNullable;
@@ -144,23 +150,6 @@ public class ScaffoldingService
                 field.IsForeignKey = isForeignKey;
                 field.ForeignKeyTargetEntityId = targetEntity?.Id;
                 field.ForeignKeyDisplayColumn = displayColumn;
-                field.EditorType = isNew
-                    ? EditorTypeInferrer.Infer(column.SqlDataType, isForeignKey, column.MaxLength)
-                    : field.EditorType;
-                // Default ragionevoli: la PK e le colonne identity non si mostrano
-                // nel form di creazione (sono generate dal DB), ma la PK resta
-                // visibile in lista per identificare la riga.
-                field.ShowInList = isNew ? true : field.ShowInList;
-                field.ShowInForm = isNew ? !(column.IsPrimaryKey && column.IsIdentity) : field.ShowInForm;
-                field.IsRequired = isNew
-                    ? (!column.IsNullable && !column.IsIdentity && !column.IsPrimaryKey)
-                    : field.IsRequired;
-                field.SortOrder = isNew ? column.ColumnId : field.SortOrder;
-
-                if (isNew)
-                {
-                    _db.FieldDefinitions.Add(field);
-                }
 
                 await _db.SaveChangesAsync(ct);
             }
