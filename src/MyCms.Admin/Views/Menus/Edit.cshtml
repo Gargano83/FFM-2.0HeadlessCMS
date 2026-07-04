@@ -1,0 +1,298 @@
+﻿@model MenuEditorViewModel
+@{
+    ViewData["Title"] = $"Menu — {Model.MenuName}";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="/backoffice/admin/menus">Menu</a></li>
+                <li class="breadcrumb-item active">@Model.MenuName</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">@Model.MenuName</h1>
+        <p class="text-muted mb-0">Trascina le voci per riordinarle o annidarle sotto un'altra voce.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary" id="cmsAddRootItem">
+            <i class="bi bi-plus-lg me-1"></i> Aggiungi voce
+        </button>
+        <button type="button" class="btn btn-success" id="cmsSaveMenu">
+            <i class="bi bi-check2-circle me-1"></i> Salva struttura
+        </button>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+<div id="cmsMenuTree" class="cms-menu-tree"></div>
+
+<div id="cmsMenuEmpty" class="alert alert-light border text-center text-muted d-none mt-3">
+    Nessuna voce nel menu. Usa "Aggiungi voce" per iniziare.
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    <style>
+        .cms-menu-tree ul {
+        list-style: none;
+        padding-left: 1.75rem;
+        margin: 0;
+        }
+
+        .cms-menu-tree > ul {
+        padding-left: 0;
+        }
+
+        .cms-menu-node {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: .6rem;
+        margin-bottom: .5rem;
+        }
+
+        .cms-menu-node-header {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .6rem .75rem;
+        flex-wrap: wrap;
+        }
+
+        .cms-menu-handle {
+        cursor: grab;
+        color: #9aa0ab;
+        }
+
+        .cms-menu-children.cms-drop-empty {
+        min-height: 28px;
+        border: 1px dashed #d0d5dd;
+        border-radius: .5rem;
+        margin: .25rem 0 .5rem;
+        }
+
+        .cms-target-value-field {
+        min-width: 200px;
+        flex: 1;
+        }
+
+        @@media (max-width: 575.98px) {
+        .cms-menu-node-header {
+        flex-direction: column;
+        align-items: stretch;
+        }
+
+        .cms-target-value-field {
+        max-width: none !important;
+        }
+        }
+    </style>
+    <script>
+        (function () {
+            const TARGET_TYPES = [[0, "Pagina"], [1, "Entità"], [2, "URL esterno"]];
+            const availablePages = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AvailablePages));
+            const availableEntities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AvailableEntities));
+            const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            const treeRoot = document.getElementById('cmsMenuTree');
+            const emptyState = document.getElementById('cmsMenuEmpty');
+
+            let seq = 0;
+            function newClientId() { return 'new-' + (seq++); }
+
+            let nodes = @Html.Raw(Model.ItemsJson);
+            if (!Array.isArray(nodes)) nodes = [];
+
+            function childrenOf(parentClientId) {
+                return nodes
+                .filter(n => (n.parentClientId ?? null) === parentClientId)
+                .sort((a, b) => a.sortOrder - b.sortOrder);
+            }
+
+            function targetValueField(node) {
+                if (node.targetType === 0) {
+                    const options = availablePages.map(p =>
+                        `<option value="${p.slug}" ${p.slug === node.targetValue ? 'selected' : ''}>${p.title}</option>`
+                    ).join('');
+                    return `<select class="form-select form-select-sm cms-target-value-field node-target-value">
+                        <option value="">— Seleziona pagina —</option>${options}
+                        </select>`;
+                }
+                if (node.targetType === 1) {
+                    const options = availableEntities.map(e =>
+                        `<option value="${e.qualifiedName}" ${e.qualifiedName === node.targetValue ? 'selected' : ''}>${e.displayName}</option>`
+                    ).join('');
+                    return `<select class="form-select form-select-sm cms-target-value-field node-target-value">
+                        <option value="">— Seleziona entità —</option>${options}
+                        </select>`;
+                }
+                return `<input type="text" class="form-control form-control-sm cms-target-value-field node-target-value"
+                    value="${node.targetValue ?? ''}" placeholder="https://..." />`;
+            }
+
+            function bindValueField(li, node) {
+                const field = li.querySelector('.node-target-value');
+                if (field) {
+                    field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', (e) => {
+                        node.targetValue = e.target.value;
+                    });
+                }
+            }
+
+            function updateEmptyDropzone(ul) {
+                ul.classList.toggle('cms-drop-empty', ul.children.length === 0);
+            }
+
+            function removeNodeAndDescendants(clientId) {
+                const toRemove = new Set([clientId]);
+                let changed = true;
+                while (changed) {
+                    changed = false;
+                    nodes.forEach(n => {
+                        if (n.parentClientId && toRemove.has(n.parentClientId) && !toRemove.has(n.clientId)) {
+                            toRemove.add(n.clientId);
+                            changed = true;
+                        }
+                    });
+                }
+                nodes = nodes.filter(n => !toRemove.has(n.clientId));
+            }
+
+            function makeSortable(ul) {
+                new Sortable(ul, {
+                    group: 'cms-menu',
+                    handle: '.cms-menu-handle',
+                    animation: 150,
+                    fallbackOnBody: true,
+                    swapThreshold: 0.65,
+                    onAdd: syncFromDom,
+                    onSort: syncFromDom
+                });
+            }
+
+            function syncFromDom() {
+                const walk = (ul, parentClientId) => {
+                    Array.from(ul.children).forEach((li, index) => {
+                        const clientId = li.dataset.clientId;
+                        const node = nodes.find(n => n.clientId === clientId);
+                        if (node) {
+                            node.parentClientId = parentClientId;
+                            node.sortOrder = index;
+                        }
+                        const childUl = li.querySelector(':scope > .cms-menu-children');
+                        if (childUl) walk(childUl, clientId);
+                    });
+                };
+                const rootUl = treeRoot.querySelector(':scope > ul');
+                if (rootUl) walk(rootUl, null);
+                document.querySelectorAll('.cms-menu-children').forEach(updateEmptyDropzone);
+            }
+
+            function renderNode(node) {
+                const li = document.createElement('li');
+                li.className = 'cms-menu-node';
+                li.dataset.clientId = node.clientId;
+
+                const typeOptions = TARGET_TYPES.map(([val, label]) =>
+                    `<option value="${val}" ${val === node.targetType ? 'selected' : ''}>${label}</option>`
+                ).join('');
+
+                li.innerHTML = `
+                    <div class="cms-menu-node-header">
+                    <i class="bi bi-grip-vertical cms-menu-handle"></i>
+                    <input type="text" class="form-control form-control-sm node-label" style="max-width:220px;"
+                    value="${node.label ?? ''}" placeholder="Etichetta" />
+                    <select class="form-select form-select-sm node-target-type" style="max-width:160px;">${typeOptions}</select>
+                    <span class="node-target-value-slot">${targetValueField(node)}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary node-add-child" title="Aggiungi sotto-voce">
+                    <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger node-remove" title="Rimuovi">
+                    <i class="bi bi-trash"></i>
+                    </button>
+                    </div>
+                    <ul class="cms-menu-children"></ul>
+                `;
+
+                const childUl = li.querySelector('.cms-menu-children');
+                childrenOf(node.clientId).forEach(child => childUl.appendChild(renderNode(child)));
+                updateEmptyDropzone(childUl);
+                makeSortable(childUl);
+
+                li.querySelector('.node-target-type').addEventListener('change', (e) => {
+                    node.targetType = Number(e.target.value);
+                    node.targetValue = '';
+                    li.querySelector('.node-target-value-slot').innerHTML = targetValueField(node);
+                    bindValueField(li, node);
+                });
+                bindValueField(li, node);
+
+                li.querySelector('.node-label').addEventListener('input', (e) => { node.label = e.target.value; });
+
+                li.querySelector('.node-add-child').addEventListener('click', () => {
+                    const child = { clientId: newClientId(), parentClientId: node.clientId, label: 'Nuova voce', targetType: 2, targetValue: '', sortOrder: childrenOf(node.clientId).length };
+                    nodes.push(child);
+                    render();
+                });
+
+                li.querySelector('.node-remove').addEventListener('click', () => {
+                    removeNodeAndDescendants(node.clientId);
+                    render();
+                });
+
+                return li;
+            }
+
+            function render() {
+                treeRoot.innerHTML = '<ul></ul>';
+                const rootUl = treeRoot.querySelector('ul');
+                childrenOf(null).forEach(node => rootUl.appendChild(renderNode(node)));
+                makeSortable(rootUl);
+                emptyState.classList.toggle('d-none', nodes.length > 0);
+            }
+
+            document.getElementById('cmsAddRootItem').addEventListener('click', () => {
+                nodes.push({ clientId: newClientId(), parentClientId: null, label: 'Nuova voce', targetType: 2, targetValue: '', sortOrder: childrenOf(null).length });
+                render();
+            });
+
+            document.getElementById('cmsSaveMenu').addEventListener('click', async () => {
+                syncFromDom();
+
+                const payload = {
+                    items: nodes.map(n => ({
+                        clientId: n.clientId,
+                        parentClientId: n.parentClientId,
+                        label: n.label,
+                        targetType: n.targetType,
+                        targetValue: n.targetValue,
+                        sortOrder: n.sortOrder
+                    }))
+                };
+
+                const btn = document.getElementById('cmsSaveMenu');
+                const original = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = 'Salvataggio... <span class="spinner-border spinner-border-sm ms-1"></span>';
+
+                try {
+                    const res = await fetch('/backoffice/admin/menus/@Model.MenuId/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': antiForgeryToken },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) throw new Error('Errore durante il salvataggio.');
+                    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Salvato';
+                    setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1500);
+                } catch (err) {
+                    alert(err.message);
+                    btn.innerHTML = original;
+                    btn.disabled = false;
+                }
+            });
+
+            render();
+        })();
+    </script>
+}

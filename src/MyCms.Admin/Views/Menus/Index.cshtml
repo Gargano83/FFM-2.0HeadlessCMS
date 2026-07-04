@@ -1,0 +1,79 @@
+﻿@model IReadOnlyList<MenuListItemViewModel>
+@{
+    ViewData["Title"] = "Menu";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0">Menu di navigazione</h1>
+        <p class="text-muted mb-0">Un'app host può avere più menu distinti (es. "main-nav", "footer").</p>
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cmsCreateMenuModal">
+        <i class="bi bi-plus-lg me-1"></i> Nuovo menu
+    </button>
+</div>
+
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+    @foreach (var menu in Model)
+    {
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-3"
+                             style="width:48px;height:48px;">
+                            <i class="bi bi-list-nested fs-4"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold text-dark">@menu.Name</div>
+                            <div class="text-muted small">@menu.ItemCount voci</div>
+                        </div>
+                    </div>
+                    <div class="mt-auto d-flex gap-2">
+                        <a href="/backoffice/admin/menus/@menu.Id/edit" class="btn btn-sm btn-primary flex-fill">
+                            <i class="bi bi-diagram-2 me-1"></i> Modifica struttura
+                        </a>
+                        <form method="post" action="/backoffice/admin/menus/@menu.Id/delete" class="d-inline"
+                              onsubmit="return confirm('Eliminare il menu e tutte le sue voci?');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    @if (Model.Count == 0)
+    {
+        <div class="col-12">
+            <div class="alert alert-info">Nessun menu creato. Usa "Nuovo menu" per iniziare.</div>
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="cmsCreateMenuModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="/backoffice/admin/menus/create" class="modal-content">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <h5 class="modal-title">Nuovo menu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-medium" for="name">Nome/chiave menu</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="es. main-nav, footer" required />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="submit" class="btn btn-primary">Crea</button>
+            </div>
+        </form>
+    </div>
+</div>
