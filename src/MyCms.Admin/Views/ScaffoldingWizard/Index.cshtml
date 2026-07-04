@@ -6,7 +6,7 @@
 <div class="mb-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-1">
-            <li class="breadcrumb-item"><a href="/backoffice/admin">Entità</a></li>
+            <li class="breadcrumb-item"><a href="/dami">Entità</a></li>
             <li class="breadcrumb-item active">Scaffolding</li>
         </ol>
     </nav>
@@ -209,7 +209,7 @@
                 btnGoStep2.innerHTML = 'Carico struttura... <span class="spinner-border spinner-border-sm ms-1"></span>';
 
                 try {
-                    const res = await fetch('/backoffice/admin/scaffolding/preview?tables=' + encodeURIComponent(selected.join(',')));
+                    const res = await fetch('/dami/scaffolding/preview?tables=' + encodeURIComponent(selected.join(',')));
                     if (!res.ok) throw new Error('Errore nel recupero della struttura.');
                     previewData = await res.json();
                     renderStep2();
@@ -350,7 +350,7 @@
 
                 try {
                     const payload = collectPayload();
-                    const res = await fetch('/backoffice/admin/scaffolding/save', {
+                    const res = await fetch('/dami/scaffolding/save', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -365,7 +365,7 @@
                     }
 
                     const result = await res.json();
-                    window.location.href = result.redirectUrl || '/backoffice/admin';
+                    window.location.href = result.redirectUrl || '/dami';
                 } catch (err) {
                     alert(err.message);
                     btnSave.disabled = false;

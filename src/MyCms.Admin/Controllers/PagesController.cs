@@ -13,7 +13,7 @@ namespace MyCms.Admin.Controllers;
 /// Il rendering front-end dei blocchi è responsabilità dell'app host: qui si
 /// gestisce solo la composizione/editing dei blocchi in backoffice.
 /// </summary>
-[Route("backoffice/admin/pages")]
+[Route("dami/pages")]
 [Authorize(Policy = CmsAuthConstants.EditorPolicy)]
 public class PagesController : Controller
 {

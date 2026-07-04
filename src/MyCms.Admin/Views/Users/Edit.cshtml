@@ -6,7 +6,7 @@
 <div class="mb-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-1">
-            <li class="breadcrumb-item"><a href="/backoffice/admin/users">Utenti</a></li>
+            <li class="breadcrumb-item"><a href="/dami/users">Utenti</a></li>
             <li class="breadcrumb-item active">@Model.Email</li>
         </ol>
     </nav>
@@ -23,7 +23,7 @@
     </div>
 }
 
-<form method="post" action="/backoffice/admin/users/@Model.Id/edit" class="card border-0 shadow-sm p-4">
+<form method="post" action="/dami/users/@Model.Id/edit" class="card border-0 shadow-sm p-4">
     @Html.AntiForgeryToken()
     <partial name="_UserForm" model="Model" />
 </form>

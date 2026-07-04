@@ -105,7 +105,7 @@
     <button type="submit" class="btn btn-primary">
         <i class="bi bi-check-lg me-1"></i> Salva
     </button>
-    <a href="/backoffice/admin/@Model.Entity.Id" class="btn btn-outline-secondary">Annulla</a>
+    <a href="/dami/@Model.Entity.Id" class="btn btn-outline-secondary">Annulla</a>
 </div>
 
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
@@ -141,7 +141,7 @@
         let debounceTimer = null;
 
         if (selectedValue) {
-            fetch(`/backoffice/admin/lookup/${fieldId}/label?id=${encodeURIComponent(selectedValue)}`)
+            fetch(`/dami/lookup/${fieldId}/label?id=${encodeURIComponent(selectedValue)}`)
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (data) searchInput.value = data.label; })
             .catch(() => {});
@@ -173,7 +173,7 @@
             const q = searchInput.value.trim();
             debounceTimer = setTimeout(async () => {
                 try {
-                    const res = await fetch(`/backoffice/admin/lookup/${fieldId}?q=${encodeURIComponent(q)}`);
+                    const res = await fetch(`/dami/lookup/${fieldId}?q=${encodeURIComponent(q)}`);
                     if (!res.ok) return;
                     renderOptions(await res.json());
                 } catch { /* silenzioso */ }

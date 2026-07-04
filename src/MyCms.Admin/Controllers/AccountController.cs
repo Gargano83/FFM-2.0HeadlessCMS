@@ -22,7 +22,7 @@ public class AccountController : Controller
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return LocalRedirect(returnUrl ?? "/backoffice/admin");
+            return LocalRedirect(returnUrl ?? "/dami");
         }
 
         return View(new LoginViewModel { ReturnUrl = returnUrl });
@@ -43,7 +43,7 @@ public class AccountController : Controller
 
         if (result.Succeeded)
         {
-            return LocalRedirect(model.ReturnUrl ?? "/backoffice/admin");
+            return LocalRedirect(model.ReturnUrl ?? "/dami");
         }
 
         ModelState.AddModelError(string.Empty, result.IsLockedOut

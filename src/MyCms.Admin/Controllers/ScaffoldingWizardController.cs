@@ -16,7 +16,7 @@ namespace MyCms.Admin.Controllers;
 /// mai la struttura reale del database: legge da sys.* e scrive solo in
 /// cms.EntityDefinition/cms.FieldDefinition.
 /// </summary>
-[Route("backoffice/admin/scaffolding")]
+[Route("dami/scaffolding")]
 [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
 public class ScaffoldingWizardController : Controller
 {
@@ -125,6 +125,6 @@ public class ScaffoldingWizardController : Controller
 
         await _db.SaveChangesAsync(ct);
 
-        return Json(new { success = true, redirectUrl = "/backoffice/admin" });
+        return Json(new { success = true, redirectUrl = "/dami" });
     }
 }

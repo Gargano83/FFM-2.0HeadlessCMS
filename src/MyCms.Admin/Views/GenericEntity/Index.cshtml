@@ -30,10 +30,10 @@ else
                             </div>
                         </div>
                         <div class="mt-auto d-flex gap-2">
-                            <a href="/backoffice/admin/@entity.Id" class="btn btn-sm btn-primary flex-fill">
+                            <a href="/dami/@entity.Id" class="btn btn-sm btn-primary flex-fill">
                                 <i class="bi bi-table me-1"></i> Dati
                             </a>
-                            <a href="/backoffice/admin/@entity.Id/structure" class="btn btn-sm btn-outline-secondary flex-fill">
+                            <a href="/dami/@entity.Id/structure" class="btn btn-sm btn-outline-secondary flex-fill">
                                 <i class="bi bi-diagram-3 me-1"></i> Struttura
                             </a>
                         </div>
@@ -51,9 +51,9 @@ else
         const currentPath = window.location.pathname;
 
         entities.forEach(e => {
-            const isActive = currentPath.startsWith(`/backoffice/admin/${e.Id}`);
+            const isActive = currentPath.startsWith(`/dami/${e.Id}`);
             const li = document.createElement('li');
-            li.innerHTML = `<a href="/backoffice/admin/${e.Id}" class="cms-nav-link${isActive ? ' active' : ''}">
+            li.innerHTML = `<a href="/dami/${e.Id}" class="cms-nav-link${isActive ? ' active' : ''}">
                 <i class="bi bi-${e.Icon ?? 'table'}"></i> <span>${e.DisplayName}</span>
             </a>`;
             nav.appendChild(li);

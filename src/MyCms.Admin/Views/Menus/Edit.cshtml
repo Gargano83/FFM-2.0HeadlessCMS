@@ -7,7 +7,7 @@
     <div>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1">
-                <li class="breadcrumb-item"><a href="/backoffice/admin/menus">Menu</a></li>
+                <li class="breadcrumb-item"><a href="/dami/menus">Menu</a></li>
                 <li class="breadcrumb-item active">@Model.MenuName</li>
             </ol>
         </nav>
@@ -277,7 +277,7 @@
                 btn.innerHTML = 'Salvataggio... <span class="spinner-border spinner-border-sm ms-1"></span>';
 
                 try {
-                    const res = await fetch('/backoffice/admin/menus/@Model.MenuId/save', {
+                    const res = await fetch('/dami/menus/@Model.MenuId/save', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': antiForgeryToken },
                         body: JSON.stringify(payload)

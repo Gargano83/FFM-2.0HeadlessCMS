@@ -38,7 +38,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapDefaultControllerRoute();
 
-app.MapGet("/", () => Results.Redirect("/backoffice/admin"));
+app.MapGet("/", () => Results.Redirect("/dami"));
 
 await MyCmsIdentitySeeder.SeedAsync(app.Services, app.Configuration);
 

@@ -21,7 +21,7 @@ namespace MyCms.Admin.Controllers;
 /// in TEST), quindi il nome non è un identificatore univoco affidabile
 /// per il routing.
 /// </summary>
-[Route("backoffice/admin")]
+[Route("dami")]
 [Authorize(Policy = CmsAuthConstants.EditorPolicy)]
 public class GenericEntityController : Controller
 {

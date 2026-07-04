@@ -13,7 +13,7 @@ namespace MyCms.Admin.Controllers;
 /// CmsAdmin/CmsEditor, non ci sono altri livelli di permesso più bassi
 /// per questa sezione.
 /// </summary>
-[Route("backoffice/admin/users")]
+[Route("dami/users")]
 [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
 public class UsersController : Controller
 {

@@ -35,10 +35,10 @@
                         </div>
                     </div>
                     <div class="mt-auto d-flex gap-2">
-                        <a href="/backoffice/admin/menus/@menu.Id/edit" class="btn btn-sm btn-primary flex-fill">
+                        <a href="/dami/menus/@menu.Id/edit" class="btn btn-sm btn-primary flex-fill">
                             <i class="bi bi-diagram-2 me-1"></i> Modifica struttura
                         </a>
-                        <form method="post" action="/backoffice/admin/menus/@menu.Id/delete" class="d-inline"
+                        <form method="post" action="/dami/menus/@menu.Id/delete" class="d-inline"
                               onsubmit="return confirm('Eliminare il menu e tutte le sue voci?');">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -60,7 +60,7 @@
 
 <div class="modal fade" id="cmsCreateMenuModal" tabindex="-1">
     <div class="modal-dialog">
-        <form method="post" action="/backoffice/admin/menus/create" class="modal-content">
+        <form method="post" action="/dami/menus/create" class="modal-content">
             @Html.AntiForgeryToken()
             <div class="modal-header">
                 <h5 class="modal-title">Nuovo menu</h5>

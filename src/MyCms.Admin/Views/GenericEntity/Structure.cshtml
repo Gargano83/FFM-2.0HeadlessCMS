@@ -8,8 +8,8 @@
     <div>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1">
-                <li class="breadcrumb-item"><a href="/backoffice/admin">Entità</a></li>
-                <li class="breadcrumb-item"><a href="/backoffice/admin/@Model.Id">@Model.DisplayName</a></li>
+                <li class="breadcrumb-item"><a href="/dami">Entità</a></li>
+                <li class="breadcrumb-item"><a href="/dami/@Model.Id">@Model.DisplayName</a></li>
                 <li class="breadcrumb-item active">Struttura</li>
             </ol>
         </nav>
@@ -19,14 +19,14 @@
         </div>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="/backoffice/admin/@Model.Id" class="btn btn-outline-secondary">
+        <a href="/dami/@Model.Id" class="btn btn-outline-secondary">
             <i class="bi bi-table me-1"></i> Vai ai dati
         </a>
-        <a href="/backoffice/admin/scaffolding?preselect=@Uri.EscapeDataString($"{Model.SchemaName}.{Model.TableName}")"
+        <a href="/dami/scaffolding?preselect=@Uri.EscapeDataString($"{Model.SchemaName}.{Model.TableName}")"
            class="btn btn-outline-primary">
             <i class="bi bi-sliders me-1"></i> Modifica configurazione
         </a>
-        <form method="post" action="/backoffice/admin/@Model.Id/structure/refresh"
+        <form method="post" action="/dami/@Model.Id/structure/refresh"
               onsubmit="return confirm('Ri-leggere la struttura da database? Le colonne nuove verranno aggiunte automaticamente. Le personalizzazioni esistenti (etichette, editor, visibilità) non vengono perse.');">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-primary">

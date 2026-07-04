@@ -16,7 +16,7 @@ namespace MyCms.Admin.Controllers;
 /// menu, evitando una logica di diff/merge per riordini e annidamenti misti
 /// nella stessa sessione di editing.
 /// </summary>
-[Route("backoffice/admin/menus")]
+[Route("dami/menus")]
 [Authorize(Policy = CmsAuthConstants.EditorPolicy)]
 public class MenusController : Controller
 {
