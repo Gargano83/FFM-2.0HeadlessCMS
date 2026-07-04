@@ -46,13 +46,16 @@ else
 
 @section Scripts {
     <script>
-        // Popola la sidebar con le stesse entità, per navigazione rapida da qualsiasi pagina.
         const nav = document.getElementById('cmsEntityNav');
         const entities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(e => new { e.Id, e.DisplayName, e.Icon })));
+        const currentPath = window.location.pathname;
+
         entities.forEach(e => {
+            const isActive = currentPath.startsWith(`/backoffice/admin/${e.Id}`);
             const li = document.createElement('li');
-            li.className = 'nav-item';
-            li.innerHTML = `<a href="/backoffice/admin/${e.Id}" class="nav-link"><i class="bi bi-${e.Icon ?? 'table'} me-2"></i>${e.DisplayName}</a>`;
+            li.innerHTML = `<a href="/backoffice/admin/${e.Id}" class="cms-nav-link${isActive ? ' active' : ''}">
+                <i class="bi bi-${e.Icon ?? 'table'}"></i> <span>${e.DisplayName}</span>
+            </a>`;
             nav.appendChild(li);
         });
     </script>

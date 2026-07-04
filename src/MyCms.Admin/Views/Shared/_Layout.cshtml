@@ -1,70 +1,176 @@
-﻿<!DOCTYPE html>
+﻿@functions {
+    bool IsActive(string path) => Context.Request.Path.Value?.StartsWith(path, StringComparison.OrdinalIgnoreCase) == true;
+}
+<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@ViewData["Title"] - MyCms Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           rel="stylesheet"
-          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" 
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         :root {
-            --cms-sidebar-width: 260px;
+            --cms-sidebar-width: 268px;
         }
+
         body { background-color: #f5f6f8; }
+
         .cms-sidebar {
             width: var(--cms-sidebar-width);
             min-height: 100vh;
-            background: #1a1d29;
+            background: linear-gradient(180deg, #1a1d29 0%, #14161f 100%);
+            padding: 1.25rem 1rem 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
         }
-        .cms-sidebar .nav-link { color: #b8bcc8; }
-        .cms-sidebar .nav-link.active, .cms-sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,.06); }
+
+        .cms-sidebar-brand {
+            padding: .25rem .25rem 1.1rem;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            margin-bottom: 1.1rem;
+        }
+
+        .cms-sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 1rem;
+        }
+
+        .cms-nav-section { margin-bottom: 1.5rem; }
+
+        .cms-nav-section-title {
+            font-size: .7rem;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #6b7280;
+            font-weight: 600;
+            padding: 0 .75rem;
+            margin-bottom: .5rem;
+        }
+
+        .cms-nav-link, #cmsEntityNav .nav-link {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            padding: .55rem .75rem;
+            border-radius: .5rem;
+            color: #b8bcc8;
+            font-size: .9rem;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background .15s, color .15s, border-color .15s;
+            margin-bottom: .15rem;
+        }
+
+        .cms-nav-link:hover, #cmsEntityNav .nav-link:hover {
+            color: #fff;
+            background: rgba(255,255,255,.06);
+        }
+
+        .cms-nav-link.active, #cmsEntityNav .nav-link.active {
+            color: #fff;
+            background: rgba(13,110,253,.18);
+            border-left-color: #0d6efd;
+        }
+
+        .cms-nav-link i, #cmsEntityNav .nav-link i {
+            width: 1.1rem;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .cms-sidebar-footer {
+            padding: .9rem .25rem 1rem;
+            border-top: 1px solid rgba(255,255,255,.08);
+        }
+
         .cms-content { flex: 1; min-width: 0; }
+
+        .cms-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.45);
+            z-index: 1040;
+        }
+        .cms-backdrop.show { display: block; }
+
         @@media (max-width: 991.98px) {
-            .cms-sidebar { position: fixed; z-index: 1045; transform: translateX(-100%); transition: transform .2s ease; }
+            .cms-sidebar {
+                position: fixed;
+                z-index: 1045;
+                top: 0; left: 0;
+                transform: translateX(-100%);
+                transition: transform .2s ease;
+            }
             .cms-sidebar.show { transform: translateX(0); }
         }
     </style>
 </head>
 <body>
+    <div class="cms-backdrop" id="cmsBackdrop"></div>
     <div class="d-flex">
-        <nav class="cms-sidebar d-flex flex-column p-3" id="cmsSidebar">
-            <a href="/backoffice/admin" class="d-flex align-items-center mb-4 text-white text-decoration-none">
-                <i class="bi bi-layers-fill fs-4 me-2"></i>
-                <span class="fs-5 fw-semibold">MyCms</span>
-            </a>
-            <a href="/backoffice/admin/scaffolding" class="nav-link mb-3">
-                <i class="bi bi-diagram-3 me-2"></i> Scaffolding
-            </a>
-            @if (User.IsInRole(CmsRoles.Admin))
-            {
-                <a href="/backoffice/admin/users" class="nav-link mb-3">
-                    <i class="bi bi-people me-2"></i> Utenti
+        <nav class="cms-sidebar d-flex flex-column" id="cmsSidebar">
+            <div class="cms-sidebar-brand">
+                <a href="/backoffice/admin" class="d-flex align-items-center text-white text-decoration-none">
+                    <i class="bi bi-layers-fill fs-4 me-2"></i>
+                    <span class="fs-5 fw-semibold">MyCms</span>
                 </a>
-            }
-            <ul class="nav nav-pills flex-column mb-auto" id="cmsEntityNav">
-                <!-- Popolato dalla view Index -->
-            </ul>
-        </nav>
-        <div class="mt-auto pt-3 border-top border-secondary-subtle">
-            <div class="d-flex align-items-center justify-content-between text-white-50 small">
-                <span><i class="bi bi-person-circle me-1"></i> @User.Identity?.Name</span>
-                <form method="post" action="/backoffice/account/logout" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-link text-white-50 p-0" title="Esci">
-                        <i class="bi bi-box-arrow-right"></i>
-                    </button>
-                </form>
             </div>
-        </div>
+
+            <div class="cms-sidebar-scroll">
+                <div class="cms-nav-section">
+                    <div class="cms-nav-section-title">Struttura</div>
+                    <a href="/backoffice/admin/scaffolding"
+                       class="cms-nav-link @(IsActive("/backoffice/admin/scaffolding") ? "active" : "")">
+                        <i class="bi bi-diagram-3"></i> <span>Scaffolding</span>
+                    </a>
+                </div>
+
+                <div class="cms-nav-section">
+                    <div class="cms-nav-section-title">Dati</div>
+                    <ul class="nav nav-pills flex-column list-unstyled mb-0" id="cmsEntityNav">
+                        <!-- Popolato da GenericEntity/Index.cshtml -->
+                    </ul>
+                </div>
+
+                @if (User.IsInRole(CmsRoles.Admin))
+                {
+                    <div class="cms-nav-section">
+                        <div class="cms-nav-section-title">Amministrazione</div>
+                        <a href="/backoffice/admin/users"
+                           class="cms-nav-link @(IsActive("/backoffice/admin/users") ? "active" : "")">
+                            <i class="bi bi-people"></i> <span>Utenti</span>
+                        </a>
+                    </div>
+                }
+            </div>
+
+            <div class="cms-sidebar-footer">
+                <div class="d-flex align-items-center justify-content-between text-white-50 small">
+                    <span class="text-truncate"><i class="bi bi-person-circle me-1"></i> @User.Identity?.Name</span>
+                    <form method="post" action="/backoffice/account/logout" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-link text-white-50 p-0" title="Esci">
+                            <i class="bi bi-box-arrow-right"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </nav>
+
         <div class="cms-content">
-            <nav class="navbar navbar-light bg-white border-bottom px-3 d-lg-none">
-                <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('cmsSidebar').classList.toggle('show')">
+            <nav class="navbar navbar-light bg-white border-bottom px-3 d-lg-none sticky-top">
+                <button class="btn btn-outline-secondary" type="button" id="cmsSidebarToggle">
                     <i class="bi bi-list"></i>
                 </button>
                 <span class="navbar-brand mb-0 h1">MyCms</span>
+                <span style="width:38px;"></span>
             </nav>
 
             <main class="container-fluid p-3 p-lg-4">
@@ -82,6 +188,33 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        (function () {
+            const sidebar = document.getElementById('cmsSidebar');
+            const backdrop = document.getElementById('cmsBackdrop');
+            const toggleBtn = document.getElementById('cmsSidebarToggle');
+
+            function openSidebar() {
+                sidebar.classList.add('show');
+                backdrop.classList.add('show');
+            }
+            function closeSidebar() {
+                sidebar.classList.remove('show');
+                backdrop.classList.remove('show');
+            }
+
+            toggleBtn?.addEventListener('click', () => {
+                sidebar.classList.contains('show') ? closeSidebar() : openSidebar();
+            });
+            backdrop.addEventListener('click', closeSidebar);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeSidebar();
+            });
+            sidebar.addEventListener('click', (e) => {
+                if (e.target.closest('a')) closeSidebar();
+            });
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
