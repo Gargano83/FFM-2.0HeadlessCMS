@@ -6,9 +6,12 @@ namespace DAMIHeadlessCMS.Admin.ViewModels;
 
 public sealed record ScaffoldingTableItem(string SchemaName, string TableName, bool AlreadyScaffolded);
 
+public sealed record LocalizationSourceOption(Guid Id, string DisplayName);
+
 public sealed class ScaffoldingTableListViewModel
 {
     public required IReadOnlyList<ScaffoldingTableItem> Tables { get; init; }
+    public required IReadOnlyList<LocalizationSourceOption> AvailableLocalizationSources { get; init; }
 }
 
 // --- Payload inviato dal wizard in fase di salvataggio finale ---
@@ -35,4 +38,5 @@ public sealed class ScaffoldingSaveField
     public bool ShowInList { get; init; }
     public bool ShowInForm { get; init; }
     public bool IsRequired { get; init; }
+    public Guid? LocalizationSourceId { get; init; }
 }

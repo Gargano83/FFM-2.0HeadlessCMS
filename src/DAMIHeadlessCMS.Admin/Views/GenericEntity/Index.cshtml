@@ -43,20 +43,3 @@ else
         }
     </div>
 }
-
-@section Scripts {
-    <script>
-        const nav = document.getElementById('cmsEntityNav');
-        const entities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(e => new { e.Id, e.DisplayName, e.Icon })));
-        const currentPath = window.location.pathname;
-
-        entities.forEach(e => {
-            const isActive = currentPath.startsWith(`/dami/${e.Id}`);
-            const li = document.createElement('li');
-            li.innerHTML = `<a href="/dami/${e.Id}" class="cms-nav-link${isActive ? ' active' : ''}">
-                <i class="bi bi-${e.Icon ?? 'table'}"></i> <span>${e.DisplayName}</span>
-            </a>`;
-            nav.appendChild(li);
-        });
-    </script>
-}

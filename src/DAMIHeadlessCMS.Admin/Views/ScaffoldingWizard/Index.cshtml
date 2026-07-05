@@ -151,6 +151,17 @@
                 [8, "File"], [9, "Nascosto"]
             ];
 
+            const TEXT_EDITOR_TYPES = [0, 1, 2]; // Text, TextArea, RichText: unici editor validi per un campo localizzato
+
+            function buildEditorOptionsHtml(selectedValue, restrictToText) {
+                const options = restrictToText ? EDITOR_TYPES.filter(([val]) => TEXT_EDITOR_TYPES.includes(val)) : EDITOR_TYPES;
+                return options.map(([val, label]) =>
+                    `<option value="${val}" ${val === selectedValue ? 'selected' : ''}>${label}</option>`
+                ).join('');
+            }
+
+            const LOCALIZATION_SOURCES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AvailableLocalizationSources));
+
             const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
             const step1 = document.getElementById('step1');
@@ -270,6 +281,7 @@
                                             <th class="text-center">Lista</th>
                                             <th class="text-center">Form</th>
                                             <th class="text-center">Obbligatorio</th>
+                                            <th style="min-width:160px;">Localizzazione</th>
                                             <th>Info</th>
                                         </tr>
                                     </thead>
@@ -285,8 +297,12 @@
                         tr.className = 'cms-field-row';
                         tr.dataset.fieldIndex = fieldIndex;
 
-                        const editorOptions = EDITOR_TYPES.map(([val, label]) =>
-                            `<option value="${val}" ${val === field.editorType ? 'selected' : ''}>${label}</option>`
+                        const isLocalized = !!field.localizationSourceId;
+                        const initialEditorValue = isLocalized && !TEXT_EDITOR_TYPES.includes(field.editorType) ? 0 : field.editorType;
+                        const editorOptions = buildEditorOptionsHtml(initialEditorValue, isLocalized);
+
+                        const localizationOptions = LOCALIZATION_SOURCES.map(s =>
+                            `<option value="${s.Id}" ${s.Id === field.localizationSourceId ? 'selected' : ''}>${s.DisplayName}</option>`
                         ).join('');
 
                         const infoBadges = [
@@ -303,9 +319,30 @@
                             <td class="text-center"><input type="checkbox" class="form-check-input field-show-in-list" ${field.showInList ? 'checked' : ''} /></td>
                             <td class="text-center"><input type="checkbox" class="form-check-input field-show-in-form" ${field.showInForm ? 'checked' : ''} /></td>
                             <td class="text-center"><input type="checkbox" class="form-check-input field-is-required" ${field.isRequired ? 'checked' : ''} /></td>
+                            <td><select class="form-select form-select-sm field-localization-source"><option value="">— Nessuna —</option>${localizationOptions}</select></td>
                             <td>${infoBadges}</td>
                         `;
                         tbody.appendChild(tr);
+                        const localizationSelect = tr.querySelector('.field-localization-source');
+                        const editorSelect = tr.querySelector('.field-editor-type');
+                        localizationSelect.addEventListener('change', () => {
+                            const isNowLocalized = !!localizationSelect.value;
+                            const currentValue = Number(editorSelect.value);
+
+                            if (isNowLocalized) {
+                                if (!editorSelect.dataset.preLocalizationValue) {
+                                    editorSelect.dataset.preLocalizationValue = editorSelect.value;
+                                }
+                                const safeValue = TEXT_EDITOR_TYPES.includes(currentValue) ? currentValue : 0;
+                                editorSelect.innerHTML = buildEditorOptionsHtml(safeValue, true);
+                            } else {
+                                const restoreValue = editorSelect.dataset.preLocalizationValue
+                                    ? Number(editorSelect.dataset.preLocalizationValue)
+                                    : currentValue;
+                                editorSelect.innerHTML = buildEditorOptionsHtml(restoreValue, false);
+                                delete editorSelect.dataset.preLocalizationValue;
+                            }
+                        });
                     });
 
                     entityConfigContainer.appendChild(card);
@@ -327,7 +364,8 @@
                             editorType: Number(row.querySelector('.field-editor-type').value),
                             showInList: row.querySelector('.field-show-in-list').checked,
                             showInForm: row.querySelector('.field-show-in-form').checked,
-                            isRequired: row.querySelector('.field-is-required').checked
+                            isRequired: row.querySelector('.field-is-required').checked,
+                            localizationSourceId: row.querySelector('.field-localization-source').value || null
                         };
                     });
 

@@ -21,7 +21,8 @@ public sealed record ScaffoldingPreviewField(
     EditorType EditorType,
     bool ShowInList,
     bool ShowInForm,
-    bool IsRequired);
+    bool IsRequired,
+    Guid? LocalizationSourceId);
 
 /// <summary>Anteprima (non persistita) di un'intera tabella/entità per il wizard.</summary>
 public sealed record ScaffoldingPreviewEntity(

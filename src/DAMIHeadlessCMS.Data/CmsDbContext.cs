@@ -29,6 +29,7 @@ public class CmsDbContext : IdentityDbContext<CmsUser, CmsRole, Guid>
     public DbSet<CmsPage> Pages => Set<CmsPage>();
     public DbSet<CmsMenu> Menus => Set<CmsMenu>();
     public DbSet<CmsMenuItem> MenuItems => Set<CmsMenuItem>();
+    public DbSet<LocalizationSource> LocalizationSources => Set<LocalizationSource>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,5 +56,6 @@ public class CmsDbContext : IdentityDbContext<CmsUser, CmsRole, Guid>
         modelBuilder.ApplyConfiguration(new CmsPageConfiguration());
         modelBuilder.ApplyConfiguration(new CmsMenuConfiguration());
         modelBuilder.ApplyConfiguration(new CmsMenuItemConfiguration());
+        modelBuilder.ApplyConfiguration(new LocalizationSourceConfiguration());
     }
 }

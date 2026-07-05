@@ -1,0 +1,85 @@
+﻿@model LocalizationSourceFormViewModel
+
+<div class="row g-3">
+    <div class="col-12">
+        <label class="form-label fw-medium" for="DisplayName">Nome <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="DisplayName" name="DisplayName" value="@Model.DisplayName"
+               placeholder="es. Localizzazione legacy WN" required />
+    </div>
+</div>
+
+<hr class="my-4" />
+<h6 class="text-uppercase text-muted small fw-semibold mb-3">Tabella di traduzione</h6>
+<div class="row g-3">
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Schema</label>
+        <input type="text" class="form-control" name="ContentSchemaName" value="@Model.ContentSchemaName" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Tabella</label>
+        <input type="text" class="form-control" name="ContentTableName" value="@Model.ContentTableName"
+               placeholder="es. WN_LOCALIZZAZIONE" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Colonna Id contenuto</label>
+        <input type="text" class="form-control" name="ContentIdColumn" value="@Model.ContentIdColumn"
+               placeholder="es. LC_CONT_ID" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Colonna Id lingua</label>
+        <input type="text" class="form-control" name="LanguageIdColumn" value="@Model.LanguageIdColumn"
+               placeholder="es. LC_LNG_ID" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Colonna testo</label>
+        <input type="text" class="form-control" name="TextColumn" value="@Model.TextColumn"
+               placeholder="es. LC_TESTO" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Colonna Id riga (opzionale)</label>
+        <input type="text" class="form-control" name="RowIdColumn" value="@Model.RowIdColumn" placeholder="es. LC_ID" />
+    </div>
+</div>
+
+<hr class="my-4" />
+<h6 class="text-uppercase text-muted small fw-semibold mb-3">Tabella lingue</h6>
+<div class="row g-3">
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Schema</label>
+        <input type="text" class="form-control" name="LanguageSchemaName" value="@Model.LanguageSchemaName" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Tabella</label>
+        <input type="text" class="form-control" name="LanguageTableName" value="@Model.LanguageTableName"
+               placeholder="es. WN_LINGUE" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Colonna Id lingua</label>
+        <input type="text" class="form-control" name="LanguageIdColumnInLanguageTable"
+               value="@Model.LanguageIdColumnInLanguageTable" placeholder="es. LNG_ID" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small">Id lingua di default</label>
+        <input type="number" class="form-control" name="DefaultLanguageId" value="@Model.DefaultLanguageId" required />
+    </div>
+    <div class="col-6 col-md-6">
+        <label class="form-label small">Colonna codice lingua (opzionale, per multi-lingua futuro)</label>
+        <input type="text" class="form-control" name="LanguageCodeColumn" value="@Model.LanguageCodeColumn" placeholder="es. LNG_CODICE" />
+    </div>
+    <div class="col-6 col-md-6">
+        <label class="form-label small">Colonna nome lingua (opzionale, per multi-lingua futuro)</label>
+        <input type="text" class="form-control" name="LanguageNameColumn" value="@Model.LanguageNameColumn" placeholder="es. LNG_NOME" />
+    </div>
+</div>
+
+@if (Model.Id.HasValue)
+{
+    <input type="hidden" name="Id" value="@Model.Id" />
+}
+
+<div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i> Salva
+    </button>
+    <a href="/dami/localization-sources" class="btn btn-outline-secondary">Annulla</a>
+</div>

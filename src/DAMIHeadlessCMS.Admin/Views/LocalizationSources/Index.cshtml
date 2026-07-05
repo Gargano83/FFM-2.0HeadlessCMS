@@ -1,0 +1,73 @@
+﻿@model IReadOnlyList<LocalizationSourceListItemViewModel>
+@{
+    ViewData["Title"] = "Localizzazioni";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0">Sorgenti di localizzazione</h1>
+        <p class="text-muted mb-0">
+            Tabelle legacy "a chiave condivisa" (es. WN_LOCALIZZAZIONE/WN_LINGUE) usate
+            per risolvere campi interi che in realtà rappresentano un contenuto tradotto.
+        </p>
+    </div>
+    <a href="/dami/localization-sources/create" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Nuova sorgente
+    </a>
+</div>
+
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Tabella traduzioni</th>
+                    <th>Tabella lingue</th>
+                    <th class="text-center">Lingua default</th>
+                    <th class="text-center">Campi collegati</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var source in Model)
+                {
+                    <tr>
+                        <td class="fw-medium">@source.DisplayName</td>
+                        <td><code>@source.ContentTable</code></td>
+                        <td><code>@source.LanguageTable</code></td>
+                        <td class="text-center">@source.DefaultLanguageId</td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary-subtle text-secondary">@source.UsedByFieldsCount</span>
+                        </td>
+                        <td class="text-end">
+                            <a href="/dami/localization-sources/@source.Id/edit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="post" action="/dami/localization-sources/@source.Id/delete" class="d-inline"
+                                  onsubmit="return confirm('Eliminare questa sorgente di localizzazione?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Nessuna sorgente configurata. Usa "Nuova sorgente" per iniziare.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

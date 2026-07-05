@@ -11,6 +11,9 @@
 <div class="row g-3">
     @foreach (var field in formFields)
     {
+        var effectiveEditorType = field.IsLocalized && field.EditorType is not (EditorType.Text or EditorType.TextArea or EditorType.RichText)
+            ? EditorType.Text
+            : field.EditorType;
         var value = Model.Values?.GetValueOrDefault(field.ColumnName);
         <div class="col-12 col-md-6">
             <label class="form-label fw-medium" for="field_@field.ColumnName">
@@ -19,13 +22,19 @@
                 {
                     <span class="text-danger">*</span>
                 }
+                @if (field.IsLocalized)
+                {
+                    <span class="badge bg-info-subtle text-info ms-1"
+                          title="Gestito tramite @field.LocalizationSource?.DisplayName (lingua di default)">
+                        <i class="bi bi-translate"></i>
+                    </span>
+                }
             </label>
-
-            @switch (field.EditorType)
+            @switch (effectiveEditorType)
             {
                 case EditorType.TextArea:
                     <textarea class="form-control" id="field_@field.ColumnName" name="@field.ColumnName"
-                              rows="4" maxlength="@field.MaxLength" required="@field.IsRequired">@value</textarea>
+                              rows="4" maxlength="@(field.IsLocalized ? (int?)null : field.MaxLength)" required="@field.IsRequired">@value</textarea>
                     break;
 
                 case EditorType.RichText:
@@ -36,27 +45,27 @@
 
                 case EditorType.Number:
                     <input type="number" step="any" class="form-control" id="field_@field.ColumnName"
-                           name="@field.ColumnName" value="@value" required="@field.IsRequired" />
+                            name="@field.ColumnName" value="@value" required="@field.IsRequired" />
                     break;
 
                 case EditorType.Checkbox:
                     var isChecked = value is true;
                     <div class="form-check form-switch mt-2">
                         <input type="checkbox" class="form-check-input" id="field_@field.ColumnName"
-                               name="@field.ColumnName" value="true" checked="@isChecked" />
+                                name="@field.ColumnName" value="true" checked="@isChecked" />
                     </div>
                     break;
 
                 case EditorType.Date:
                     <input type="date" class="form-control" id="field_@field.ColumnName"
-                           name="@field.ColumnName" value="@(value as DateTime?)?.ToString(" yyyy-MM-dd")"
-                           required="@field.IsRequired" />
+                            name="@field.ColumnName" value="@(value as DateTime?)?.ToString(" yyyy-MM-dd")"
+                            required="@field.IsRequired" />
                     break;
 
                 case EditorType.DateTime:
                     <input type="datetime-local" class="form-control" id="field_@field.ColumnName"
-                           name="@field.ColumnName" value="@(value as DateTime?)?.ToString(" yyyy-MM-ddTHH:mm")"
-                           required="@field.IsRequired" />
+                            name="@field.ColumnName" value="@(value as DateTime?)?.ToString(" yyyy-MM-ddTHH:mm")"
+                            required="@field.IsRequired" />
                     break;
 
                 case EditorType.Select:
@@ -93,8 +102,8 @@
                     break;
 
                 default: // Text
-                         <input type="text" class="form-control" id="field_@field.ColumnName" name="@field.ColumnName"
-                                value="@value" maxlength="@field.MaxLength" required="@field.IsRequired" />
+                            <input type="text" class="form-control" id="field_@field.ColumnName" name="@field.ColumnName"
+                                value="@value" maxlength="@(field.IsLocalized ? (int?)null : field.MaxLength)" required="@field.IsRequired" />
                     break;
             }
         </div>
@@ -129,8 +138,27 @@
         cursor: pointer;
         font-size: .9rem;
     }
+
+    .ql-toolbar.ql-snow {
+        display: flex;
+        flex-wrap: wrap;
+        row-gap: .35rem;
+    }
 </style>
 <script>
+    const cmsQuillToolbarOptions = [
+        [{ header: [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ color: [] }, { background: [] }],
+        [{ script: 'sub' }, { script: 'super' }],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        [{ indent: '-1' }, { indent: '+1' }],
+        [{ align: [] }],
+        ['blockquote', 'code-block'],
+        ['link'],
+        ['clean']
+    ];
+
     // --- Autocomplete FK ---
     document.querySelectorAll('.cms-fk-autocomplete').forEach((wrapper) => {
         const fieldId = wrapper.dataset.fieldId;
@@ -176,7 +204,7 @@
                     const res = await fetch(`/dami/lookup/${fieldId}?q=${encodeURIComponent(q)}`);
                     if (!res.ok) return;
                     renderOptions(await res.json());
-                } catch { /* silenzioso */ }
+                    } catch { /* silenzioso */ }
             }, 300);
         });
 
@@ -193,12 +221,15 @@
     document.querySelectorAll('.cms-richtext-wrapper').forEach((wrapper) => {
         const textarea = wrapper.querySelector('textarea');
         const editorDiv = document.createElement('div');
-        editorDiv.style.minHeight = '160px';
+        editorDiv.style.minHeight = '220px';
         editorDiv.style.background = '#fff';
         wrapper.appendChild(editorDiv);
         textarea.classList.add('d-none');
 
-        const quill = new Quill(editorDiv, { theme: 'snow' });
+        const quill = new Quill(editorDiv, {
+            theme: 'snow',
+            modules: { toolbar: cmsQuillToolbarOptions }
+        });
         quill.root.innerHTML = textarea.value || '';
         quill.on('text-change', () => {
             textarea.value = quill.root.innerHTML;

@@ -41,5 +41,13 @@ public class FieldDefinitionConfiguration : IEntityTypeConfiguration<FieldDefini
             .WithMany()
             .HasForeignKey(f => f.ForeignKeyTargetEntityId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Relazione verso la sorgente di localizzazione (nessuna FK fisica nel DB legacy:
+        // qui è solo un metadato di configurazione del CMS). Restrict per evitare che la
+        // cancellazione di una LocalizationSource elimini a cascata i FieldDefinition.
+        builder.HasOne(f => f.LocalizationSource)
+            .WithMany()
+            .HasForeignKey(f => f.LocalizationSourceId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

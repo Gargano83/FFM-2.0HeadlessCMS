@@ -39,6 +39,18 @@ public class FieldDefinition
     /// <summary>Colonna da mostrare nella &lt;select&gt; per la FK (es. "Name" invece dell'Id).</summary>
     public string? ForeignKeyDisplayColumn { get; set; }
 
+    /// <summary>
+    /// Se valorizzato, questa colonna (tipicamente un intero) non è il dato reale ma un
+    /// id di contenuto da risolvere tramite la LocalizationSource indicata, filtrando
+    /// per lingua. Non esiste una FK fisica verso questa relazione: l'associazione è
+    /// impostata manualmente (es. dal wizard di scaffolding), mai dedotta automaticamente.
+    /// </summary>
+    public Guid? LocalizationSourceId { get; set; }
+    public LocalizationSource? LocalizationSource { get; set; }
+
+    /// <summary>True se il campo è gestito tramite una LocalizationSource.</summary>
+    public bool IsLocalized => LocalizationSourceId.HasValue;
+
     /// <summary>Editor Razor da usare per questo campo (inferito automaticamente, sovrascrivibile).</summary>
     public EditorType EditorType { get; set; }
 

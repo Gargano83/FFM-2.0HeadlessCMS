@@ -32,13 +32,14 @@ public class GenericEntityRepository : IGenericEntityRepository
 
         var pkColumn = GetPrimaryKeyField(entity);
         var qualifiedTable = QualifiedTable(entity);
-        var selectColumns = string.Join(", ", listFields.Select(f => QuoteIdentifier(f.ColumnName)));
+        const string alias = "t";
+        var selectColumns = string.Join(", ", listFields.Select(f => BuildSelectExpression(f, alias)));
 
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(ct);
 
         int totalCount;
-        await using (var countCmd = new SqlCommand($"SELECT COUNT(*) FROM {qualifiedTable};", connection))
+        await using (var countCmd = new SqlCommand($"SELECT COUNT(*) FROM {qualifiedTable} {alias};", connection))
         {
             totalCount = (int)(await countCmd.ExecuteScalarAsync(ct))!;
         }
@@ -46,8 +47,8 @@ public class GenericEntityRepository : IGenericEntityRepository
         var rows = new List<IReadOnlyDictionary<string, object?>>();
         var sql = $"""
             SELECT {selectColumns}
-            FROM {qualifiedTable}
-            ORDER BY {QuoteIdentifier(pkColumn.ColumnName)}
+            FROM {qualifiedTable} {alias}
+            ORDER BY {alias}.{QuoteIdentifier(pkColumn.ColumnName)}
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
             """;
 
@@ -72,12 +73,13 @@ public class GenericEntityRepository : IGenericEntityRepository
         var formFields = entity.Fields.OrderBy(f => f.SortOrder).ToList();
         var pkField = GetPrimaryKeyField(entity);
         var qualifiedTable = QualifiedTable(entity);
-        var selectColumns = string.Join(", ", formFields.Select(f => QuoteIdentifier(f.ColumnName)));
+        const string alias = "t";
+        var selectColumns = string.Join(", ", formFields.Select(f => BuildSelectExpression(f, alias)));
 
         var sql = $"""
             SELECT {selectColumns}
-            FROM {qualifiedTable}
-            WHERE {QuoteIdentifier(pkField.ColumnName)} = @Id;
+            FROM {qualifiedTable} {alias}
+            WHERE {alias}.{QuoteIdentifier(pkField.ColumnName)} = @Id;
             """;
 
         await using var connection = new SqlConnection(_connectionString);
@@ -134,20 +136,31 @@ public class GenericEntityRepository : IGenericEntityRepository
 
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(ct);
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(ct);
 
-        await using var command = new SqlCommand(sql, connection);
-        for (var i = 0; i < insertFields.Count; i++)
+        try
         {
-            var field = insertFields[i];
-            var value = field == pkField && explicitPkValue is not null
-                ? explicitPkValue
-                : await ResolveFieldValueAsync(entity, field, formValues, files, ct);
-            command.Parameters.Add(BuildParameter($"@p{i}", field, value));
-        }
+            await using var command = new SqlCommand(sql, connection, transaction);
+            for (var i = 0; i < insertFields.Count; i++)
+            {
+                var field = insertFields[i];
+                var value = field == pkField && explicitPkValue is not null
+                    ? explicitPkValue
+                    : await ResolveFieldValueAsync(connection, transaction, entity, field, formValues, files, existingContentId: null, ct);
+                command.Parameters.Add(BuildParameter($"@p{i}", field, value));
+            }
 
-        var result = await command.ExecuteScalarAsync(ct)
-            ?? throw new InvalidOperationException("INSERT non ha restituito la chiave primaria generata.");
-        return result;
+            var result = await command.ExecuteScalarAsync(ct)
+                ?? throw new InvalidOperationException("INSERT non ha restituito la chiave primaria generata.");
+
+            await transaction.CommitAsync(ct);
+            return result;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
 
     public async Task UpdateAsync(
@@ -183,21 +196,37 @@ public class GenericEntityRepository : IGenericEntityRepository
 
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(ct);
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(ct);
 
-        await using var command = new SqlCommand(sql, connection);
-        for (var i = 0; i < updateFields.Count; i++)
+        try
         {
-            var field = updateFields[i];
-            var value = await ResolveFieldValueAsync(entity, field, formValues, files, ct);
-            command.Parameters.Add(BuildParameter($"@p{i}", field, value));
+            // Per i campi localizzati serve il CONT_ID attualmente salvato, per capire se
+            // aggiornare la riga di traduzione esistente o inserirne una nuova.
+            var existingContentIds = await GetExistingLocalizedValuesAsync(connection, transaction, entity, pkField, id, updateFields, ct);
+
+            await using var command = new SqlCommand(sql, connection, transaction);
+            for (var i = 0; i < updateFields.Count; i++)
+            {
+                var field = updateFields[i];
+                var existingContentId = existingContentIds.GetValueOrDefault(field.ColumnName);
+                var value = await ResolveFieldValueAsync(connection, transaction, entity, field, formValues, files, existingContentId, ct);
+                command.Parameters.Add(BuildParameter($"@p{i}", field, value));
+            }
+            command.Parameters.Add(BuildParameter("@Id", pkField, id));
+
+            var affected = await command.ExecuteNonQueryAsync(ct);
+            if (affected == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Nessuna riga aggiornata in '{entity.QualifiedTableName}' per {pkField.ColumnName}={id}.");
+            }
+
+            await transaction.CommitAsync(ct);
         }
-        command.Parameters.Add(BuildParameter("@Id", pkField, id));
-
-        var affected = await command.ExecuteNonQueryAsync(ct);
-        if (affected == 0)
+        catch
         {
-            throw new InvalidOperationException(
-                $"Nessuna riga aggiornata in '{entity.QualifiedTableName}' per {pkField.ColumnName}={id}.");
+            await transaction.RollbackAsync(ct);
+            throw;
         }
     }
 
@@ -304,18 +333,88 @@ public class GenericEntityRepository : IGenericEntityRepository
     }
 
     /// <summary>
-    /// Risolve il valore da persistere per un campo. I campi EditorType.File sono
-    /// gestiti qui separatamente da ConvertFormValue perché richiedono accesso a
-    /// IFormFile (non solo alla stringa del form) e, per le colonne stringa,
-    /// un'operazione asincrona di salvataggio su storage esterno.
+    /// Espressione SELECT per un campo: colonna diretta con alias, oppure — se il campo
+    /// è localizzato — una subquery correlata che risolve il testo tradotto dalla
+    /// LocalizationSource configurata, filtrando per la lingua di default (nessun
+    /// selettore multi-lingua per ora). Il DefaultLanguageId è un metadato configurato
+    /// solo da CmsAdmin, non input utente a runtime: incorporarlo nel testo SQL è sicuro.
+    /// </summary>
+    private static string BuildSelectExpression(FieldDefinition field, string tableAlias)
+    {
+        if (field.IsLocalized && field.LocalizationSource is { } source)
+        {
+            var contentTable = $"{QuoteIdentifier(source.ContentSchemaName)}.{QuoteIdentifier(source.ContentTableName)}";
+            return $"""
+                (SELECT TOP (1) loc.{QuoteIdentifier(source.TextColumn)}
+                 FROM {contentTable} loc
+                 WHERE loc.{QuoteIdentifier(source.ContentIdColumn)} = {tableAlias}.{QuoteIdentifier(field.ColumnName)}
+                   AND loc.{QuoteIdentifier(source.LanguageIdColumn)} = {source.DefaultLanguageId}
+                ) AS {QuoteIdentifier(field.ColumnName)}
+                """;
+        }
+
+        return $"{tableAlias}.{QuoteIdentifier(field.ColumnName)} AS {QuoteIdentifier(field.ColumnName)}";
+    }
+
+    /// <summary>
+    /// Legge, PRIMA dell'update, il valore grezzo (CONT_ID) attualmente salvato per i
+    /// campi localizzati coinvolti — serve a capire se creare una nuova riga di
+    /// traduzione o aggiornarne una esistente. Usa la stessa connection/transaction
+    /// dell'update per coerenza.
+    /// </summary>
+    private static async Task<Dictionary<string, object?>> GetExistingLocalizedValuesAsync(
+        SqlConnection connection, SqlTransaction transaction, EntityDefinition entity, FieldDefinition pkField,
+        object id, List<FieldDefinition> fields, CancellationToken ct)
+    {
+        var localizedFields = fields.Where(f => f.IsLocalized).ToList();
+        var result = new Dictionary<string, object?>();
+        if (localizedFields.Count == 0)
+        {
+            return result;
+        }
+
+        var qualifiedTable = QualifiedTable(entity);
+        var columns = string.Join(", ", localizedFields.Select(f => QuoteIdentifier(f.ColumnName)));
+
+        var sql = $"SELECT {columns} FROM {qualifiedTable} WHERE {QuoteIdentifier(pkField.ColumnName)} = @Id;";
+
+        await using var command = new SqlCommand(sql, connection, transaction);
+        command.Parameters.Add(BuildParameter("@Id", pkField, id));
+
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        if (await reader.ReadAsync(ct))
+        {
+            for (var i = 0; i < localizedFields.Count; i++)
+            {
+                var raw = reader.GetValue(i);
+                result[localizedFields[i].ColumnName] = raw is DBNull ? null : raw;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Risolve il valore da persistere per un campo. I campi localizzati e i campi File
+    /// richiedono una risoluzione speciale (scrittura su una tabella/storage diversi
+    /// prima di ottenere il valore finale da mettere nella colonna dell'entità).
     /// </summary>
     private async Task<object?> ResolveFieldValueAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
         EntityDefinition entity,
         FieldDefinition field,
         IReadOnlyDictionary<string, string?> formValues,
         IReadOnlyDictionary<string, IFormFile?> files,
+        object? existingContentId,
         CancellationToken ct)
     {
+        if (field.IsLocalized)
+        {
+            var text = formValues.GetValueOrDefault(field.ColumnName);
+            return await ResolveLocalizedValueAsync(connection, transaction, field, text, existingContentId, ct);
+        }
+
         if (field.EditorType != EditorType.File)
         {
             return ConvertFormValue(field, formValues.GetValueOrDefault(field.ColumnName));
@@ -340,6 +439,128 @@ public class GenericEntityRepository : IGenericEntityRepository
         }
 
         return await _fileStorage.SaveAsync(file, entity.TableName, ct);
+    }
+
+    /// <summary>
+    /// Scrive/aggiorna la riga di traduzione nella LocalizationSource configurata (sempre
+    /// nella lingua di default: nessun selettore multi-lingua per ora) e ritorna il
+    /// CONT_ID da persistere nella colonna fisica dell'entità. Non elimina mai righe di
+    /// traduzione esistenti, per non spezzare altre lingue eventualmente già tradotte
+    /// sullo stesso CONT_ID.
+    /// </summary>
+    private static async Task<object?> ResolveLocalizedValueAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        FieldDefinition field,
+        string? text,
+        object? existingContentId,
+        CancellationToken ct)
+    {
+        var source = field.LocalizationSource
+            ?? throw new InvalidOperationException(
+                $"Il campo '{field.ColumnName}' è marcato come localizzato ma non ha una LocalizationSource associata.");
+
+        var hasExisting = existingContentId is not null and not DBNull;
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            if (field.IsNullable)
+            {
+                return DBNull.Value;
+            }
+            throw new InvalidOperationException($"Il campo '{field.DisplayName}' è obbligatorio.");
+        }
+
+        var contentTable = $"{QuoteIdentifier(source.ContentSchemaName)}.{QuoteIdentifier(source.ContentTableName)}";
+
+        if (!hasExisting)
+        {
+            if (string.IsNullOrWhiteSpace(source.RowIdColumn))
+            {
+                throw new InvalidOperationException(
+                    $"La sorgente di localizzazione '{source.DisplayName}' non ha configurato 'RowIdColumn' " +
+                    "(es. LC_ID per WN_LOCALIZZAZIONE): è necessario per generare un nuovo contenuto tradotto. " +
+                    "Configuralo dalla sezione Localizzazioni del backoffice.");
+            }
+
+            // Contenuto mai tradotto prima: inserisco la riga per la lingua di default e uso
+            // l'id generato come CONT_ID, per convenzione (il CONT_ID di un contenuto nuovo
+            // coincide con l'id della sua prima riga di traduzione).
+            var insertSql = $"""
+                INSERT INTO {contentTable} ({QuoteIdentifier(source.LanguageIdColumn)}, {QuoteIdentifier(source.TextColumn)})
+                OUTPUT INSERTED.{QuoteIdentifier(source.RowIdColumn)}
+                VALUES (@LanguageId, @Text);
+                """;
+
+            object newRowId;
+            await using (var insertCommand = new SqlCommand(insertSql, connection, transaction))
+            {
+                insertCommand.Parameters.Add(new SqlParameter("@LanguageId", SqlDbType.Int) { Value = source.DefaultLanguageId });
+                insertCommand.Parameters.Add(new SqlParameter("@Text", SqlDbType.NVarChar, -1) { Value = text });
+                newRowId = await insertCommand.ExecuteScalarAsync(ct)
+                    ?? throw new InvalidOperationException("Inserimento della traduzione non riuscito: nessun id generato.");
+            }
+
+            var updateContentIdSql = $"""
+                UPDATE {contentTable}
+                SET {QuoteIdentifier(source.ContentIdColumn)} = @ContentId
+                WHERE {QuoteIdentifier(source.RowIdColumn)} = @RowId;
+                """;
+            await using (var updateCommand = new SqlCommand(updateContentIdSql, connection, transaction))
+            {
+                updateCommand.Parameters.Add(new SqlParameter("@ContentId", SqlDbType.Int) { Value = newRowId });
+                updateCommand.Parameters.Add(new SqlParameter("@RowId", SqlDbType.Int) { Value = newRowId });
+                await updateCommand.ExecuteNonQueryAsync(ct);
+            }
+
+            return newRowId;
+        }
+
+        // Contenuto già esistente: aggiorno la traduzione per la lingua di default se c'è
+        // già una riga, altrimenti ne aggiungo una nuova riusando lo stesso CONT_ID.
+        var rowIdColumn = source.RowIdColumn ?? source.ContentIdColumn;
+        var existsSql = $"""
+            SELECT {QuoteIdentifier(rowIdColumn)}
+            FROM {contentTable}
+            WHERE {QuoteIdentifier(source.ContentIdColumn)} = @ContentId
+              AND {QuoteIdentifier(source.LanguageIdColumn)} = @LanguageId;
+            """;
+
+        object? existingRowId;
+        await using (var existsCommand = new SqlCommand(existsSql, connection, transaction))
+        {
+            existsCommand.Parameters.Add(new SqlParameter("@ContentId", SqlDbType.Int) { Value = existingContentId });
+            existsCommand.Parameters.Add(new SqlParameter("@LanguageId", SqlDbType.Int) { Value = source.DefaultLanguageId });
+            existingRowId = await existsCommand.ExecuteScalarAsync(ct);
+        }
+
+        if (existingRowId is not null)
+        {
+            var updateSql = $"""
+                UPDATE {contentTable}
+                SET {QuoteIdentifier(source.TextColumn)} = @Text
+                WHERE {QuoteIdentifier(rowIdColumn)} = @RowId;
+                """;
+            await using var updateCommand = new SqlCommand(updateSql, connection, transaction);
+            updateCommand.Parameters.Add(new SqlParameter("@Text", SqlDbType.NVarChar, -1) { Value = text });
+            updateCommand.Parameters.Add(new SqlParameter("@RowId", SqlDbType.Int) { Value = existingRowId });
+            await updateCommand.ExecuteNonQueryAsync(ct);
+        }
+        else
+        {
+            var insertSql = $"""
+                INSERT INTO {contentTable}
+                    ({QuoteIdentifier(source.ContentIdColumn)}, {QuoteIdentifier(source.LanguageIdColumn)}, {QuoteIdentifier(source.TextColumn)})
+                VALUES (@ContentId, @LanguageId, @Text);
+                """;
+            await using var insertCommand = new SqlCommand(insertSql, connection, transaction);
+            insertCommand.Parameters.Add(new SqlParameter("@ContentId", SqlDbType.Int) { Value = existingContentId });
+            insertCommand.Parameters.Add(new SqlParameter("@LanguageId", SqlDbType.Int) { Value = source.DefaultLanguageId });
+            insertCommand.Parameters.Add(new SqlParameter("@Text", SqlDbType.NVarChar, -1) { Value = text });
+            await insertCommand.ExecuteNonQueryAsync(ct);
+        }
+
+        return existingContentId;
     }
 
     private static object ConvertIdForLookup(FieldDefinition pkField, object rawId)

@@ -66,12 +66,32 @@
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<style>
+    .ql-toolbar.ql-snow {
+        display: flex;
+        flex-wrap: wrap;
+        row-gap: .35rem;
+    }
+</style>
 <script>
     (function () {
         const container = document.getElementById('cmsBlocksContainer');
         const emptyState = document.getElementById('cmsBlocksEmpty');
         const contentJsonInput = document.getElementById('ContentJson');
         const availableEntities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AvailableEntities));
+
+        const cmsQuillToolbarOptions = [
+            [{ header: [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ color: [] }, { background: [] }],
+            [{ script: 'sub' }, { script: 'super' }],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            [{ indent: '-1' }, { indent: '+1' }],
+            [{ align: [] }],
+            ['blockquote', 'code-block'],
+            ['link'],
+            ['clean']
+        ];
 
         let blocks = [];
         try {
@@ -139,7 +159,10 @@
                 container.appendChild(card);
 
                 if (block.type === 'html') {
-                    const quill = new Quill(card.querySelector('.cms-quill-editor'), { theme: 'snow' });
+                    const quill = new Quill(card.querySelector('.cms-quill-editor'), {
+                        theme: 'snow',
+                        modules: { toolbar: cmsQuillToolbarOptions }
+                    });
                     quill.root.innerHTML = block.html ?? '';
                     quillInstances.set(clientId, quill);
                 }

@@ -200,7 +200,8 @@ public class ScaffoldingService
                     EditorType: existingField?.EditorType ?? EditorTypeInferrer.Infer(column.SqlDataType, isForeignKey, column.MaxLength),
                     ShowInList: existingField?.ShowInList ?? true,
                     ShowInForm: existingField?.ShowInForm ?? !(column.IsPrimaryKey && column.IsIdentity),
-                    IsRequired: existingField?.IsRequired ?? (!column.IsNullable && !column.IsIdentity && !column.IsPrimaryKey)));
+                    IsRequired: existingField?.IsRequired ?? (!column.IsNullable && !column.IsIdentity && !column.IsPrimaryKey),
+                    LocalizationSourceId: existingField?.LocalizationSourceId));
             }
 
             results.Add(new ScaffoldingPreviewEntity(

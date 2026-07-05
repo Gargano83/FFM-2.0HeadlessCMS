@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using DAMIHeadlessCMS.Admin.ViewModels;
+﻿using DAMIHeadlessCMS.Admin.ViewModels;
+using DAMIHeadlessCMS.Core.Enums;
 using DAMIHeadlessCMS.Data;
 using DAMIHeadlessCMS.Data.Identity;
 using DAMIHeadlessCMS.Scaffolding;
 using DAMIHeadlessCMS.Scaffolding.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace DAMIHeadlessCMS.Admin.Controllers;
 
@@ -45,7 +46,16 @@ public class ScaffoldingWizardController : Controller
             .ThenBy(t => t.TableName)
             .ToList();
 
-        return View(new ScaffoldingTableListViewModel { Tables = items });
+        var availableLocalizationSources = await _db.LocalizationSources
+            .OrderBy(s => s.DisplayName)
+            .Select(s => new LocalizationSourceOption(s.Id, s.DisplayName))
+            .ToListAsync(ct);
+
+        return View(new ScaffoldingTableListViewModel
+        {
+            Tables = items,
+            AvailableLocalizationSources = availableLocalizationSources
+        });
     }
 
     /// <summary>Anteprima AJAX: struttura + eventuali personalizzazioni già salvate, senza scrivere nulla.</summary>
@@ -116,10 +126,17 @@ public class ScaffoldingWizardController : Controller
                 }
 
                 field.DisplayName = fieldRequest.DisplayName;
-                field.EditorType = fieldRequest.EditorType;
+                // Difesa in profondità: un campo localizzato deve sempre avere un editor
+                // testuale, indipendentemente da cosa arriva dal client (che ora lo previene
+                // già in UI, ma qui garantiamo la coerenza anche in caso di richieste dirette).
+                field.EditorType = fieldRequest.LocalizationSourceId.HasValue
+                    && fieldRequest.EditorType is not (EditorType.Text or EditorType.TextArea or EditorType.RichText)
+                        ? EditorType.Text
+                        : fieldRequest.EditorType;
                 field.ShowInList = fieldRequest.ShowInList;
                 field.ShowInForm = fieldRequest.ShowInForm;
                 field.IsRequired = fieldRequest.IsRequired;
+                field.LocalizationSourceId = fieldRequest.LocalizationSourceId;
             }
         }
 

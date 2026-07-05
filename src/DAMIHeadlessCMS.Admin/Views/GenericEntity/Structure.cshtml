@@ -58,7 +58,7 @@
                     <th class="text-center">Null</th>
                     <th class="text-center">PK</th>
                     <th class="text-center">Identity</th>
-                    <th>FK</th>
+                    <th>FK / Localizz.</th>
                     <th>Editor</th>
                     <th class="text-center">Lista</th>
                     <th class="text-center">Form</th>
@@ -99,7 +99,13 @@
                             }
                         </td>
                         <td>
-                            @if (field.IsForeignKey)
+                            @if (field.IsLocalized)
+                            {
+                                <span class="badge bg-info-subtle text-info">
+                                    <i class="bi bi-translate me-1"></i>@(field.LocalizationSource?.DisplayName ?? "?")
+                                </span>
+                            }
+                            else if (field.IsForeignKey)
                             {
                                 <span class="badge bg-warning-subtle text-warning">
                                     @(field.ForeignKeyTargetEntity?.DisplayName ?? "?")

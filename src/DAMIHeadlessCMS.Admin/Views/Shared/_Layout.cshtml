@@ -1,4 +1,5 @@
-﻿@functions {
+﻿@inject DAMIHeadlessCMS.Data.CmsDbContext Db
+@functions {
     bool IsActive(string path) => Context.Request.Path.Value?.StartsWith(path, StringComparison.OrdinalIgnoreCase) == true;
 }
 <!DOCTYPE html>
@@ -130,6 +131,10 @@
                        class="cms-nav-link @(IsActive("/dami/scaffolding") ? "active" : "")">
                         <i class="bi bi-diagram-3"></i> <span>Scaffolding</span>
                     </a>
+                    <a href="/dami/localization-sources"
+                       class="cms-nav-link @(IsActive("/dami/localization-sources") ? "active" : "")">
+                        <i class="bi bi-translate"></i> <span>Localizzazioni</span>
+                    </a>
                 </div>
 
                 <div class="cms-nav-section">
@@ -147,7 +152,26 @@
                 <div class="cms-nav-section">
                     <div class="cms-nav-section-title">Dati</div>
                     <ul class="nav nav-pills flex-column list-unstyled mb-0" id="cmsEntityNav">
-                        <!-- Popolato da GenericEntity/Index.cshtml -->
+                        @{
+                            var sidebarEntities = await Db.EntityDefinitions
+                                .Where(e => e.IsEnabled)
+                                .OrderBy(e => e.SortOrder)
+                                .ThenBy(e => e.DisplayName)
+                                .ToListAsync();
+                        }
+                        @foreach (var sidebarEntity in sidebarEntities)
+                        {
+                            var entityPath = $"/dami/{sidebarEntity.Id}";
+                            <li>
+                                <a href="@entityPath" class="cms-nav-link @(IsActive(entityPath) ? "active" : "")">
+                                    <i class="bi bi-@(sidebarEntity.Icon ?? "table")"></i> <span>@sidebarEntity.DisplayName</span>
+                                </a>
+                            </li>
+                        }
+                        @if (sidebarEntities.Count == 0)
+                        {
+                            <li class="px-3 py-2 text-white-50 small">Nessuna tabella scaffoldata</li>
+                        }
                     </ul>
                 </div>
 
