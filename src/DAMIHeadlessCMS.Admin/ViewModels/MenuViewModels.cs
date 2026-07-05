@@ -39,5 +39,6 @@ public sealed class MenuSaveItem
     public string Label { get; init; } = string.Empty;
     public MenuTargetType TargetType { get; init; }
     public string TargetValue { get; init; } = string.Empty;
+    public bool OpenInNewTab { get; init; }
     public int SortOrder { get; init; }
 }

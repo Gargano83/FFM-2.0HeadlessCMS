@@ -205,6 +205,10 @@
                     value="${node.label ?? ''}" placeholder="Etichetta" />
                     <select class="form-select form-select-sm node-target-type" style="max-width:160px;">${typeOptions}</select>
                     <span class="node-target-value-slot">${targetValueField(node)}</span>
+                    <div class="form-check form-switch mb-0" title="Apri il link in una nuova scheda">
+                        <input type="checkbox" class="form-check-input node-open-new-tab" id="newtab_${node.clientId}" ${node.openInNewTab ? 'checked' : ''} />
+                        <label class="form-check-label small text-nowrap" for="newtab_${node.clientId}">Nuova scheda</label>
+                    </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary node-add-child" title="Aggiungi sotto-voce">
                     <i class="bi bi-plus-lg"></i>
                     </button>
@@ -230,8 +234,10 @@
 
                 li.querySelector('.node-label').addEventListener('input', (e) => { node.label = e.target.value; });
 
+                li.querySelector('.node-open-new-tab').addEventListener('change', (e) => { node.openInNewTab = e.target.checked; });
+
                 li.querySelector('.node-add-child').addEventListener('click', () => {
-                    const child = { clientId: newClientId(), parentClientId: node.clientId, label: 'Nuova voce', targetType: 2, targetValue: '', sortOrder: childrenOf(node.clientId).length };
+                    const child = { clientId: newClientId(), parentClientId: node.clientId, label: 'Nuova voce', targetType: 2, targetValue: '', openInNewTab: false, sortOrder: childrenOf(node.clientId).length };
                     nodes.push(child);
                     render();
                 });
@@ -253,7 +259,7 @@
             }
 
             document.getElementById('cmsAddRootItem').addEventListener('click', () => {
-                nodes.push({ clientId: newClientId(), parentClientId: null, label: 'Nuova voce', targetType: 2, targetValue: '', sortOrder: childrenOf(null).length });
+                nodes.push({ clientId: newClientId(), parentClientId: null, label: 'Nuova voce', targetType: 2, targetValue: '', openInNewTab: false, sortOrder: childrenOf(null).length });
                 render();
             });
 
@@ -267,6 +273,7 @@
                         label: n.label,
                         targetType: n.targetType,
                         targetValue: n.targetValue,
+                        openInNewTab: !!n.openInNewTab,
                         sortOrder: n.sortOrder
                     }))
                 };

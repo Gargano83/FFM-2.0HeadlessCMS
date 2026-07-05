@@ -107,6 +107,7 @@ public class MenusController : Controller
                 label = i.Label,
                 targetType = (int)i.TargetType,
                 targetValue = i.TargetValue,
+                openInNewTab = i.OpenInNewTab,
                 sortOrder = i.SortOrder
             })
             .ToList();
@@ -158,6 +159,7 @@ public class MenusController : Controller
             Label = item.Label,
             TargetType = item.TargetType,
             TargetValue = item.TargetValue,
+            OpenInNewTab = item.OpenInNewTab,
             SortOrder = item.SortOrder
         }).ToList();
 
