@@ -1,0 +1,30 @@
+<div class="dami-ffm-giocatori">
+  <input #fileInput type="file" accept=".xlsx,.xls" (change)="importExcelData($event)" style="display: none;" />
+
+  <div *ngIf="loadError" class="dami-alert dami-alert-error">{{ loadError }}</div>
+
+  <ejs-grid
+    #gridGiocatori
+    width="100%"
+    height="560"
+    [dataSource]="dataGiocatori"
+    [editSettings]="editSettings"
+    [toolbar]="toolbar"
+    [allowExcelExport]="true"
+    [allowSorting]="true"
+    (toolbarClick)="toolbarClick($event)"
+    (excelExportComplete)="excelExportComplete()"
+    (actionComplete)="actionComplete($event)">
+    <e-columns>
+      <e-column field="id" headerText="Id" isPrimaryKey="true" [visible]="false" width="60"></e-column>
+      <e-column field="nome" headerText="Nome" [validationRules]="requiredRules" width="120"></e-column>
+      <e-column field="cognome" headerText="Cognome" [validationRules]="requiredRules" width="120"></e-column>
+      <e-column field="dataDiNascita" headerText="Data di nascita" type="date" [format]="formatDateOptions" editType="datepickeredit" width="110"></e-column>
+      <e-column field="ruolo" headerText="Ruolo" [validationRules]="requiredRules" width="110"></e-column>
+      <e-column field="valoreDiMercato" headerText="Valore di mercato" editType="numericedit" [edit]="numericEditParams" [valueAccessor]="currencyFormatter" width="120"></e-column>
+      <e-column field="stipendio" headerText="Stipendio" editType="numericedit" [edit]="numericEditParams" [valueAccessor]="currencyFormatter" width="120"></e-column>
+      <e-column field="dataAggiornamento" headerText="Data aggiornamento" type="date" [format]="formatDateOptions" editType="datepickeredit" width="120"></e-column>
+      <e-column field="note" headerText="Note" clipMode="EllipsisWithTooltip" width="180"></e-column>
+    </e-columns>
+  </ejs-grid>
+</div>

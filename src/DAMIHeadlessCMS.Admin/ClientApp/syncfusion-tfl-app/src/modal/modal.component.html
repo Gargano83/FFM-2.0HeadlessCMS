@@ -1,0 +1,79 @@
+<div id="modal-content-wrapper" class="player-modal p-4">
+  <header id="modal-header">
+    <h1 id="modal-title" class="p-2">Dettaglio giocatore {{this.NomeGiocatore}} ({{this.IdGiocatore}})</h1>
+  </header>
+  <form [formGroup]="dettaglioGiocatoreForm">
+    <div class="form-group row">
+      <label for="Nome" class="col-sm-4 col-form-label">Nome</label>
+      <div class="col-sm-8">
+        <input type="text" formControlName="Nome" class="form-control-plaintext">
+      </div>
+    </div>
+    <div class="form-group row">
+      <label for="Cognome" class="col-sm-4 col-form-label">Cognome</label>
+      <div class="col-sm-8">
+        <input type="text" formControlName="Cognome" class="form-control-plaintext">
+      </div>
+    </div>
+    <div class="form-group row">
+      <label for="Ruolo" class="col-sm-4 col-form-label">Ruolo</label>
+      <div class="col-sm-8">
+        <input type="text" formControlName="Ruolo" class="form-control-plaintext">
+      </div>
+    </div>
+    <div class="form-group row">
+      <label for="DataDiNascita" class="col-sm-4 col-form-label">Data di nascita</label>
+      <div class="col-sm-8">
+        <input type="text" formControlName="DataDiNascita" class="form-control-plaintext">
+      </div>
+    </div>
+    <div class="form-group row">
+      <label for="ValoreDiMercato" class="col-sm-4 col-form-label">Valore (VDM) €</label>
+      <div class="col-sm-8">
+        <input type="text" formControlName="ValoreDiMercato" class="form-control-plaintext">
+      </div>
+    </div>
+    <div class="form-group row">
+      <label for="Stipendio" class="col-sm-4 col-form-label">Stipendio €</label>
+      <div class="col-sm-8">
+        <input type="text" formControlName="Stipendio" class="form-control-plaintext">
+      </div>
+    </div>
+    <div class="form-group row">
+      <label for="Stato" class="col-sm-4 col-form-label">Stato</label>
+      <div class="col-sm-8">
+        <select formControlName="Stato" class="form-control">
+          <option [ngValue]="null" disabled>-- Seleziona lo stato --</option>
+          <option *ngFor="let item of statiGiocatore" [ngValue]="item">{{item}}</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group row">
+      <label for="Mesi" class="col-sm-4 col-form-label">Mesi</label>
+      <div class="col-sm-8">
+        <input type="text" formControlName="Mesi" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');" class="form-control">
+      </div>
+    </div>
+    <div class="form-group row justify-content-center p-5">
+      <div class="col-sm-6 d-flex justify-content-evenly ">
+        <button type="submit" (click)="onSubmit()" class="btn btn-success">Salva</button>
+        <button mat-raised-button id="modal-cancel-button" class="text-white" (click)="closeModal()">Chiudi</button>
+      </div>
+    </div>
+    <div class="row" *ngIf="messageOk">
+      <div class="col-xs-12">
+        <p class="alert alert-success">
+          <strong>Salvataggio riuscito con successo!</strong>
+        </p>
+      </div>
+    </div>
+    <div class="row" *ngIf="messageKo">
+      <div class="col-xs-12">
+        <p class="alert alert-danger">
+          <strong>Errore durante il salvataggio!</strong>
+        </p>
+      </div>
+    </div>
+  </form>
+  <footer id="modal-footer"></footer>
+</div>

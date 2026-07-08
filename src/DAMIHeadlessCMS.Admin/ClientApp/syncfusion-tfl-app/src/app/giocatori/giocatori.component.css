@@ -1,0 +1,16 @@
+.dami-ffm-giocatori {
+  font-family: 'Titillium Web', sans-serif;
+}
+
+.dami-alert {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.dami-alert-error {
+  background-color: #f8d7da;
+  color: #58151c;
+  border: 1px solid #f1aeb5;
+}

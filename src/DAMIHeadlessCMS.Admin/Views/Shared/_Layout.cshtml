@@ -178,6 +178,14 @@
                 @if (User.IsInRole(CmsRoles.Admin))
                 {
                     <div class="cms-nav-section">
+                        <div class="cms-nav-section-title">FFM</div>
+                        <a href="/dami/ffm/giocatori"
+                           class="cms-nav-link @(IsActive("/dami/ffm/giocatori") ? "active" : "")">
+                            <i class="bi bi-person-badge"></i> <span>Database Giocatori</span>
+                        </a>
+                    </div>
+
+                    <div class="cms-nav-section">
                         <div class="cms-nav-section-title">Amministrazione</div>
                         <a href="/dami/users"
                            class="cms-nav-link @(IsActive("/dami/users") ? "active" : "")">

@@ -1,4 +1,5 @@
 using DAMIHeadlessCMS.Admin.Extensions;
+using DAMIHeadlessCMS.Admin.Ffm;
 using DAMIHeadlessCMS.Data.Extensions;
 using DAMIHeadlessCMS.Data.Identity;
 using DAMIHeadlessCMS.Scaffolding.Extensions;
@@ -15,6 +16,12 @@ builder.Services.AddDAMIHeadlessCMSData(connectionString);
 builder.Services.AddDAMIHeadlessCMSAdmin(connectionString);
 builder.Services.AddDAMIHeadlessCMSScaffolding(connectionString);
 builder.Services.AddDAMIHeadlessCMSIdentity();
+
+// Modulo opzionale: pagine dedicate per tabelle FFM specifiche (Giocatori, e in
+// futuro SquadreRelGiocatori) tramite componenti Angular/Syncfusion, riservate
+// a CmsAdmin. Non fa parte del core del CMS: va abilitato solo se l'host
+// ospita effettivamente lo schema FFM.
+builder.Services.AddDAMIHeadlessCMSFfm(connectionString);
 
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 

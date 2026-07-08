@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>SyncfusionTflApp - dev</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link href="https://cdn.syncfusion.com/ej2/bootstrap5.css" rel="stylesheet" />
+</head>
+<body>
+  <!--
+    Pagina di solo sviluppo locale (ng serve): la pagina reale che ospita il
+    Custom Element è la Razor view del backoffice DAMIHeadlessCMS
+    (Views/Ffm/Giocatori.cshtml), che imposta window.DAMI_SYNCFUSION_LICENSE
+    e punta api-base-url al backend reale.
+  -->
+  <script>
+    window.DAMI_SYNCFUSION_LICENSE = ''; // valorizza qui la tua chiave community per i test locali
+  </script>
+  <dami-ffm-giocatori-grid api-base-url="https://localhost:44341/dami/ffm/api/giocatori"></dami-ffm-giocatori-grid>
+</body>
+</html>

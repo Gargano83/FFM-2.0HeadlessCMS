@@ -1,0 +1,254 @@
+.team__info {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 768px) {
+    .team__info {
+      display: block;
+    }
+  }
+
+  .team__info__left,
+  .team__info__right {
+    width: 45%;
+  }
+
+  @media (max-width: 768px) {
+    .team__info__left,
+    .team__info__right {
+      width: 100%;
+    }
+  }
+
+  .team__info__right {
+    background: #f2e5da;
+  }
+
+  .team__info__title {
+    background-color: #34d8eb;
+    text-align: center;
+    text-transform: uppercase;
+    font-weight: bold;
+    padding: 5px 0px;
+  }
+
+  .team__table__infotop {
+    background: #f5f5f5;
+  }
+
+  .team__table__row label{
+    text-align: center;
+    text-transform: uppercase;
+    font-weight: bold;
+  }
+
+  .team__table__infotop .team__table__row span {
+    font-weight: bold;
+  }
+
+  .team__table__row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 5px;
+  }
+
+  .team__table__infobottom {
+    background: #bbedd9;
+    margin-top: 28px;
+  }
+
+  .row__half span {
+    padding-right: 10px;
+  }
+
+  .team__table__row-last {
+    background: #edd7bb;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    text-transform: uppercase;
+    padding: 5px 5px;
+  }
+
+  .table .action {
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .table td {
+    text-align: center;
+  }
+
+  .e-autocomplete {
+    border: 1px solid #212529;
+    border-radius: 5px;
+    margin-bottom: 20px;
+  }
+
+  .e-autocomplete:focus {
+    border: 2px solid #212529;
+  }
+
+  .e-listbox {
+    border-radius: 5px;
+  }
+
+  .e-listbox .list-wrapper {
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 768px) {
+    .e-listbox .list-wrapper {
+      display: block;
+    }
+  }
+
+  .e-listbox .list-wrapper > div {
+    flex: 1;
+  }
+
+  .e-listbox .list-wrapper .role,
+  .e-listbox .list-wrapper .fullname {
+    flex: 2;
+  }
+
+  .e-listbox .list-wrapper .fullname {
+    font-weight: bold;
+  }
+
+  .e-listbox .list-wrapper .role,
+  .e-listbox .list-wrapper .dateofbirth {
+    font-style: italic;
+  }
+
+  .e-listbox .list-wrapper .removeplayer {
+    font-weight: bold;
+    border: 1px solid black;
+    padding: 0px 5px;
+    border-radius: 50%;
+  }
+
+  @media (max-width: 768px) {
+    .e-listbox-wrapper {
+      width: 70%;
+      float: right;
+      height: 656px;
+      overflow: hidden;
+      overflow-y: scroll;
+    }
+    .e-listbox .list-wrapper {
+      height: 654px;
+      border: 1px solid #212529;
+    }
+    .e-listbox .list-wrapper > div {
+      height: 45px;
+      padding-top: 20px;
+      padding-bottom: 10px;
+      line-height: 10px;
+      /* border-bottom: 1px dotted black; */
+    }
+  }
+
+  .e-listbox .list-wrapper .moral {
+    text-align: center;
+  }
+  .table__team__head {
+    background: #212529;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+  }
+
+  .table__team__head .moral {
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    .table__team__head {
+      display: block;
+      justify-content: inherit;
+      width: 25%;
+      float: left;
+    }
+    .table__team__head .moral,
+    .e-listbox .list-wrapper .moral {
+      text-align: left;
+    }
+  }
+
+  .table__team__head > div {
+    flex: 1;
+    /* writing-mode: vertical-lr;
+    text-orientation: mixed; */
+    font-size: 12px;
+  }
+
+  @media (max-width: 991px) {
+    .table__team__head > div {
+      writing-mode: vertical-lr;
+      text-orientation: mixed;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .table__team__head > div {
+      writing-mode: initial;
+      text-orientation: initial;
+      height: 45.4px;
+      padding-top: 20px;
+      padding-bottom: 10px;
+      line-height: 10px;
+      border-bottom: 1px dotted white;
+    }
+  }
+
+  .table__team__head .role,
+  .table__team__head .fullname {
+    flex: 2;
+  }
+
+  .cdk-overlay-container app-modal {
+    display: block;
+  }
+
+  mat-dialog-container#modal-component {
+    border: 3px solid #262626;
+    border-radius: 11px;
+    background-color: #1a1a1a;
+  }
+
+  .detail-player .mat-mdc-dialog-surface {
+    overflow-y: hidden !important;
+  }
+
+  .morale-ok {
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+    border-radius: 50%;
+    background-color: green;
+  }
+
+  .morale-mid {
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+    border-radius: 50%;
+    background-color: yellow;
+  }
+
+  .morale-ko {
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+    border-radius: 50%;
+    background-color: red;
+  }
+
+  .e-listbox-wrapper .e-list-parent {
+    height: auto;
+  }

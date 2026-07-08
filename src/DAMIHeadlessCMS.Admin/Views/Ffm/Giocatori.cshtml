@@ -1,0 +1,51 @@
+﻿@{
+    ViewData["Title"] = "Database Giocatori";
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/dami">Entità</a></li>
+            <li class="breadcrumb-item active">FFM · Database Giocatori</li>
+        </ol>
+    </nav>
+    <h1 class="h3 mb-0">Database Giocatori</h1>
+    <p class="text-muted mb-0">
+        Gestione anagrafica di <code>FFM.Giocatori</code>: aggiunta, modifica,
+        cancellazione e import massivo da Excel.
+    </p>
+</div>
+
+<div class="card border-0 shadow-sm p-3 p-md-4">
+    <!--
+        Custom Element Angular indipendente dalla view: nessuna dipendenza da
+        variabili globali come nel vecchio window.appSettings. I parametri
+        (qui solo l'endpoint API) sono passati come attributi HTML.
+        Il tag <dami-ffm-giocatori-grid> è definito e registrato dal bundle
+        caricato più sotto (vedi syncfusion-tfl-app, bootstrap-elements.ts).
+    -->
+    <dami-ffm-giocatori-grid api-base-url="/dami/ffm/api/giocatori"></dami-ffm-giocatori-grid>
+</div>
+
+@section Scripts {
+    <!--
+        Output reale della build (verificato eseguendo `npm run build:giocatori-widget`
+        e ispezionando dist/ffm-widgets/giocatori/): 4 file. L'ordine di
+        caricamento conta — runtime.js e polyfills.js (zone.js) devono
+        eseguire PRIMA di main.js. Tutti e 4 vanno copiati in
+        wwwroot/ffm-widgets/giocatori/.
+
+        "?v=..." impostato a mano: aggiornalo (es. incrementa il numero) ogni
+        volta che ricopi una nuova build, così il browser non serve mai una
+        versione in cache di questi file durante il debug.
+    -->
+    <link href="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/giocatori/styles.css" rel="stylesheet" />
+    <script>
+        // Licenza community Syncfusion: letta da configurazione server-side,
+        // MAI hardcoded nel bundle Angular (a differenza della vecchia integrazione).
+        window.DAMI_SYNCFUSION_LICENSE = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.SyncfusionLicenseKey ?? ""));
+    </script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/giocatori/runtime.js" type="module"></script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/giocatori/polyfills.js" type="module"></script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/giocatori/main.js" type="module"></script>
+}

@@ -51,6 +51,16 @@ metadati salvati nello schema `cms.*` del database).
       flag per produrre `target="_blank"` — resta responsabilità del progetto
       host, che consuma `CmsMenu`/`CmsMenuItem` per costruire la propria
       navigazione front-end.
+- [x] **6.3 Fix di sicurezza — `.gitignore` disallineato dopo il rename**:
+      dopo il rename `MyCms` → `DAMIHeadlessCMS`, il `.gitignore` continuava a
+      escludere i vecchi percorsi (`src/MyCms.Data/appsettings.json`, ecc.),
+      lasciando potenzialmente **non ignorati** i file `appsettings.json` reali
+      (con credenziali del database) di `DAMIHeadlessCMS.Data` e
+      `DAMIHeadlessCMS.TestHost`. Corretto aggiornando i percorsi. **Azione
+      consigliata**: verificare con `git log --all --full-history -- <path>`
+      se questi file sono già stati committati in passato; in caso affermativo,
+      ruotare immediatamente la password del database e valutare una pulizia
+      della cronologia Git (es. `git filter-repo`).
 
 ## Prossime fasi
 
@@ -59,24 +69,44 @@ metadati salvati nello schema `cms.*` del database).
       `CmsAdmin`, che ospitano ciascuna un componente Angular basato su
       Syncfusion (Grid), reso indipendente dalla view legacy che lo ospitava
       originariamente:
-  - [ ] **7.1 Gestione `FFM.Giocatori`**: porting/aggiornamento del componente
-        Angular esistente, disaccoppiato dal markup/contesto della vecchia
-        pagina host. Interagisce con un controller **legacy** (da analizzare
-        quando condiviso) che espone le operazioni CRUD sulla tabella
-        `FFM.Giocatori`. Da valutare se mantenere il controller legacy così
-        com'è (il componente continua a chiamarlo) o esporre un endpoint
-        equivalente all'interno del backoffice DAMIHeadlessCMS.
+  - [x] **7.1 Gestione `FFM.Giocatori`** — **implementata**:
+        - Backend: modulo opzionale `DAMIHeadlessCMS.Admin.Ffm` (opt-in via
+          `AddDAMIHeadlessCMSFfm(connectionString)`), con
+          `FfmGiocatoriRepository` (ADO.NET dedicato, non metadata-driven —
+          logica troppo specifica per il CRUD generico), `FfmGiocatoriApiController`
+          (`/dami/ffm/api/giocatori`, CRUD + import Excel) e `FfmController`
+          (`/dami/ffm/giocatori`, pagina di hosting), tutti riservati a
+          `CmsAdmin`. Sostituisce integralmente il vecchio `SyncfusionController`
+          legacy per la parte Giocatori.
+        - Frontend: componente Angular aggiornato da Angular 15 ad Angular 17,
+          Syncfusion EJ2 alla versione più recente compatibile (licenza
+          community invariata), **rifattorizzato da app Angular "intera" a
+          Custom Element** (`<dami-ffm-giocatori-grid>`, via `@angular/elements`)
+          — nessuna dipendenza da `window.appSettings`, parametri passati come
+          attributi HTML, build a bundle singolo con `ngx-build-plus` per
+          l'inclusione diretta nella Razor view. Chiave di licenza Syncfusion
+          spostata da hardcoded a configurazione server-side
+          (`DAMIHeadlessCMS:Ffm:SyncfusionLicenseKey`).
+        - ⚠️ **Comportamento preservato dal legacy, da tenere a mente**: l'import
+          Excel sincronizza l'intero `FFM.Giocatori` con il file caricato,
+          **eliminando i giocatori non presenti nel file**. Replicato
+          identico per fedeltà funzionale, con conferma esplicita richiesta
+          all'utente lato UI prima dell'operazione.
+        - Da fare prima del rilascio: eseguire `npm install`/build reale del
+          progetto Angular (non verificato in ambiente di sviluppo di Claude,
+          privo di toolchain Node/Angular) e copiare il bundle compilato in
+          `DAMIHeadlessCMS.Admin/wwwroot/ffm-widgets/giocatori/`.
   - [ ] **7.2 Gestione `FFM.SquadreRelGiocatori`**: stessa logica del punto
         7.1, applicata al componente Angular che gestisce la tabella di
         relazione `FFM.SquadreRelGiocatori` (associazione Giocatori↔Squadre).
+        Il vecchio `AppComponent`/`ModalComponent` (ramo "Squadra") restano nel
+        progetto Angular come riferimento per questo porting, non ancora
+        migrati a Custom Element.
   - Nota architetturale: queste due pagine **non** passano dal CRUD generico
     metadata-driven (`GenericEntityController`), perché la UI richiesta è un
     componente Angular/Syncfusion specifico con logica ad hoc (es. grid con
     editing inline, drag&drop tra squadre, ecc.), non riconducibile agli
-    `EditorType` standard. Saranno quindi due `Controller`/`View` dedicati nel
-    progetto `DAMIHeadlessCMS.Admin`, protetti da `CmsAuthConstants.AdminPolicy`,
-    che montano l'elemento Angular (o lo ospitano come Web Component/iframe,
-    da decidere in base a come sarà strutturato il componente condiviso).
+    `EditorType` standard.
 - [x] **8. Voce di menu verso il "Regolamento" (Docusaurus)**: **nessuna
       integrazione di rendering è richiesta lato CMS**. Il sito compilato con
       Docusaurus (che oggi sul progetto legacy produce la pagina

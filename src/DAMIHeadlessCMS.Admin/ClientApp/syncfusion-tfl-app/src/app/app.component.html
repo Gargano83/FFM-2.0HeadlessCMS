@@ -1,0 +1,153 @@
+<div *ngIf="appSettings && appSettings.component === 'Giocatori'" id="Giocatori">
+  <input type="file" id="fileBtn" (change)="importExcelData($event)" style="display: none;" />
+  <ejs-grid width='90%' height='500' #gridGiocatori [dataSource]='dataGiocatori' [editSettings]='editSettings' [toolbar]='toolbar' [allowExcelExport]='true' (toolbarClick)='toolbarClick($event)' (excelExportComplete)='excelExportComplete()'>
+    <e-columns>
+      <e-column field='Id' headerText='Id' isPrimaryKey='true' [visible]='false' width=50></e-column>
+      <e-column field='Nome' headerText='Nome' [validationRules]='requiredRules' width=100></e-column>
+      <e-column field='Cognome' headerText='Cognome' [validationRules]='requiredRules' width=100></e-column>
+      <e-column field='DataDiNascita' headerText='Data di nascita' [format]='formatDateOptions' editType='datepickeredit' width=80></e-column>
+      <e-column field='Ruolo' headerText='Ruolo' [validationRules]='requiredRules' width=100></e-column>
+      <e-column field='ValoreDiMercato' headerText='Valore di mercato' [valueAccessor]='currencyFormatter' [validationRules]='requiredRules' width=80></e-column>
+      <e-column field='Stipendio' headerText='Stipendio' [valueAccessor]='currencyFormatter' [validationRules]='requiredRules' width=80></e-column>
+      <e-column field='DataAggiornamento' headerText='Data aggiornamento' [format]='formatDateOptions' editType='datepickeredit' width=80></e-column>
+      <e-column field='Note' headerText='Note' clipMode='EllipsisWithTooltip' [validationRules]='requiredRules' width=150></e-column>
+    </e-columns>
+  </ejs-grid>
+</div>
+<div *ngIf="appSettings && appSettings.component === 'Squadra'" id="Squadra">
+  <section class="team__excel pt-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-12 team__info">
+          <div class="team__info__left">
+            <div class="team__info__title">{{InfoSquadra.Squadra.Nome}}</div>
+            <div class="team__table__infotop">
+              <div class="team__table__row">
+                <label>presidente</label>
+                <span>{{InfoSquadra.Squadra.Presidente}}</span>
+              </div>
+              <div class="team__table__row">
+                <label>vice presidente</label>
+                <span>{{InfoSquadra.Squadra.VicePresidente}}</span>
+              </div>
+              <div class="team__table__row">
+                <label>allenatore</label>
+                <span>{{InfoSquadra.Allenatore.Nome}}</span>
+              </div>
+              <div class="team__table__row">
+                <label></label>
+                <div>{{InfoSquadra.Allenatore.DurataContratto}} {{InfoSquadra.Allenatore.Stipendio}} €</div>
+              </div>
+            </div>
+            <div class="team__table__infobottom">
+              <div class="team__table__row">
+                <div class="row__half">
+                  <span>{{InfoSquadra.Tesserati}}</span>
+                  <label>Tesserati</label>
+                </div>
+                <div class="row__half">
+                  <span>{{InfoSquadra.InPrestito}}</span>
+                  <label>In prestito</label>
+                </div>
+              </div>
+              <div class="team__table__row">
+                <div class="row__half">
+                  <span>{{InfoSquadra.InRosa}}</span>
+                  <label>In rosa</label>
+                </div>
+                <div class="row__half">
+                  <span>{{InfoSquadra.APrestito}}</span>
+                  <label>A prestito</label>
+                </div>
+              </div>
+              <div class="team__table__row">
+                <div class="row__half">
+                  <span>{{InfoSquadra.ListaA}}</span>
+                  <label>Lista A</label>
+                </div>
+                <div class="row__half">
+                  <span>{{InfoSquadra.Under22InRosa}}</span>
+                  <label>Under 22 in Rosa</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="team__info__right">
+            <div class="team__info__title">FINANZE {{InfoSquadra.Squadra.Nome}}</div>
+            <div class="team__table__row">
+              <label>rimanenza 2022/2023</label>
+              <span>{{InfoSquadra.Finanze.RimanenzaStagionePrecedente}} €</span>
+            </div>
+            <div class="team__table__row">
+              <label>refill ranking</label>
+              <span>{{InfoSquadra.Finanze.RefillRanking}} €</span>
+            </div>
+            <div class="team__table__row">
+              <label>refill valore società</label>
+              <span>{{InfoSquadra.Finanze.RefillValoreSocieta}} €</span>
+            </div>
+            <div class="team__table__row">
+              <label>refill stadio</label>
+              <span>{{InfoSquadra.Finanze.RefillStadio}} €</span>
+            </div>
+            <div class="team__table__row">
+              <label>refill stipendi</label>
+              <span>{{InfoSquadra.Finanze.RefillStipendi}} €</span>
+            </div>
+            <div class="team__table__row">
+              <label>monte stipendi</label>
+              <span>{{InfoSquadra.Finanze.MonteStipendi}} €</span>
+            </div>
+            <div class="team__table__row">
+              <label>bilancio mercato</label>
+              <span>{{InfoSquadra.Finanze.BilancioMercato}} €</span>
+            </div>
+            <div class="team__table__row-last">
+              <label>fair play finanziario</label>
+              <span>{{InfoSquadra.Finanze.FairPlayFinanziario}} €</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="team__autocomplete">
+    <div class="container">
+      <div class="row">
+        <div class="col-12 pt-5 pb-5">
+          <ejs-autocomplete #autocompleteGiocatore [dataSource]='dataListaGiocatori | async' [fields]='giocatoreFields' [placeholder]='giocatoreWaterMark' (change)='onChangeGiocatore($event)'></ejs-autocomplete>
+          <div class="table__team__head">
+            <div class="id">Id</div>
+            <div class="state">Stato</div>
+            <div class="under22">U22</div>
+            <div class="role">Ruolo</div>
+            <div class="age">Età</div>
+            <div class="fullname">Nome</div>
+            <div class="value">VDM</div>
+            <div class="salary">Stipendio</div>
+            <div class="month">Mesi</div>
+            <div class="actions">Azioni</div>
+          </div>
+          <ejs-listbox #listSquadraRelGiocatori [fields]='fieldsSquadraRelGiocatori' [dataSource]='dataSquadraRelGiocatori'>
+            <ng-template #itemTemplate let-giocatore>
+              <div class="list-wrapper">
+                <div class="id"> {{giocatore.Id}} </div>
+                <div class="state"> {{giocatore.Stato}} </div>
+                <div class="under22"> {{giocatore.U22 === true ? "U22" : ""}} </div>
+                <div class="role"> {{giocatore.Ruolo}} </div>
+                <div class="age"> {{giocatore.Eta === 0 ? "" : giocatore.Eta}} </div>
+                <div class="fullname"> {{giocatore.NomeCompleto}} </div>
+                <div class="value"> € {{giocatore.ValoreDiMercato}} </div>
+                <div class="salary"> € {{giocatore.Stipendio}} </div>
+                <div class="month"> {{giocatore.Mesi}} </div>
+                <div class="actions"><span (click)='openModal(giocatore)'><mat-icon>aspect_ratio</mat-icon></span>&nbsp;&nbsp;&nbsp;<span (click)='removePlayer($event)'><mat-icon>delete</mat-icon></span></div>
+              </div>
+            </ng-template>
+          </ejs-listbox>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+

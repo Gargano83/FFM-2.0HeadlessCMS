@@ -26,6 +26,7 @@ scaffolding che legge la struttura reale del database via `sys.*`.
   - [5. Menu di navigazione](#5-menu-di-navigazione)
   - [6. Editor avanzati (file, rich text, autocomplete FK)](#6-editor-avanzati-file-rich-text-autocomplete-fk)
   - [7. Localizzazione legacy "a chiave condivisa"](#7-localizzazione-legacy-a-chiave-condivisa)
+  - [8. Modulo FFM — componenti Angular/Syncfusion dedicati](#8-modulo-ffm--componenti-angularsyncfusion-dedicati)
 - [Sicurezza: come viene evitato SQL injection nel CRUD dinamico](#sicurezza-come-viene-evitato-sql-injection-nel-crud-dinamico)
 - [Roadmap](#roadmap)
 
@@ -358,7 +359,89 @@ essere associata a uno o più `FieldDefinition` dal wizard di scaffolding.
   sorgente è obbligatorio per poter creare nuovo contenuto (altrimenti viene
   sollevata un'eccezione esplicita in fase di configurazione).
 
-## Sicurezza: come viene evitato SQL injection nel CRUD dinamico
+## 8. Modulo FFM — componenti Angular/Syncfusion dedicati
+
+Percorso backoffice: sidebar **FFM** (riservato a `CmsAdmin`).
+
+Alcune tabelle applicative legacy hanno esigenze di UI troppo specifiche per
+il CRUD generico metadata-driven (griglie con editing inline avanzato, import
+massivo da Excel, logiche di dominio non riconducibili a un semplice
+`EditorType`). Per questi casi il CMS prevede un **modulo opzionale**,
+`DAMIHeadlessCMS.Admin.Ffm`, che ospita pagine dedicate basate su componenti
+Angular + Syncfusion (licenza community), sostituendo integrazioni legacy
+"arcaiche" (iniezione di un `index.html` compilato intero dentro un'altra
+pagina, configurazione via variabili JS globali).
+
+Il modulo è **opt-in**: va abilitato esplicitamente dall'host, solo se
+effettivamente ospita lo schema `FFM.*`:
+
+```csharp
+builder.Services.AddDAMIHeadlessCMSData(connectionString);
+builder.Services.AddDAMIHeadlessCMSAdmin(connectionString);
+builder.Services.AddDAMIHeadlessCMSFfm(connectionString);
+```
+
+E in configurazione (per la licenza community Syncfusion, mai hardcoded):
+
+```json
+{
+  "DAMIHeadlessCMS": {
+    "Ffm": { "SyncfusionLicenseKey": "LA-TUA-CHIAVE-COMMUNITY" }
+  }
+}
+```
+
+### Come funziona l'integrazione Angular
+
+Ogni componente è compilato come **Custom Element** (Web Component nativo,
+via `@angular/elements`) — non più come un'app Angular "intera" bootstrappata
+sull'intera pagina. Questo significa:
+
+- Si monta con un semplice tag HTML nella Razor view, es.
+  `<dami-ffm-giocatori-grid api-base-url="/dami/ffm/api/giocatori"></dami-ffm-giocatori-grid>`.
+- I parametri sono attributi HTML, non variabili globali (`window.appSettings`
+  come nella vecchia integrazione).
+- Il bundle è compilato come **file singolo** (`ngx-build-plus`, opzioni
+  `singleBundle`+`bundleStyles`), copiato in
+  `DAMIHeadlessCMS.Admin/wwwroot/ffm-widgets/{nome}/` e servito automaticamente
+  dalla Razor Class Library all'indirizzo
+  `_content/DAMIHeadlessCMS.Admin/ffm-widgets/{nome}/main.js`.
+- Il progetto Angular sorgente vive **dentro lo stesso progetto .NET**, in
+  `src/DAMIHeadlessCMS.Admin/ClientApp/syncfusion-tfl-app/` — versionato in
+  git ma **esplicitamente escluso** dal `.csproj` (`Compile Remove`/
+  `Content Remove`/`None Remove` su `ClientApp/**`), così MSBuild non lo
+  compila, non lo pubblica e non lo include mai in un `dotnet pack`: resta
+  puro codice sorgente Node/Angular, con un proprio ciclo di build separato
+  (`npm install && npm run build:...`) e un proprio README con le istruzioni.
+  `node_modules/`, `dist/` e `.angular/` di ogni app Angular sotto `ClientApp/`
+  sono in `.gitignore`.
+
+### 8.1 Database Giocatori (`FFM.Giocatori`)
+
+Percorso: `/dami/ffm/giocatori`.
+
+Griglia CRUD completa (creazione, modifica, cancellazione, ricerca, export ed
+**import da Excel**) su `FFM.Giocatori`. Il backend è un modulo dedicato
+(non generico) perché la logica non è riconducibile al CRUD metadata-driven:
+
+- `FfmGiocatoriRepository` (ADO.NET parametrico) espone le operazioni CRUD e
+  l'import massivo.
+- `FfmGiocatoriApiController` (`/dami/ffm/api/giocatori`) espone l'API REST
+  consumata dal componente Angular.
+- `FfmController` (`/dami/ffm/giocatori`) serve la pagina che monta il Custom
+  Element.
+
+> ⚠️ **Comportamento ereditato dal sistema legacy**: l'import da Excel
+> **sincronizza integralmente** `FFM.Giocatori` con il contenuto del file
+> caricato — i giocatori presenti a database ma assenti dal file vengono
+> **eliminati**. Il comportamento è stato preservato identico per continuità
+> operativa; la UI richiede conferma esplicita prima di procedere.
+
+### 8.2 Rosa Squadra (`FFM.SquadreRelGiocatori`) — pianificato
+
+Non ancora implementato — vedi `docs/ROADMAP.md`, fase 7.2.
+
+
 
 Poiché le tabelle applicative non sono mappate da EF Core, `GenericEntityRepository`
 costruisce SQL dinamico. Le regole seguite ovunque nel codice sono:

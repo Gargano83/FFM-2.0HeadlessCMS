@@ -23,4 +23,71 @@
     <ProjectReference Include="..\DAMIHeadlessCMS.Scaffolding\DAMIHeadlessCMS.Scaffolding.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Ffm\Controllers\" />
+    <Folder Include="Ffm\Data\" />
+    <Folder Include="Ffm\Models\" />
+    <Folder Include="Views\Ffm\" />
+  </ItemGroup>
+
+  <!--
+    ClientApp contiene i sorgenti Angular (progetti npm/Node) dei componenti
+    Syncfusion del modulo FFM (vedi Ffm/ e docs/ROADMAP.md, fase 7). È codice
+    versionato in git ma NON deve mai essere processato da MSBuild: né
+    compilato, né incluso in publish/pack. L'unico artefatto che la libreria
+    .NET consuma è il bundle già compilato in wwwroot/ffm-widgets/, copiato
+    lì manualmente (o da una pipeline CI dedicata) dopo `npm run build`.
+  -->
+  <ItemGroup>
+    <Compile Remove="ClientApp/**" />
+    <Content Remove="ClientApp/**" />
+    <None Remove="ClientApp/**" />
+    <EmbeddedResource Remove="ClientApp/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Remove="wwwroot\ffm-widgets\giocatori\main.js" />
+    <Content Remove="wwwroot\ffm-widgets\giocatori\polyfills.js" />
+    <Content Remove="wwwroot\ffm-widgets\giocatori\runtime.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ClientApp\syncfusion-tfl-app\angular.json" />
+    <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\3rdpartylicenses.txt" />
+    <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\favicon.ico" />
+    <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\index.html" />
+    <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\styles.css" />
+    <Content Include="ClientApp\syncfusion-tfl-app\package-lock.json" />
+    <Content Include="ClientApp\syncfusion-tfl-app\package.json" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\app\app.component.css" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\app\app.component.html" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\app\giocatori\giocatori.component.css" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\app\giocatori\giocatori.component.html" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\favicon.ico" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\index.html" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.css" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.html" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\styles.css" />
+    <Content Include="ClientApp\syncfusion-tfl-app\tsconfig.app.json" />
+    <Content Include="ClientApp\syncfusion-tfl-app\tsconfig.json" />
+    <Content Include="ClientApp\syncfusion-tfl-app\tsconfig.spec.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClientApp\syncfusion-tfl-app\.editorconfig" />
+    <None Include="ClientApp\syncfusion-tfl-app\.gitignore" />
+    <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\main.js" />
+    <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\polyfills.js" />
+    <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\runtime.js" />
+    <None Include="ClientApp\syncfusion-tfl-app\README.md" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\app\app.component.spec.ts" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\app\app.component.ts" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\app\app.module.ts" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\app\giocatori\giocatori.component.ts" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\assets\.gitkeep" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\main.ts" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.spec.ts" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.ts" />
+    <None Include="wwwroot\ffm-widgets\giocatori\main.js" />
+    <None Include="wwwroot\ffm-widgets\giocatori\polyfills.js" />
+    <None Include="wwwroot\ffm-widgets\giocatori\runtime.js" />
+  </ItemGroup>
+
 </Project>

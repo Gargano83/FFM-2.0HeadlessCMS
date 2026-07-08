@@ -1,0 +1,55 @@
+@import "~bootstrap/dist/css/bootstrap.css";
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@200;400;600;700;900&display=swap');
+
+@import "~@angular/material/prebuilt-themes/indigo-pink.css";
+
+/*
+  Stili dei componenti Syncfusion EJ2 (tema bootstrap5), uno per pacchetto.
+  Sostituiscono il vecchio <link href="https://cdn.syncfusion.com/ej2/bootstrap5.css">
+  (bundle combinato via CDN): importandoli qui finiscono dentro il bundle
+  Angular stesso (bundleStyles li inlinea in main.js), garantendo che la
+  versione del CSS coincida sempre con quella dei pacchetti npm installati,
+  senza dipendere da una CDN esterna per un tool di backoffice.
+*/
+@import "~@syncfusion/ej2-base/styles/bootstrap5.css";
+@import "~@syncfusion/ej2-inputs/styles/bootstrap5.css";
+@import "~@syncfusion/ej2-buttons/styles/bootstrap5.css";
+@import "~@syncfusion/ej2-splitbuttons/styles/bootstrap5.css";
+@import "~@syncfusion/ej2-popups/styles/bootstrap5.css";
+@import "~@syncfusion/ej2-navigations/styles/bootstrap5.css";
+@import "~@syncfusion/ej2-calendars/styles/bootstrap5.css";
+@import "~@syncfusion/ej2-dropdowns/styles/bootstrap5.css";
+@import "~@syncfusion/ej2-grids/styles/bootstrap5.css";
+
+/* You can add global styles to this file, and also import other style files */
+html, body {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    font-family: 'Titillium Web', 'sans serif';
+}
+h1 {
+    width: 95%;
+    margin: 20px auto;
+}
+.e-grid {
+  margin: auto;
+}
+
+.e-toolbar .e-toolbar-items {
+  height: auto;
+}
+
+.cdk-overlay-dark-backdrop {
+  background: rgb(42, 42, 57, 0.7) !important;
+}
+
+/* fix modale scroll */
+@media (max-width: 768px) {
+  .mat-mdc-dialog-container {
+    position: fixed !important;
+    left: auto !important;
+    right: auto !important;
+    overflow-y: scroll;
+  }
+}

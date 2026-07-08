@@ -5,6 +5,13 @@ obj/
 
 ## Connection string reale con credenziali: mai in git.
 ## Solo appsettings.example.json (senza segreti) va versionato.
-src/MyCms.Data/appsettings.json
-src/MyCms.Scaffolding.ConsoleTest/appsettings.json
-/src/MyCms.TestHost/appsettings.json
+src/DAMIHeadlessCMS.Data/appsettings.json
+/src/DAMIHeadlessCMS.TestHost/appsettings.json
+/src/DAMIHeadlessCMS.TestHost/appsettings.Development.json
+
+## Angular (ClientApp dei componenti Syncfusion, modulo FFM)
+## Sorgente versionato, ma dipendenze e output di build NO:
+## il bundle finale va copiato manualmente in wwwroot/ffm-widgets/*.
+src/DAMIHeadlessCMS.Admin/ClientApp/**/node_modules/
+src/DAMIHeadlessCMS.Admin/ClientApp/**/dist/
+src/DAMIHeadlessCMS.Admin/ClientApp/**/.angular/
