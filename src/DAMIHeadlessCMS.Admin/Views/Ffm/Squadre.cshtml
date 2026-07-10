@@ -1,0 +1,74 @@
+﻿@model IReadOnlyList<DAMIHeadlessCMS.Admin.Ffm.Models.SquadraListItemDto>
+@{
+    ViewData["Title"] = "Squadre";
+    Guid? squadreEntityId = ViewBag.SquadreEntityId;
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/dami">Entità</a></li>
+            <li class="breadcrumb-item active">FFM · Squadre</li>
+        </ol>
+    </nav>
+    <h1 class="h3 mb-0">Squadre</h1>
+    <p class="text-muted mb-0">
+        Il dato anagrafico di ciascuna squadra (presidente, allenatore, logo, ecc.)
+        è gestito dal CRUD generico del CMS; da qui si accede anche alla gestione
+        della rosa giocatori.
+    </p>
+</div>
+
+@if (squadreEntityId is null)
+{
+    <div class="alert alert-warning d-flex align-items-start gap-2">
+        <i class="bi bi-exclamation-triangle mt-1"></i>
+        <div>
+            La tabella <code>FFM.Squadre</code> non risulta ancora scaffoldata: il link
+            "Modifica dati" non è disponibile finché non la configuri dal
+            <a href="/dami/scaffolding">wizard di scaffolding</a>.
+        </div>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Presidente</th>
+                    <th>Allenatore</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var squadra in Model)
+                {
+                    <tr>
+                        <td class="fw-medium">@squadra.Nome</td>
+                        <td>@(squadra.Presidente ?? "—")</td>
+                        <td>@(squadra.Allenatore ?? "—")</td>
+                        <td class="text-end">
+                            @if (squadreEntityId is not null)
+                            {
+                                <a href="/dami/@squadreEntityId/edit/@squadra.Id" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-pencil me-1"></i> Modifica dati
+                                </a>
+                            }
+                            <a href="/dami/ffm/squadre/@squadra.Id/rosa" class="btn btn-sm btn-primary">
+                                <i class="bi bi-people me-1"></i> Rosa
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">Nessuna squadra trovata.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

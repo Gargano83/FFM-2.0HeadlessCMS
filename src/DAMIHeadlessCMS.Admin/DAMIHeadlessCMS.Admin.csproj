@@ -48,6 +48,9 @@
     <Content Remove="wwwroot\ffm-widgets\giocatori\main.js" />
     <Content Remove="wwwroot\ffm-widgets\giocatori\polyfills.js" />
     <Content Remove="wwwroot\ffm-widgets\giocatori\runtime.js" />
+    <Content Remove="wwwroot\ffm-widgets\squadra\main.js" />
+    <Content Remove="wwwroot\ffm-widgets\squadra\polyfills.js" />
+    <Content Remove="wwwroot\ffm-widgets\squadra\runtime.js" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="ClientApp\syncfusion-tfl-app\angular.json" />
@@ -55,12 +58,18 @@
     <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\favicon.ico" />
     <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\index.html" />
     <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\styles.css" />
+    <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\squadra\3rdpartylicenses.txt" />
+    <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\squadra\favicon.ico" />
+    <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\squadra\index.html" />
+    <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\squadra\styles.css" />
     <Content Include="ClientApp\syncfusion-tfl-app\package-lock.json" />
     <Content Include="ClientApp\syncfusion-tfl-app\package.json" />
     <Content Include="ClientApp\syncfusion-tfl-app\src\app\app.component.css" />
     <Content Include="ClientApp\syncfusion-tfl-app\src\app\app.component.html" />
     <Content Include="ClientApp\syncfusion-tfl-app\src\app\giocatori\giocatori.component.css" />
     <Content Include="ClientApp\syncfusion-tfl-app\src\app\giocatori\giocatori.component.html" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\app\squadra-roster\squadra-roster.component.css" />
+    <Content Include="ClientApp\syncfusion-tfl-app\src\app\squadra-roster\squadra-roster.component.html" />
     <Content Include="ClientApp\syncfusion-tfl-app\src\favicon.ico" />
     <Content Include="ClientApp\syncfusion-tfl-app\src\index.html" />
     <Content Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.css" />
@@ -76,18 +85,27 @@
     <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\main.js" />
     <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\polyfills.js" />
     <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\runtime.js" />
+    <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\squadra\main.js" />
+    <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\squadra\polyfills.js" />
+    <None Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\squadra\runtime.js" />
     <None Include="ClientApp\syncfusion-tfl-app\README.md" />
     <None Include="ClientApp\syncfusion-tfl-app\src\app\app.component.spec.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\app\app.component.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\app\app.module.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\app\giocatori\giocatori.component.ts" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\app\squadra-roster\squadra-roster.component.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\assets\.gitkeep" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\main-squadra.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\main.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.spec.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.ts" />
+    <None Include="ClientApp\syncfusion-tfl-app\src\polyfills.ts" />
     <None Include="wwwroot\ffm-widgets\giocatori\main.js" />
     <None Include="wwwroot\ffm-widgets\giocatori\polyfills.js" />
     <None Include="wwwroot\ffm-widgets\giocatori\runtime.js" />
+    <None Include="wwwroot\ffm-widgets\squadra\main.js" />
+    <None Include="wwwroot\ffm-widgets\squadra\polyfills.js" />
+    <None Include="wwwroot\ffm-widgets\squadra\runtime.js" />
   </ItemGroup>
 
 </Project>

@@ -67,6 +67,15 @@
               "aot": true,
               "extractLicenses": true,
               "sourceMap": false
+            },
+            "squadra-widget": {
+              "main": "src/main-squadra.ts",
+              "outputPath": "dist/ffm-widgets/squadra",
+              "outputHashing": "none",
+              "optimization": true,
+              "aot": true,
+              "extractLicenses": true,
+              "sourceMap": false
             }
           },
           "defaultConfiguration": "production"

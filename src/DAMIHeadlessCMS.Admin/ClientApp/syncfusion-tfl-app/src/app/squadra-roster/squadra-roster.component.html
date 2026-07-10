@@ -1,0 +1,101 @@
+<div class="dami-squadra-roster">
+  <div *ngIf="loadError" class="dami-alert dami-alert-error">{{ loadError }}</div>
+
+  <div class="dami-info-grid" *ngIf="info as i">
+    <div class="dami-info-card">
+      <div class="dami-info-card__title">{{ i.nomeSquadra }}</div>
+      <div class="dami-info-row"><label>Presidente</label><span>{{ i.presidente || '—' }}</span></div>
+      <div class="dami-info-row"><label>Vice presidente</label><span>{{ i.vicePresidente || '—' }}</span></div>
+      <div class="dami-info-row"><label>Allenatore</label><span>{{ i.allenatore || '—' }}</span></div>
+      <div class="dami-info-row">
+        <label></label>
+        <span>{{ i.durataContrattoAllenatore }} &middot; {{ formatCurrency(i.stipendioAllenatore) }}</span>
+      </div>
+      <div class="dami-info-counters">
+        <div><span>{{ i.tesserati }}</span><label>Tesserati</label></div>
+        <div><span>{{ i.inPrestito }}</span><label>In prestito</label></div>
+        <div><span>{{ i.inRosa }}</span><label>In rosa</label></div>
+        <div><span>{{ i.aPrestito }}</span><label>A prestito</label></div>
+        <div><span>{{ i.listaA }}</span><label>Lista A</label></div>
+        <div><span>{{ i.under22InRosa }}</span><label>Under 22 in rosa</label></div>
+      </div>
+    </div>
+
+    <div class="dami-info-card">
+      <div class="dami-info-card__title">Finanze {{ i.nomeSquadra }}</div>
+      <div class="dami-info-row"><label>Rimanenza stagione precedente</label><span>{{ formatCurrency(i.rimanenzaStagionePrecedente) }}</span></div>
+      <div class="dami-info-row"><label>Refill ranking</label><span>{{ formatCurrency(i.refillRanking) }}</span></div>
+      <div class="dami-info-row"><label>Refill valore società</label><span>{{ formatCurrency(i.refillValoreSocieta) }}</span></div>
+      <div class="dami-info-row"><label>Refill stadio</label><span>{{ formatCurrency(i.refillStadio) }}</span></div>
+      <div class="dami-info-row"><label>Refill stipendi</label><span>{{ formatCurrency(i.refillStipendi) }}</span></div>
+      <div class="dami-info-row"><label>Monte stipendi andata</label><span>{{ formatCurrency(i.monteStipendiAndata) }}</span></div>
+      <div class="dami-info-row"><label>Monte stipendi ritorno</label><span>{{ formatCurrency(i.monteStipendiRitorno) }}</span></div>
+      <div class="dami-info-row"><label>Bilancio mercato</label><span>{{ formatCurrency(i.bilancioMercato) }}</span></div>
+      <div class="dami-info-row dami-info-row--total"><label>Fair play finanziario</label><span>{{ formatCurrency(i.fairPlayFinanziario) }}</span></div>
+    </div>
+  </div>
+
+  <div class="dami-add-player">
+    <label class="dami-add-player__label">Aggiungi giocatore svincolato alla rosa</label>
+    <ejs-autocomplete
+      #autocompleteGiocatore
+      placeholder="Cerca un giocatore..."
+      [dataSource]="giocatoriSvincolati"
+      [fields]="autocompleteFields"
+      (select)="onSelectGiocatoreSvincolato($event)"></ejs-autocomplete>
+  </div>
+
+  <ejs-grid
+    #gridRosa
+    [dataSource]="rosa"
+    [allowSorting]="true"
+    [detailTemplate]="detailTemplate"
+    (commandClick)="onCommandClick($event)"
+    width="100%">
+    <e-columns>
+      <e-column field="stato" headerText="Stato" width="110"></e-column>
+      <e-column headerText="U22" width="60" textAlign="Center" [template]="u22Template"></e-column>
+      <e-column field="ruolo" headerText="Ruolo" width="110"></e-column>
+      <e-column field="eta" headerText="Età" width="70" textAlign="Center"></e-column>
+      <e-column field="nomeCompleto" headerText="Nome" width="160"></e-column>
+      <e-column field="valoreDiMercato" headerText="VDM" width="110" [template]="valoreTemplate"></e-column>
+      <e-column field="stipendio" headerText="Stipendio" width="110" [template]="stipendioTemplate"></e-column>
+      <e-column field="mesi" headerText="Mesi" width="70" textAlign="Center"></e-column>
+      <e-column headerText="Azioni" width="90" textAlign="Center" [commands]="commands"></e-column>
+    </e-columns>
+  </ejs-grid>
+
+  <ng-template #u22Template let-data>
+    <span class="dami-badge" *ngIf="data.u22">U22</span>
+  </ng-template>
+
+  <ng-template #valoreTemplate let-data>{{ formatCurrency(data.valoreDiMercato) }}</ng-template>
+  <ng-template #stipendioTemplate let-data>{{ formatCurrency(data.stipendio) }}</ng-template>
+
+  <ng-template #detailTemplate let-data>
+    <div class="dami-detail-panel">
+      <div class="dami-detail-panel__row">
+        <div><label>Nome</label><div>{{ data.nomeCompleto }}</div></div>
+        <div><label>Ruolo</label><div>{{ data.ruolo || '—' }}</div></div>
+        <div><label>Data di nascita</label><div>{{ data.dataDiNascita ? (data.dataDiNascita | date:'dd/MM/yyyy') : '—' }}</div></div>
+        <div><label>Valore di mercato</label><div>{{ formatCurrency(data.valoreDiMercato) }}</div></div>
+        <div><label>Stipendio</label><div>{{ formatCurrency(data.stipendio) }}</div></div>
+      </div>
+      <div class="dami-detail-panel__row dami-detail-panel__row--edit">
+        <div>
+          <label for="stato_{{data.id}}">Stato</label>
+          <select id="stato_{{data.id}}" class="dami-select" [(ngModel)]="data.stato">
+            <option *ngFor="let stato of statiGiocatore" [value]="stato">{{ stato }}</option>
+          </select>
+        </div>
+        <div>
+          <label for="mesi_{{data.id}}">Mesi</label>
+          <input type="number" id="mesi_{{data.id}}" class="dami-input" min="0" max="12" [(ngModel)]="data.mesi" />
+        </div>
+        <div class="dami-detail-panel__actions">
+          <button type="button" class="dami-btn dami-btn--primary" (click)="salvaDettaglio(data)">Salva</button>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+</div>

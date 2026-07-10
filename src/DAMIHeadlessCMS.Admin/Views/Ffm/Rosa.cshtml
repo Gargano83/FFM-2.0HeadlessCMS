@@ -1,0 +1,44 @@
+﻿@{
+    ViewData["Title"] = "Rosa squadra";
+    int idSquadra = ViewBag.IdSquadra;
+}
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="/dami">Entità</a></li>
+            <li class="breadcrumb-item"><a href="/dami/ffm/squadre">FFM · Squadre</a></li>
+            <li class="breadcrumb-item active">Rosa</li>
+        </ol>
+    </nav>
+    <h1 class="h3 mb-0">Rosa squadra</h1>
+    <p class="text-muted mb-0">
+        Informazioni, finanze e gestione dei giocatori in rosa per la stagione attiva.
+    </p>
+</div>
+
+<div class="card border-0 shadow-sm p-3 p-md-4">
+    <!--
+        Stesso principio del componente Giocatori: Custom Element indipendente,
+        parametrizzato via attributo HTML (idsquadra), nessuna variabile globale.
+    -->
+    <dami-ffm-squadra-roster
+        api-base-url="/dami/ffm/api/squadre"
+        idsquadra="@idSquadra"></dami-ffm-squadra-roster>
+</div>
+
+@section Scripts {
+    <!--
+        Bundle dedicato (configurazione "squadra-widget", stesso principio di
+        quella "giocatori-widget"): 4 file, ordine di caricamento importante
+        (runtime.js, poi polyfills.js, poi main.js). "?v=..." da incrementare
+        a ogni nuova build per bypassare la cache del browser durante il debug.
+    -->
+    <link href="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/styles.css?v=1" rel="stylesheet" />
+    <script>
+        window.DAMI_SYNCFUSION_LICENSE = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.SyncfusionLicenseKey ?? ""));
+    </script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/runtime.js?v=1" type="module"></script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/polyfills.js?v=1" type="module"></script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/main.js?v=1" type="module"></script>
+}

@@ -6,6 +6,7 @@
     "start": "ng serve",
     "build": "ng build",
     "build:giocatori-widget": "ng build --configuration=giocatori-widget",
+    "build:squadra-widget": "ng build --configuration=squadra-widget",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

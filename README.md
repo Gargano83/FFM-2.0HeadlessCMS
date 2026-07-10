@@ -437,11 +437,52 @@ Griglia CRUD completa (creazione, modifica, cancellazione, ricerca, export ed
 > **eliminati**. Il comportamento è stato preservato identico per continuità
 > operativa; la UI richiede conferma esplicita prima di procedere.
 
-### 8.2 Rosa Squadra (`FFM.SquadreRelGiocatori`) — pianificato
+### 8.2 Rosa Squadra (`FFM.SquadreRelGiocatori`)
 
-Non ancora implementato — vedi `docs/ROADMAP.md`, fase 7.2.
+Percorso: `/dami/ffm/squadre` (elenco) → `/dami/ffm/squadre/{id}/rosa` (rosa).
 
+Il dato anagrafico di `FFM.Squadre` (presidente, allenatore, logo, nome
+localizzato, ecc.) è gestito dal **CRUD generico** una volta scaffoldata la
+tabella — nessun codice ad hoc duplicato per quella parte. La pagina indice
+`/dami/ffm/squadre` (`FfmController.Squadre`) elenca le squadre e linka sia
+la vista Edit generica (se scaffoldata) sia la pagina "Rosa". Solo la
+gestione della rosa resta un modulo Angular/Syncfusion dedicato, perché la
+UI (grid con riga di dettaglio espandibile, autocomplete giocatori
+svincolati, pannello finanziario aggregato) non è riconducibile agli
+`EditorType` standard:
 
+- `FfmSquadraRepository` (ADO.NET parametrico) espone InfoSquadra aggregata
+  (conteggi Tesserati/InRosa/ListaA/Under22 per la stagione attiva), la rosa,
+  il dettaglio di un giocatore in rosa, i giocatori svincolati, e le
+  operazioni di aggiunta/rimozione/aggiornamento.
+- `FfmSquadreApiController` (`/dami/ffm/api/squadre/*`) espone l'API REST
+  consumata dal componente Angular.
+- `FfmController.Squadre`/`Rosa` servono le due pagine di backoffice.
+
+**Localizzazione del nome squadra**: riusa **as-is** la funzione SQL legacy
+`dbo.udf_Localize` (nessuna reimplementazione della logica di
+localizzazione), con l'id lingua di default passato come parametro a
+`AddDAMIHeadlessCMSFfm(connectionString, defaultLanguageId)`.
+
+**Tracciamento utente legacy**: `FFM.SquadreRelGiocatori.IdUtente` viene
+popolato risolvendo l'email dell'utente CMS loggato (`CmsUser.Email`)
+all'Id utente corrispondente in `dbo.WN_UTENTI` (`IFfmUserResolver`,
+corrispondenza 1:1 via `UT_Email`/`UT_ID`). Se l'utente CMS non ha una
+corrispondenza in `WN_UTENTI`, `IdUtente` viene scritto `NULL` — l'assenza
+di mapping non blocca l'operazione.
+
+Il vecchio popup Angular Material per il dettaglio giocatore-squadra è stato
+**sostituito** da una riga di dettaglio espandibile della Grid stessa
+(funzionalità nativa di Syncfusion Grid): stesso risultato funzionale
+(visualizzare/modificare Stato e Mesi di un giocatore in rosa), una
+dipendenza in meno da mantenere nel bundle Angular.
+
+> Il flag `AbilitaModifica` (letto da `FFM.Squadre`) è incluso nel DTO
+> `InfoSquadra` così com'è, ma **non limita alcuna azione nel backoffice**:
+> governa l'area riservata front-end (fuori dal perimetro del CMS), dove
+> l'accesso al backoffice è già filtrato dal ruolo `CmsAdmin`.
+
+## Sicurezza: come viene evitato SQL injection nel CRUD dinamico
 
 Poiché le tabelle applicative non sono mappate da EF Core, `GenericEntityRepository`
 costruisce SQL dinamico. Le regole seguite ovunque nel codice sono:
@@ -454,14 +495,14 @@ costruisce SQL dinamico. Le regole seguite ovunque nel codice sono:
 - I **valori** (compreso l'id nella clausola `WHERE`) sono **sempre** passati
   come `SqlParameter` tipizzati in base al tipo SQL reale della colonna, mai
   concatenati come stringa nel testo della query.
-- Il `DefaultLanguageId` di una `LocalizationSource` — l'unico "numero" mai
-  incorporato direttamente nel testo SQL anziché come parametro — è un
-  metadato configurato solo da `CmsAdmin`, non input utente a runtime.
+- Il `DefaultLanguageId` di una `LocalizationSource` (o l'analogo id lingua
+  del modulo FFM) — gli unici "numeri" mai incorporati direttamente nel testo
+  SQL anziché come parametro — sono metadati/configurazione impostati solo da
+  `CmsAdmin`/in fase di avvio, non input utente a runtime.
 
 ## Roadmap
 
-Lo stato dettagliato di ogni fase (comprese le prossime: pagine di
-amministrazione con componenti Angular/Syncfusion dedicati per
-`FFM.Giocatori` e `FFM.SquadreRelGiocatori`, e la voce di menu verso il
-"Regolamento" pubblicato dal progetto host) è tracciato in
-[`docs/ROADMAP.md`](docs/ROADMAP.md).
+Lo stato dettagliato di ogni fase (comprese le prossime: localizzazione
+multi-lingua nel backoffice e ulteriori espansioni del modulo FFM) è
+tracciato in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
