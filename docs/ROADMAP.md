@@ -167,6 +167,13 @@ metadati salvati nello schema `cms.*` del database).
       configurazione), stesso pattern già usato per `SeedAdmin`, ora applicato
       anche a `SeedEditor`/`SeedOperator` in `appsettings` — ogni blocco è
       indipendente e facoltativo.
+- [x] **11. Riordino sezioni sidebar**: ordine definitivo del menu laterale —
+      **Amministrazione → Struttura → FFM → Contenuti → Dati** (in precedenza
+      era Struttura, Contenuti, Dati, FFM, Amministrazione). Nessuna modifica
+      di logica: solo riposizionamento dei blocchi `<div class="cms-nav-section">`
+      in `_Layout.cshtml`, le condizioni di visibilità per ruolo (Amministrazione
+      e FFM visibili a `CmsAdmin`/`CmsOperator`, Scaffolding solo a `CmsAdmin`)
+      restano quelle introdotte in fase 9.
 
 ## Prossime fasi
 
@@ -176,9 +183,6 @@ metadati salvati nello schema `cms.*` del database).
       un parametro fisso passato a `AddDAMIHeadlessCMSFfm`). Un selettore
       lingua nel backoffice (per editor multi-lingua sui campi localizzati)
       resta fuori dal perimetro attuale, deferita a quando servirà davvero.
-- [ ] **11. Riordino sezioni sidebar**: ordine definitivo delle sezioni del
-      menu laterale — Amministrazione, Struttura, FFM, Contenuti, Dati (oggi
-      l'ordine è Struttura, Contenuti, Dati, FFM, Amministrazione).
 - [ ] **12. Unicità URL nella creazione del menu**: validazione che impedisca
       la creazione di voci di menu (pagine/link esterni) con `Slug`/URL
       duplicati all'interno dell'albero — rilevante soprattutto in vista di
