@@ -174,6 +174,45 @@ metadati salvati nello schema `cms.*` del database).
       in `_Layout.cshtml`, le condizioni di visibilità per ruolo (Amministrazione
       e FFM visibili a `CmsAdmin`/`CmsOperator`, Scaffolding solo a `CmsAdmin`)
       restano quelle introdotte in fase 9.
+- [x] **12. Unicità URL nella creazione del menu**: introdotto
+      `InternalUrlPath` (`DAMIHeadlessCMS.Admin.Utilities`), helper condiviso
+      che normalizza e confronta i **percorsi interni** del sito — quelli che
+      iniziano con `/` ma non sono protocol-relative (`//host/...`): i link
+      davvero esterni (`http://`, `https://`, `mailto:`, ecc.) sono esclusi dal
+      controllo perché non competono per lo spazio di URL del CMS.
+  - Le voci di menu `TargetType = Page` erano già "al sicuro" perché lo slug
+    si sceglie da una dropdown alimentata da `CmsPage.Slug`, già validato
+    **globalmente unico** (non solo tra fratelli) fin dalla fase 5 — quindi
+    anche un URL costruito annidando la gerarchia `CmsPage.ParentId`
+    (`/livello1/livello2/pagina`) non può mai collidere, perché lo slug finale
+    è comunque unico su tutto il sito.
+  - Il vero gap era sulle voci `TargetType = ExternalUrl` (testo libero, es.
+    `/regolamento`), prive di qualunque validazione. `MenusController.Save`
+    ora rifiuta (HTTP 400 con messaggio, mostrato dalla UI ad albero del menu)
+    un salvataggio se un percorso interno `ExternalUrl`: è duplicato
+    all'interno dello stesso salvataggio; collide con un `ExternalUrl` di un
+    **altro** menu; oppure collide con lo slug di una `CmsPage` esistente (in
+    quel caso la voce corretta è di tipo "Pagina", non "URL esterno").
+    Speculare: `PagesController` ora rifiuta la creazione/modifica di una
+    `CmsPage` il cui slug collide con un `ExternalUrl` interno già configurato
+    in un menu.
+  - Aggiunto anche un controllo anti-ciclo sulla gerarchia `CmsPage.ParentId`
+    in `PagesController.Edit` (una pagina non può diventare discendente di una
+    propria sotto-pagina), a protezione della coerenza dell'albero — difetto
+    latente scoperto analizzando il caso d'uso, non il cuore della richiesta.
+  - **Nota di progettazione (non implementata in questa fase)** — relazione
+    categoria → documento su dati applicativi (es. `WN_CATEGORIE` → una futura
+    `WN_DOCUMENTI`, non ancora scaffoldata): il CMS non ha oggi alcun concetto
+    di "URL di dettaglio" per un singolo record di una tabella scaffoldata — il
+    menu può linkare solo a una `CmsPage`, a un intero listato `Entity`, o a un
+    `ExternalUrl`, mai a "il record N della tabella X". Un'ipotesi per quando
+    servirà davvero: un nuovo `MenuTargetType.EntityRecord` (o simile) con
+    `TargetValue` nel formato `schema.tabella/{chiaveRecord}`, la cui unicità
+    andrebbe verificata contro lo stesso registro di percorsi interni già
+    introdotto qui (`InternalUrlPath`), più una convenzione di URL per i
+    record scaffoldati da concordare con il progetto host (che è comunque il
+    responsabile ultimo del routing/404, coerentemente con l'architettura
+    "il CMS genera/valida i metadati, l'host renderizza").
 
 ## Prossime fasi
 
@@ -183,12 +222,6 @@ metadati salvati nello schema `cms.*` del database).
       un parametro fisso passato a `AddDAMIHeadlessCMSFfm`). Un selettore
       lingua nel backoffice (per editor multi-lingua sui campi localizzati)
       resta fuori dal perimetro attuale, deferita a quando servirà davvero.
-- [ ] **12. Unicità URL nella creazione del menu**: validazione che impedisca
-      la creazione di voci di menu (pagine/link esterni) con `Slug`/URL
-      duplicati all'interno dell'albero — rilevante soprattutto in vista di
-      relazioni categoria → documento (es. `WN_CATEGORIE` → una futura
-      `WN_DOCUMENTI`, non ancora scaffoldata) dove URL duplicati causerebbero
-      problemi di routing.
 - [ ] **13. `appsettings` per ambiente + pulizia repository**: adozione del
       pattern `appsettings.{Environment}.json` (es.
       `appsettings.Development.json`/`appsettings.Production.json`) al posto

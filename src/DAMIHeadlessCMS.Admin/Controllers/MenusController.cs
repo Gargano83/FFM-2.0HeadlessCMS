@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using DAMIHeadlessCMS.Admin.Utilities;
 using DAMIHeadlessCMS.Admin.ViewModels;
 using DAMIHeadlessCMS.Core.Entities;
+using DAMIHeadlessCMS.Core.Enums;
 using DAMIHeadlessCMS.Data;
 using DAMIHeadlessCMS.Data.Identity;
 
@@ -143,6 +145,12 @@ public class MenusController : Controller
             return NotFound();
         }
 
+        var validationError = await ValidateInternalUrlUniquenessAsync(menuId, request.Items, ct);
+        if (validationError is not null)
+        {
+            return BadRequest(new { success = false, message = validationError });
+        }
+
         await using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
         var existingItems = await _db.MenuItems.Where(i => i.MenuId == menuId).ToListAsync(ct);
@@ -169,5 +177,62 @@ public class MenusController : Controller
         await transaction.CommitAsync(ct);
 
         return Json(new { success = true });
+    }
+
+    /// <summary>
+    /// Garantisce che i percorsi "interni" (<see cref="InternalUrlPath.IsInternal"/>)
+    /// usati dalle voci ExternalUrl di questo salvataggio siano univoci: né
+    /// duplicati tra loro, né in conflitto con voci ExternalUrl di ALTRI menu
+    /// (questo menu viene comunque sovrascritto per intero da questo save), né
+    /// con lo slug di una CmsPage esistente — in quel caso la voce corretta è
+    /// una voce di tipo "Pagina", non "URL esterno". I link davvero esterni
+    /// (http/https/mailto/ecc.) non sono toccati da questo controllo.
+    /// Restituisce il messaggio d'errore da mostrare, o null se tutto ok.
+    /// </summary>
+    private async Task<string?> ValidateInternalUrlUniquenessAsync(Guid menuId, IReadOnlyList<MenuSaveItem> items, CancellationToken ct)
+    {
+        var internalTargets = items
+            .Where(i => i.TargetType == MenuTargetType.ExternalUrl && InternalUrlPath.IsInternal(i.TargetValue))
+            .Select(i => InternalUrlPath.Normalize(i.TargetValue))
+            .ToList();
+
+        var duplicateWithinRequest = internalTargets
+            .GroupBy(p => p, StringComparer.Ordinal)
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicateWithinRequest is not null)
+        {
+            return $"Il percorso '{duplicateWithinRequest.Key}' è usato da più voci in questo menu: dev'essere univoco.";
+        }
+
+        var normalizedPaths = internalTargets.ToHashSet(StringComparer.Ordinal);
+        if (normalizedPaths.Count == 0)
+        {
+            return null;
+        }
+
+        var otherMenuExternalUrls = await _db.MenuItems
+            .Where(i => i.MenuId != menuId && i.TargetType == MenuTargetType.ExternalUrl)
+            .Select(i => i.TargetValue)
+            .ToListAsync(ct);
+
+        var collidingWithOtherMenu = otherMenuExternalUrls
+            .Where(InternalUrlPath.IsInternal)
+            .Select(InternalUrlPath.Normalize)
+            .FirstOrDefault(normalizedPaths.Contains);
+        if (collidingWithOtherMenu is not null)
+        {
+            return $"Il percorso '{collidingWithOtherMenu}' è già usato da una voce di un altro menu.";
+        }
+
+        var pageSlugs = await _db.Pages.Select(p => p.Slug).ToListAsync(ct);
+        var collidingWithPage = pageSlugs
+            .Select(InternalUrlPath.FromPageSlug)
+            .FirstOrDefault(normalizedPaths.Contains);
+        if (collidingWithPage is not null)
+        {
+            return $"Il percorso '{collidingWithPage}' corrisponde già allo slug di una pagina esistente: usa una voce di tipo 'Pagina' invece di 'URL esterno'.";
+        }
+
+        return null;
     }
 }

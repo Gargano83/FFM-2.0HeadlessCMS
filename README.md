@@ -286,8 +286,13 @@ Percorso backoffice: **Contenuti → Pagine** (`/dami/pages`).
 `CmsPage` rappresenta contenuti editoriali non legati a una tabella
 applicativa (es. "Chi siamo"), con:
 
-- Slug univoco, titolo, pagina genitore (struttura ad albero), stato
-  pubblicato/bozza, ordinamento.
+- Slug univoco **globalmente** (non solo tra fratelli: due pagine non possono
+  mai avere lo stesso slug, indipendentemente da dove si trovano nella
+  gerarchia — così un URL costruito annidando gli slug della gerarchia
+  `ParentId`, es. `/livello1/livello2/pagina`, non può mai collidere con un
+  altro), titolo, pagina genitore (struttura ad albero, con controllo
+  anti-ciclo: una pagina non può diventare discendente di una propria
+  sotto-pagina), stato pubblicato/bozza, ordinamento.
 - Contenuto strutturato come **JSON a blocchi** (`ContentJson`), editabile con
   drag&drop (SortableJS) tra tre tipi di blocco:
   - `html`: testo/HTML libero, con editor rich text Quill.
@@ -335,6 +340,31 @@ Un caso d'uso concreto già previsto: pubblicare un contenuto statico esterno
 tipo `wwwroot/regolamento`) semplicemente creando una voce di menu con
 `TargetType = ExternalUrl`, `TargetValue = "/regolamento"` e
 `OpenInNewTab = true` — senza alcuna integrazione aggiuntiva lato CMS.
+
+#### Unicità degli URL
+
+Le voci `TargetType = Page` sono al sicuro "per costruzione": lo slug si
+sceglie da una dropdown alimentata dalle `CmsPage` esistenti, il cui slug è
+già univoco globalmente (vedi sopra). Il caso da validare esplicitamente è
+`TargetType = ExternalUrl` quando il valore è un **percorso interno** del sito
+(inizia con `/`, ma non è protocol-relative `//host/...` — i link davvero
+esterni come `https://...` non competono per lo spazio di URL del CMS e non
+vengono controllati). Il salvataggio del menu (`MenusController.Save`) rifiuta
+(HTTP 400, messaggio mostrato nell'editor ad albero) un percorso interno
+`ExternalUrl` duplicato: tra le voci dello stesso salvataggio, rispetto a un
+altro menu, o rispetto allo slug di una `CmsPage` esistente (in quest'ultimo
+caso la voce corretta è di tipo "Pagina"). Speculare, la creazione/modifica di
+una `CmsPage` (`PagesController`) rifiuta uno slug che collide con un percorso
+interno già usato da una voce `ExternalUrl`. La logica di normalizzazione e
+confronto è centralizzata in `InternalUrlPath`
+(`DAMIHeadlessCMS.Admin.Utilities`), condivisa dai due controller.
+
+> Questo controllo copre lo spazio di URL che il CMS **conosce** (Pagine e
+> Menu). Non copre invece URL "di dettaglio" per singoli record di tabelle
+> applicative scaffoldate (es. una futura pagina categoria/documento): il CMS
+> non ha oggi un concetto di routing per record — vedi la nota di
+> progettazione nella fase 12 di [`docs/ROADMAP.md`](docs/ROADMAP.md) per come
+> si potrebbe estendere in futuro.
 
 ### 6. Editor avanzati (file, rich text, autocomplete FK)
 

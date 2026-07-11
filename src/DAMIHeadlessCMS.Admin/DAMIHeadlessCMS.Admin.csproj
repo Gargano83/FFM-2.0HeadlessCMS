@@ -27,6 +27,7 @@
     <Folder Include="Ffm\Controllers\" />
     <Folder Include="Ffm\Data\" />
     <Folder Include="Ffm\Models\" />
+    <Folder Include="Utilities\" />
     <Folder Include="Views\Ffm\" />
   </ItemGroup>
 

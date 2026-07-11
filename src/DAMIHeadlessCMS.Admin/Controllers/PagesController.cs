@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using DAMIHeadlessCMS.Admin.Utilities;
 using DAMIHeadlessCMS.Admin.ViewModels;
 using DAMIHeadlessCMS.Core.Entities;
+using DAMIHeadlessCMS.Core.Enums;
 using DAMIHeadlessCMS.Data;
 using DAMIHeadlessCMS.Data.Identity;
 
@@ -74,6 +76,15 @@ public class PagesController : Controller
             return View(model);
         }
 
+        var conflictingMenuPath = await FindConflictingInternalMenuPathAsync(model.Slug, ct);
+        if (conflictingMenuPath is not null)
+        {
+            ModelState.AddModelError(nameof(model.Slug),
+                $"Il percorso '{conflictingMenuPath}' è già usato da una voce di menu di tipo 'URL esterno'. Cambia slug o aggiorna quella voce di menu.");
+            await PopulateOptionsAsync(model, excludePageId: null, ct);
+            return View(model);
+        }
+
         var page = new CmsPage
         {
             Id = Guid.NewGuid(),
@@ -140,9 +151,26 @@ public class PagesController : Controller
             return View(model);
         }
 
+        var conflictingMenuPath = await FindConflictingInternalMenuPathAsync(model.Slug, ct);
+        if (conflictingMenuPath is not null)
+        {
+            ModelState.AddModelError(nameof(model.Slug),
+                $"Il percorso '{conflictingMenuPath}' è già usato da una voce di menu di tipo 'URL esterno'. Cambia slug o aggiorna quella voce di menu.");
+            await PopulateOptionsAsync(model, excludePageId: id, ct);
+            return View(model);
+        }
+
         if (model.ParentId == id)
         {
             ModelState.AddModelError(nameof(model.ParentId), "Una pagina non può essere genitrice di se stessa.");
+            await PopulateOptionsAsync(model, excludePageId: id, ct);
+            return View(model);
+        }
+
+        if (model.ParentId.HasValue && await CreatesHierarchyCycleAsync(id, model.ParentId.Value, ct))
+        {
+            ModelState.AddModelError(nameof(model.ParentId),
+                "Questa gerarchia genitore/figlio creerebbe un ciclo (una pagina non può discendere da una propria sotto-pagina).");
             await PopulateOptionsAsync(model, excludePageId: id, ct);
             return View(model);
         }
@@ -197,5 +225,66 @@ public class PagesController : Controller
             .OrderBy(e => e.DisplayName)
             .Select(e => new PageEntityOption(e.SchemaName + "." + e.TableName, e.DisplayName))
             .ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Controlla se lo slug di una pagina, tradotto in percorso interno
+    /// (es. "chi-siamo" → "/chi-siamo"), collide con una voce di menu di tipo
+    /// ExternalUrl già configurata con lo stesso percorso relativo. I link
+    /// davvero esterni (http/https/ecc.) non partecipano a questo controllo:
+    /// vedi <see cref="InternalUrlPath"/>.
+    /// </summary>
+    private async Task<string?> FindConflictingInternalMenuPathAsync(string slug, CancellationToken ct)
+    {
+        var targetPath = InternalUrlPath.FromPageSlug(slug);
+
+        var externalUrls = await _db.MenuItems
+            .Where(i => i.TargetType == MenuTargetType.ExternalUrl)
+            .Select(i => i.TargetValue)
+            .ToListAsync(ct);
+
+        var hasConflict = externalUrls
+            .Where(InternalUrlPath.IsInternal)
+            .Select(InternalUrlPath.Normalize)
+            .Any(p => p == targetPath);
+
+        return hasConflict ? targetPath : null;
+    }
+
+    /// <summary>
+    /// True se impostare <paramref name="candidateParentId"/> come genitore
+    /// della pagina <paramref name="pageId"/> creerebbe un ciclo, cioè se
+    /// <paramref name="candidateParentId"/> è (direttamente o indirettamente)
+    /// una discendente di <paramref name="pageId"/>. Risalendo dal genitore
+    /// candidato verso la radice, se si incontra di nuovo <paramref name="pageId"/>
+    /// significa che si stava già scendendo nel suo stesso sottoalbero.
+    /// </summary>
+    private async Task<bool> CreatesHierarchyCycleAsync(Guid pageId, Guid candidateParentId, CancellationToken ct)
+    {
+        var parentById = await _db.Pages
+            .Select(p => new { p.Id, p.ParentId })
+            .ToDictionaryAsync(p => p.Id, p => p.ParentId, ct);
+
+        Guid? current = candidateParentId;
+        var visited = new HashSet<Guid>();
+
+        while (current.HasValue)
+        {
+            if (current.Value == pageId)
+            {
+                return true;
+            }
+
+            if (!visited.Add(current.Value))
+            {
+                // Ciclo pre-esistente incontrato risalendo: non è colpa di
+                // questa modifica, ci si ferma per evitare un loop infinito.
+                return false;
+            }
+
+            current = parentById.GetValueOrDefault(current.Value);
+        }
+
+        return false;
     }
 }

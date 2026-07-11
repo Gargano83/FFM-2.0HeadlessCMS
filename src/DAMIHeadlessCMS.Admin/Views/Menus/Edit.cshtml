@@ -289,7 +289,14 @@
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': antiForgeryToken },
                         body: JSON.stringify(payload)
                     });
-                    if (!res.ok) throw new Error('Errore durante il salvataggio.');
+                    if (!res.ok) {
+                        let message = 'Errore durante il salvataggio.';
+                        try {
+                            const body = await res.json();
+                            if (body && body.message) message = body.message;
+                        } catch { /* risposta non-JSON: si usa il messaggio generico */ }
+                        throw new Error(message);
+                    }
                     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Salvato';
                     setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1500);
                 } catch (err) {
