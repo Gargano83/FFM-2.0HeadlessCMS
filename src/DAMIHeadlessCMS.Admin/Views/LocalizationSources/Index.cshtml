@@ -1,6 +1,7 @@
 ﻿@model IReadOnlyList<LocalizationSourceListItemViewModel>
 @{
     ViewData["Title"] = "Localizzazioni";
+    var canWrite = User.IsInRole(CmsRoles.Admin);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -10,10 +11,17 @@
             Tabelle legacy "a chiave condivisa" (es. WN_LOCALIZZAZIONE/WN_LINGUE) usate
             per risolvere campi interi che in realtà rappresentano un contenuto tradotto.
         </p>
+        @if (!canWrite)
+        {
+            <p class="text-muted mb-0 small"><i class="bi bi-eye me-1"></i>Sola lettura</p>
+        }
     </div>
-    <a href="/dami/localization-sources/create" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i> Nuova sorgente
-    </a>
+    @if (canWrite)
+    {
+        <a href="/dami/localization-sources/create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Nuova sorgente
+        </a>
+    }
 </div>
 
 @if (TempData["ErrorMessage"] is string errorMessage)
@@ -46,16 +54,25 @@
                             <span class="badge bg-secondary-subtle text-secondary">@source.UsedByFieldsCount</span>
                         </td>
                         <td class="text-end">
-                            <a href="/dami/localization-sources/@source.Id/edit" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form method="post" action="/dami/localization-sources/@source.Id/delete" class="d-inline"
-                                  onsubmit="return confirm('Eliminare questa sorgente di localizzazione?');">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
+                            @if (canWrite)
+                            {
+                                <a href="/dami/localization-sources/@source.Id/edit" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="post" action="/dami/localization-sources/@source.Id/delete" class="d-inline"
+                                      onsubmit="return confirm('Eliminare questa sorgente di localizzazione?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <a href="/dami/localization-sources/@source.Id/edit" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            }
                         </td>
                     </tr>
                 }

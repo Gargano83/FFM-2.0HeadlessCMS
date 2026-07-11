@@ -10,11 +10,14 @@ namespace DAMIHeadlessCMS.Admin.Ffm.Controllers;
 /// API REST usata dal componente Angular "Database Giocatori" (FFM.Giocatori).
 /// Sostituisce l'endpoint legacy api/syncfusion/* dedicato ai giocatori: stessa
 /// logica di dominio (vedi FfmGiocatoriRepository), ma servita direttamente dal
-/// backoffice DAMIHeadlessCMS invece che dal progetto host legacy. Riservata a
-/// CmsAdmin, come l'intero modulo FFM.
+/// backoffice DAMIHeadlessCMS invece che dal progetto host legacy. Le letture
+/// (GET) sono accessibili anche a CmsOperator; le operazioni di scrittura
+/// (Create/Update/Delete/Import) restano riservate a CmsAdmin (vedi gli
+/// attributi [Authorize] espliciti sulle singole azioni) — è questo il vero
+/// enforcement di sicurezza, la UI Angular in sola lettura è solo di supporto.
 /// </summary>
 [Route("dami/ffm/api/giocatori")]
-[Authorize(Policy = CmsAuthConstants.AdminPolicy)]
+[Authorize(Policy = CmsAuthConstants.FfmViewPolicy)]
 [ApiController]
 public class FfmGiocatoriApiController : ControllerBase
 {
@@ -37,6 +40,7 @@ public class FfmGiocatoriApiController : ControllerBase
     }
 
     [HttpPost("")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public async Task<ActionResult<GiocatoreDto>> Create([FromBody] GiocatoreDto giocatore, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -49,6 +53,7 @@ public class FfmGiocatoriApiController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public async Task<ActionResult<GiocatoreDto>> Update(int id, [FromBody] GiocatoreDto giocatore, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -69,6 +74,7 @@ public class FfmGiocatoriApiController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         await _repository.DeleteAsync(id, ct);
@@ -82,6 +88,7 @@ public class FfmGiocatoriApiController : ControllerBase
     /// esplicita all'utente prima di invocare questo endpoint.
     /// </summary>
     [HttpPost("import")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public async Task<ActionResult<IReadOnlyList<GiocatoreDto>>> Import([FromBody] List<GiocatoreDto> giocatori, CancellationToken ct)
     {
         await _repository.ImportAsync(giocatori, ct);

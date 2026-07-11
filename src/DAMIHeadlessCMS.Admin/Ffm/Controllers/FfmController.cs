@@ -16,7 +16,7 @@ namespace DAMIHeadlessCMS.Admin.Ffm.Controllers;
 /// registrato solo se l'host chiama AddDAMIHeadlessCMSFfm(...).
 /// </summary>
 [Route("dami/ffm")]
-[Authorize(Policy = CmsAuthConstants.AdminPolicy)]
+[Authorize(Policy = CmsAuthConstants.FfmViewPolicy)]
 public class FfmController : Controller
 {
     private readonly IConfiguration _configuration;
@@ -30,6 +30,16 @@ public class FfmController : Controller
         _db = db;
     }
 
+    /// <summary>
+    /// CmsOperator vede le pagine FFM in sola lettura: il flag viene passato
+    /// ai Custom Element Angular (attributo HTML <c>read-only</c>) che
+    /// disabilitano di conseguenza editing, toolbar e comandi della Grid.
+    /// L'enforcement reale resta comunque lato server sulle API
+    /// (FfmGiocatoriApiController/FfmSquadreApiController): questo flag è
+    /// solo per l'esperienza utente, non l'unica barriera di sicurezza.
+    /// </summary>
+    private bool IsReadOnly => !User.IsInRole(CmsRoles.Admin);
+
     [HttpGet("giocatori")]
     public IActionResult Giocatori()
     {
@@ -37,6 +47,7 @@ public class FfmController : Controller
         // dell'host (mai hardcoded nel bundle Angular, a differenza della
         // vecchia integrazione legacy che la registrava in main.ts).
         ViewBag.SyncfusionLicenseKey = _configuration["DAMIHeadlessCMS:Ffm:SyncfusionLicenseKey"];
+        ViewBag.ReadOnly = IsReadOnly;
         return View();
     }
 
@@ -66,6 +77,7 @@ public class FfmController : Controller
     {
         ViewBag.SyncfusionLicenseKey = _configuration["DAMIHeadlessCMS:Ffm:SyncfusionLicenseKey"];
         ViewBag.IdSquadra = idSquadra;
+        ViewBag.ReadOnly = IsReadOnly;
         return View();
     }
 }

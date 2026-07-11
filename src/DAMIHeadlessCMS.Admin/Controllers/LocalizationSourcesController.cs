@@ -10,12 +10,15 @@ namespace DAMIHeadlessCMS.Admin.Controllers;
 
 /// <summary>
 /// Configurazione delle sorgenti di localizzazione "a chiave condivisa" (pattern
-/// legacy tipo WN_LOCALIZZAZIONE/WN_LINGUE). Riservata a CmsAdmin: qui si descrive
-/// la forma della tabella di traduzione, poi dal wizard di scaffolding si associa
-/// la sorgente ai singoli campi interi che la usano.
+/// legacy tipo WN_LOCALIZZAZIONE/WN_LINGUE): qui si descrive la forma della
+/// tabella di traduzione, poi dal wizard di scaffolding si associa la sorgente
+/// ai singoli campi interi che la usano. Elenco e dettaglio sono accessibili in
+/// sola lettura anche a CmsOperator; creare, modificare o eliminare una
+/// sorgente resta riservato a CmsAdmin (vedi gli attributi [Authorize]
+/// espliciti sulle singole azioni di scrittura).
 /// </summary>
 [Route("dami/localization-sources")]
-[Authorize(Policy = CmsAuthConstants.AdminPolicy)]
+[Authorize(Policy = CmsAuthConstants.LocalizationViewPolicy)]
 public class LocalizationSourcesController : Controller
 {
     private readonly CmsDbContext _db;
@@ -50,9 +53,11 @@ public class LocalizationSourcesController : Controller
     }
 
     [HttpGet("create")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public IActionResult Create() => View(new LocalizationSourceFormViewModel());
 
     [HttpPost("create")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(LocalizationSourceFormViewModel model, CancellationToken ct)
     {
@@ -113,6 +118,7 @@ public class LocalizationSourcesController : Controller
     }
 
     [HttpPost("{id:guid}/edit")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid id, LocalizationSourceFormViewModel model, CancellationToken ct)
     {
@@ -149,6 +155,7 @@ public class LocalizationSourcesController : Controller
     }
 
     [HttpPost("{id:guid}/delete")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

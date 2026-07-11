@@ -145,14 +145,58 @@ metadati salvati nello schema `cms.*` del database).
       caso di necessità emerse in corso d'opera — piccoli aggiustamenti alla
       validazione del campo URL nel form del menu.
 
+- [x] **9. Ruolo intermedio `CmsOperator`**: terzo ruolo tra `CmsAdmin` ed
+      `CmsEditor`. Lettura/scrittura piena su Dati/Pagine/Menu (stessa policy
+      `EditorPolicy` di `CmsEditor`, ora estesa anche a `CmsOperator`); sola
+      lettura — nessuna operazione di scrittura — su Struttura (vista
+      `/dami/{id}/structure`, non lo scaffolding/wizard, riservato a
+      `CmsAdmin`), Utenti, Localizzazioni e pagine dedicate del modulo FFM
+      (Database Giocatori, Squadre/Rosa). Quattro nuove policy dedicate
+      (`StructureViewPolicy`, `UsersViewPolicy`, `LocalizationViewPolicy`,
+      `FfmViewPolicy`, tutte `CmsAdmin` **o** `CmsOperator`), applicate a
+      livello di controller/azione insieme a `AdminPolicy` sulle sole azioni
+      di scrittura (pattern già usato per Struttura/Scaffolding fin dalla
+      fase 3). Nelle view MVC coinvolte i controlli di scrittura sono
+      nascosti/disabilitati in base a `User.IsInRole(CmsRoles.Admin)`; nei
+      Custom Element Angular del modulo FFM un nuovo attributo HTML
+      `read-only` (calcolato server-side dalla stessa view) disattiva editing,
+      toolbar e comandi della Grid — l'enforcement reale resta comunque lato
+      server sulle rispettive API REST, la UI è solo di supporto.
+      **9.1 Seeding automatico esteso**: `DAMIHeadlessCMSIdentitySeeder`
+      generalizzato con un elenco di `SeedUserSpec` (ruolo + chiave di
+      configurazione), stesso pattern già usato per `SeedAdmin`, ora applicato
+      anche a `SeedEditor`/`SeedOperator` in `appsettings` — ogni blocco è
+      indipendente e facoltativo.
+
 ## Prossime fasi
 
-- [ ] **9. Localizzazione multi-lingua nel backoffice**: attualmente il CMS
+- [ ] **10. Localizzazione multi-lingua nel backoffice**: attualmente il CMS
       legge/scrive sempre e solo nella lingua di default configurata (sia per
       `LocalizationSource` generiche sia per il modulo FFM, dove l'id lingua è
       un parametro fisso passato a `AddDAMIHeadlessCMSFfm`). Un selettore
       lingua nel backoffice (per editor multi-lingua sui campi localizzati)
       resta fuori dal perimetro attuale, deferita a quando servirà davvero.
+- [ ] **11. Riordino sezioni sidebar**: ordine definitivo delle sezioni del
+      menu laterale — Amministrazione, Struttura, FFM, Contenuti, Dati (oggi
+      l'ordine è Struttura, Contenuti, Dati, FFM, Amministrazione).
+- [ ] **12. Unicità URL nella creazione del menu**: validazione che impedisca
+      la creazione di voci di menu (pagine/link esterni) con `Slug`/URL
+      duplicati all'interno dell'albero — rilevante soprattutto in vista di
+      relazioni categoria → documento (es. `WN_CATEGORIE` → una futura
+      `WN_DOCUMENTI`, non ancora scaffoldata) dove URL duplicati causerebbero
+      problemi di routing.
+- [ ] **13. `appsettings` per ambiente + pulizia repository**: adozione del
+      pattern `appsettings.{Environment}.json` (es.
+      `appsettings.Development.json`/`appsettings.Production.json`) al posto
+      di un unico `appsettings.json` con credenziali reali; verifica della
+      cronologia Git per eventuali commit passati con segreti (vedi nota di
+      sicurezza alla fase 6.3) ed eventuale rotazione delle credenziali
+      coinvolte.
+- [ ] **14. Dashboard post-login arricchita**: la pagina che segue il login
+      (oggi il solo elenco "Entità gestite") arricchita con funzionalità utili
+      al backoffice — da valutare insieme (es. tracciamento attività
+      dell'utente loggato, contatori/riepiloghi sulle entità gestite, ultime
+      modifiche).
 - [ ] Ulteriori espansioni del modulo FFM o altre tabelle applicative, da
       valutare in base alle esigenze che emergeranno.
 
@@ -164,7 +208,7 @@ metadati salvati nello schema `cms.*` del database).
 | DB target | SQL Server |
 | Generazione CRUD | Metadata-driven a runtime (`cms.EntityDefinition`/`cms.FieldDefinition`), nessuna ricompilazione richiesta |
 | Lettura schema DB | Query dirette su `sys.tables`/`sys.columns`/`sys.foreign_keys` (no API interne EF) |
-| Autenticazione | ASP.NET Core Identity dedicato al backoffice, ruoli `CmsAdmin`/`CmsEditor` |
+| Autenticazione | ASP.NET Core Identity dedicato al backoffice, ruoli `CmsAdmin`/`CmsOperator`/`CmsEditor` |
 | Contenuti pagine custom | JSON a blocchi, ogni blocco può referenziare un componente esterno |
 | Localizzazione legacy | Pattern "a chiave condivisa" descritto da `LocalizationSource` (generico) o riuso diretto di `dbo.udf_Localize` (modulo FFM), nessuna FK fisica |
 | Componenti Angular ad hoc (fase 7) | Pagine di backoffice dedicate, fuori dal CRUD generico, riservate a `CmsAdmin`; un Custom Element + bundle `ngx-build-plus` dedicato per componente |

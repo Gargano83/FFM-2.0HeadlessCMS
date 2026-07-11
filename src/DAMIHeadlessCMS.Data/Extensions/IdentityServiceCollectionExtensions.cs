@@ -48,7 +48,11 @@ public static class IdentityServiceCollectionExtensions
 
         services.AddAuthorizationBuilder()
             .AddPolicy(CmsAuthConstants.AdminPolicy, p => p.RequireRole(CmsRoles.Admin))
-            .AddPolicy(CmsAuthConstants.EditorPolicy, p => p.RequireRole(CmsRoles.Admin, CmsRoles.Editor));
+            .AddPolicy(CmsAuthConstants.EditorPolicy, p => p.RequireRole(CmsRoles.Admin, CmsRoles.Editor, CmsRoles.Operator))
+            .AddPolicy(CmsAuthConstants.StructureViewPolicy, p => p.RequireRole(CmsRoles.Admin, CmsRoles.Operator))
+            .AddPolicy(CmsAuthConstants.UsersViewPolicy, p => p.RequireRole(CmsRoles.Admin, CmsRoles.Operator))
+            .AddPolicy(CmsAuthConstants.LocalizationViewPolicy, p => p.RequireRole(CmsRoles.Admin, CmsRoles.Operator))
+            .AddPolicy(CmsAuthConstants.FfmViewPolicy, p => p.RequireRole(CmsRoles.Admin, CmsRoles.Operator));
 
         return services;
     }

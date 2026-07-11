@@ -40,6 +40,15 @@ export class GiocatoriComponent implements OnInit {
   /** Endpoint REST del backoffice DAMIHeadlessCMS per il CRUD Giocatori. */
   @Input('api-base-url') apiBaseUrl = '/dami/ffm/api/giocatori';
 
+  /**
+   * Sola lettura per CmsOperator: arriva come attributo HTML ("true"/"false",
+   * i Custom Element non hanno un vero tipo boolean). Disabilita editing,
+   * aggiunta, cancellazione e import; la vera barriera di sicurezza resta
+   * comunque lato server (le API di scrittura richiedono CmsAdmin).
+   */
+  @Input('read-only') readOnlyAttr = 'false';
+  public isReadOnly = false;
+
   @ViewChild('gridGiocatori') gridGiocatori!: GridComponent;
   @ViewChild('fileInput') fileInputRef!: ElementRef<HTMLInputElement>;
 
@@ -75,6 +84,11 @@ export class GiocatoriComponent implements OnInit {
   constructor(private readonly http: HttpClient) {}
 
   ngOnInit(): void {
+    this.isReadOnly = this.readOnlyAttr === 'true';
+    if (this.isReadOnly) {
+      this.editSettings = { allowEditing: false, allowAdding: false, allowDeleting: false };
+      this.toolbar = ['Search', 'ExcelExport'];
+    }
     this.loadGiocatori();
   }
 

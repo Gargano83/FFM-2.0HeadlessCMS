@@ -183,9 +183,14 @@ public class GenericEntityController : Controller
         return RedirectToAction(nameof(List), new { entityId });
     }
 
-    /// <summary>Vista di sola lettura della struttura fisica di un'entità già scaffoldata.</summary>
+    /// <summary>
+    /// Vista di sola lettura della struttura fisica di un'entità già scaffoldata.
+    /// Accessibile anche a CmsOperator (che non può però rieseguire lo
+    /// scaffolding né aprire il wizard di configurazione, entrambi riservati
+    /// a CmsAdmin: vedi <see cref="RefreshStructure"/> e la vista associata).
+    /// </summary>
     [HttpGet("{entityId:guid}/structure")]
-    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
+    [Authorize(Policy = CmsAuthConstants.StructureViewPolicy)]
     public async Task<IActionResult> Structure(Guid entityId, CancellationToken ct)
     {
         var entity = await LoadEntityAsync(entityId, ct);

@@ -46,8 +46,9 @@ In sintesi, DAMIHeadlessCMS permette di:
    blocchi, menu di navigazione) che normalmente non hanno una tabella
    applicativa dedicata.
 4. Fare tutto questo dietro un **sistema di login e ruoli dedicato**
-   (`CmsAdmin` / `CmsEditor`), indipendente da un eventuale sistema di
-   autenticazione già presente nel progetto host per gli utenti finali.
+   (`CmsAdmin` / `CmsOperator` / `CmsEditor`), indipendente da un eventuale
+   sistema di autenticazione già presente nel progetto host per gli utenti
+   finali.
 
 Il CMS **non** si occupa di:
 
@@ -166,20 +167,25 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapDefaultControllerRoute();
 
-// Crea i ruoli CmsAdmin/CmsEditor e, se configurato, il primo utente admin.
+// Crea i ruoli CmsAdmin/CmsEditor/CmsOperator e, se configurati, i primi
+// utenti per ciascun ruolo.
 await DAMIHeadlessCMSIdentitySeeder.SeedAsync(app.Services, app.Configuration);
 
 app.Run();
 ```
 
 Il backoffice risponde per default sotto il prefisso di route **`/dami`**
-(login: `/dami/account/login`). Per il seed del primo amministratore,
-in `appsettings`:
+(login: `/dami/account/login`). Per il seed dei primi utenti, in `appsettings`
+(ogni blocco è indipendente e facoltativo — quello di `SeedAdmin` è comunque
+**fortemente consigliato** al primo avvio: senza un admin pre-esistente
+nessuno potrebbe accedere al backoffice per crearne uno):
 
 ```json
 {
   "DAMIHeadlessCMS": {
-    "SeedAdmin": { "Email": "admin@example.com", "Password": "Pa$$w0rd1" }
+    "SeedAdmin":    { "Email": "admin@example.com",    "Password": "Pa$$w0rd1" },
+    "SeedEditor":   { "Email": "editor@example.com",   "Password": "Pa$$w0rd1" },
+    "SeedOperator": { "Email": "operator@example.com", "Password": "Pa$$w0rd1" }
   }
 }
 ```
@@ -189,7 +195,9 @@ in `appsettings`:
 ### 1. Scaffolding — mappare le tabelle del database
 
 Percorso backoffice: **Struttura → Scaffolding** (`/dami/scaffolding`,
-riservato a `CmsAdmin`).
+riservato a `CmsAdmin`; la vista di sola lettura della struttura di
+un'entità già scaffoldata, descritta più sotto, è invece accessibile anche a
+`CmsOperator`).
 
 Un wizard a due step, in linea con la preferenza per configurazioni "a
 singolo passaggio" quando possibile:
@@ -245,17 +253,31 @@ tabelle standard `AspNetUsers`/ecc. sono rinominate senza prefisso, es.
 `cms.User`, `cms.Role`) e serve **esclusivamente** ad autenticare l'accesso al
 backoffice.
 
-Due ruoli:
+Tre ruoli:
 
 - **`CmsAdmin`**: accesso completo — dati, struttura/scaffolding,
-  localizzazioni, gestione utenti.
-- **`CmsEditor`**: solo CRUD sui dati delle entità già scaffoldate (niente
-  struttura, niente gestione utenti).
+  localizzazioni, gestione utenti, modulo FFM.
+- **`CmsOperator`**: ruolo intermedio. Lettura/scrittura piena su **Dati**,
+  **Pagine** e **Menu** (le stesse sezioni di `CmsEditor`); in più, accesso in
+  **sola lettura** a Struttura/Scaffolding (solo visualizzazione, non può
+  rieseguire lo scaffolding), Utenti, Localizzazioni e alle pagine dedicate
+  del modulo FFM (Database Giocatori, Squadre/Rosa). Nelle relative view i
+  controlli di scrittura (pulsanti "Nuovo"/"Modifica"/"Elimina", campi form,
+  toolbar della Grid Angular) vengono nascosti o disabilitati per questo
+  ruolo; l'enforcement reale resta comunque lato server, con policy di
+  autorizzazione dedicate per ciascuna di queste sezioni
+  (`StructureViewPolicy`, `UsersViewPolicy`, `LocalizationViewPolicy`,
+  `FfmViewPolicy`) distinte dalla policy di scrittura (`AdminPolicy`).
+- **`CmsEditor`**: solo CRUD sui dati delle entità già scaffoldate, pagine e
+  menu (niente struttura, niente gestione utenti, niente localizzazioni,
+  niente modulo FFM).
 
 Login/logout dedicati (`/dami/account/login`), cookie di autenticazione
-proprio (`DAMIHeadlessCMS.Auth`), seeding del primo admin da configurazione al
-primo avvio (indispensabile: senza un admin pre-esistente nessuno potrebbe
-accedere al backoffice per crearne uno).
+proprio (`DAMIHeadlessCMS.Auth`), seeding dei primi utenti da configurazione al
+primo avvio (indispensabile almeno per l'admin: senza un admin pre-esistente
+nessuno potrebbe accedere al backoffice per crearne uno). Gestione utenti
+(`/dami/users`) in sola lettura per `CmsOperator`, in lettura/scrittura per
+`CmsAdmin`.
 
 ### 4. Pagine custom a blocchi
 
@@ -337,7 +359,7 @@ tipo `wwwroot/regolamento`) semplicemente creando una voce di menu con
 ### 7. Localizzazione legacy "a chiave condivisa"
 
 Percorso backoffice: **Struttura → Localizzazioni** (`/dami/localization-sources`,
-riservato a `CmsAdmin`).
+lettura/scrittura per `CmsAdmin`, sola lettura per `CmsOperator`).
 
 Pensata per database legacy dove un campo intero in una tabella applicativa
 **non è il valore reale**, ma un id di contenuto da risolvere in un'altra
@@ -361,7 +383,11 @@ essere associata a uno o più `FieldDefinition` dal wizard di scaffolding.
 
 ## 8. Modulo FFM — componenti Angular/Syncfusion dedicati
 
-Percorso backoffice: sidebar **FFM** (riservato a `CmsAdmin`).
+Percorso backoffice: sidebar **FFM** (lettura/scrittura per `CmsAdmin`, sola
+lettura per `CmsOperator` — la Grid/riga di dettaglio Angular disabilita
+editing, toolbar e comandi di scrittura in base a un attributo `read-only`
+passato dalla view; le API REST sottostanti applicano comunque la stessa
+restrizione lato server, indipendentemente dalla UI).
 
 Alcune tabelle applicative legacy hanno esigenze di UI troppo specifiche per
 il CRUD generico metadata-driven (griglie con editing inline avanzato, import
@@ -480,7 +506,8 @@ dipendenza in meno da mantenere nel bundle Angular.
 > Il flag `AbilitaModifica` (letto da `FFM.Squadre`) è incluso nel DTO
 > `InfoSquadra` così com'è, ma **non limita alcuna azione nel backoffice**:
 > governa l'area riservata front-end (fuori dal perimetro del CMS), dove
-> l'accesso al backoffice è già filtrato dal ruolo `CmsAdmin`.
+> l'accesso al backoffice è già filtrato dal ruolo (`CmsAdmin` in
+> lettura/scrittura, `CmsOperator` in sola lettura).
 
 ## Sicurezza: come viene evitato SQL injection nel CRUD dinamico
 

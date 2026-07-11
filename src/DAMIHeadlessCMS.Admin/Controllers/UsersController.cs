@@ -8,13 +8,14 @@ using DAMIHeadlessCMS.Data.Identity;
 namespace DAMIHeadlessCMS.Admin.Controllers;
 
 /// <summary>
-/// Gestione utenti del backoffice (Identity dedicato DAMIHeadlessCMS). Riservata a
-/// CmsAdmin: qui si creano/modificano account e si assegnano i ruoli
-/// CmsAdmin/CmsEditor, non ci sono altri livelli di permesso più bassi
-/// per questa sezione.
+/// Gestione utenti del backoffice (Identity dedicato DAMIHeadlessCMS). Elenco e
+/// dettaglio sono accessibili in sola lettura anche a CmsOperator; creare,
+/// modificare o (dis)abilitare un account e assegnare i ruoli resta invece
+/// riservato a CmsAdmin (vedi gli attributi [Authorize] espliciti sulle
+/// singole azioni di scrittura).
 /// </summary>
 [Route("dami/users")]
-[Authorize(Policy = CmsAuthConstants.AdminPolicy)]
+[Authorize(Policy = CmsAuthConstants.UsersViewPolicy)]
 public class UsersController : Controller
 {
     private readonly UserManager<CmsUser> _userManager;
@@ -47,10 +48,12 @@ public class UsersController : Controller
     }
 
     [HttpGet("create")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public IActionResult Create()
         => View(new UserFormViewModel { AvailableRoles = CmsRoles.All });
 
     [HttpPost("create")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(UserFormViewModel model)
     {
@@ -115,6 +118,7 @@ public class UsersController : Controller
     }
 
     [HttpPost("{id:guid}/edit")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid id, UserFormViewModel model)
     {
@@ -173,6 +177,7 @@ public class UsersController : Controller
     }
 
     [HttpPost("{id:guid}/toggle-lock")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleLock(Guid id)
     {

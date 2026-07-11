@@ -127,10 +127,13 @@
             <div class="cms-sidebar-scroll">
                 <div class="cms-nav-section">
                     <div class="cms-nav-section-title">Struttura</div>
-                    <a href="/dami/scaffolding"
-                       class="cms-nav-link @(IsActive("/dami/scaffolding") ? "active" : "")">
-                        <i class="bi bi-diagram-3"></i> <span>Scaffolding</span>
-                    </a>
+                    @if (User.IsInRole(CmsRoles.Admin))
+                    {
+                        <a href="/dami/scaffolding"
+                           class="cms-nav-link @(IsActive("/dami/scaffolding") ? "active" : "")">
+                            <i class="bi bi-diagram-3"></i> <span>Scaffolding</span>
+                        </a>
+                    }
                     <a href="/dami/localization-sources"
                        class="cms-nav-link @(IsActive("/dami/localization-sources") ? "active" : "")">
                         <i class="bi bi-translate"></i> <span>Localizzazioni</span>
@@ -175,7 +178,7 @@
                     </ul>
                 </div>
 
-                @if (User.IsInRole(CmsRoles.Admin))
+                @if (User.IsInRole(CmsRoles.Admin) || User.IsInRole(CmsRoles.Operator))
                 {
                     <div class="cms-nav-section">
                         <div class="cms-nav-section-title">FFM</div>

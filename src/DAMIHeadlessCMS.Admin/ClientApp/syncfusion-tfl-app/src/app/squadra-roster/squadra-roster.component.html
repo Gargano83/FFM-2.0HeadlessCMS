@@ -35,7 +35,7 @@
     </div>
   </div>
 
-  <div class="dami-add-player">
+  <div class="dami-add-player" *ngIf="!isReadOnly">
     <label class="dami-add-player__label">Aggiungi giocatore svincolato alla rosa</label>
     <ejs-autocomplete
       #autocompleteGiocatore
@@ -61,7 +61,7 @@
       <e-column field="valoreDiMercato" headerText="VDM" width="110" [template]="valoreTemplate"></e-column>
       <e-column field="stipendio" headerText="Stipendio" width="110" [template]="stipendioTemplate"></e-column>
       <e-column field="mesi" headerText="Mesi" width="70" textAlign="Center"></e-column>
-      <e-column headerText="Azioni" width="90" textAlign="Center" [commands]="commands"></e-column>
+      <e-column *ngIf="!isReadOnly" headerText="Azioni" width="90" textAlign="Center" [commands]="commands"></e-column>
     </e-columns>
   </ejs-grid>
 
@@ -84,15 +84,15 @@
       <div class="dami-detail-panel__row dami-detail-panel__row--edit">
         <div>
           <label for="stato_{{data.id}}">Stato</label>
-          <select id="stato_{{data.id}}" class="dami-select" [(ngModel)]="data.stato">
+          <select id="stato_{{data.id}}" class="dami-select" [(ngModel)]="data.stato" [disabled]="isReadOnly">
             <option *ngFor="let stato of statiGiocatore" [value]="stato">{{ stato }}</option>
           </select>
         </div>
         <div>
           <label for="mesi_{{data.id}}">Mesi</label>
-          <input type="number" id="mesi_{{data.id}}" class="dami-input" min="0" max="12" [(ngModel)]="data.mesi" />
+          <input type="number" id="mesi_{{data.id}}" class="dami-input" min="0" max="12" [(ngModel)]="data.mesi" [disabled]="isReadOnly" />
         </div>
-        <div class="dami-detail-panel__actions">
+        <div class="dami-detail-panel__actions" *ngIf="!isReadOnly">
           <button type="button" class="dami-btn dami-btn--primary" (click)="salvaDettaglio(data)">Salva</button>
         </div>
       </div>

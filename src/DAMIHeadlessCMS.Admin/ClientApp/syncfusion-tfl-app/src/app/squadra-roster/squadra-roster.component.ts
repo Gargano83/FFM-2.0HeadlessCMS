@@ -86,6 +86,15 @@ export class SquadraRosterComponent implements OnInit {
   @Input('api-base-url') apiBaseUrl = '/dami/ffm/api/squadre';
   @Input('idsquadra') idSquadraAttr = '';
 
+  /**
+   * Sola lettura per CmsOperator: arriva come attributo HTML ("true"/"false").
+   * Nasconde il box "aggiungi giocatore", la colonna comandi (rimozione) e il
+   * pulsante "Salva" della riga di dettaglio. La vera barriera di sicurezza
+   * resta comunque lato server (le API di scrittura richiedono CmsAdmin).
+   */
+  @Input('read-only') readOnlyAttr = 'false';
+  public isReadOnly = false;
+
   @ViewChild('gridRosa') gridRosa!: GridComponent;
   @ViewChild('autocompleteGiocatore') autocompleteGiocatore!: AutoCompleteComponent;
 
@@ -105,6 +114,7 @@ export class SquadraRosterComponent implements OnInit {
   constructor(private readonly http: HttpClient) {}
 
   ngOnInit(): void {
+    this.isReadOnly = this.readOnlyAttr === 'true';
     this.idSquadra = Number(this.idSquadraAttr);
     if (!this.idSquadra) {
       this.loadError = 'Attributo "idsquadra" mancante o non valido sul componente.';
@@ -147,6 +157,9 @@ export class SquadraRosterComponent implements OnInit {
 
   /** Selezione di un giocatore svincolato dall'autocomplete: lo aggiunge subito alla rosa. */
   onSelectGiocatoreSvincolato(args: { itemData?: GiocatoreSvincolato }): void {
+    if (this.isReadOnly) {
+      return;
+    }
     const giocatore = args?.itemData;
     if (!giocatore) {
       return;
@@ -165,6 +178,9 @@ export class SquadraRosterComponent implements OnInit {
 
   /** Click sull'icona "elimina" della colonna comandi: rimuove il giocatore dalla rosa. */
   onCommandClick(args: CommandClickEventArgs): void {
+    if (this.isReadOnly) {
+      return;
+    }
     const giocatore = args.rowData as GiocatoreSquadra;
     if (!giocatore) {
       return;
@@ -185,6 +201,9 @@ export class SquadraRosterComponent implements OnInit {
 
   /** Salvataggio Stato/Mesi dalla riga di dettaglio espansa. */
   salvaDettaglio(giocatore: GiocatoreSquadra): void {
+    if (this.isReadOnly) {
+      return;
+    }
     const payload = { mesi: giocatore.mesi, stato: giocatore.stato };
     this.http.put(`${this.apiBaseUrl}/${this.idSquadra}/rosa/${giocatore.id}`, payload).subscribe({
       next: () => this.loadRosa(),

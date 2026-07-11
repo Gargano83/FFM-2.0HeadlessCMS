@@ -12,10 +12,12 @@ namespace DAMIHeadlessCMS.Admin.Ffm.Controllers;
 /// endpoint legacy api/syncfusion/{aggiornainfosquadra,giocatorisquadra,
 /// aggiungigiocatorepersquadra,aggiornagiocatorepersquadra,
 /// dettagliogiocatorepersquadra,aggiornadettagliogiocatorepersquadra,
-/// listagiocatori}. Riservata a CmsAdmin, come l'intero modulo FFM.
+/// listagiocatori}. Le letture (GET) sono accessibili anche a CmsOperator;
+/// le operazioni di scrittura sulla rosa restano riservate a CmsAdmin (vedi
+/// gli attributi [Authorize] espliciti sulle singole azioni).
 /// </summary>
 [Route("dami/ffm/api/squadre")]
-[Authorize(Policy = CmsAuthConstants.AdminPolicy)]
+[Authorize(Policy = CmsAuthConstants.FfmViewPolicy)]
 [ApiController]
 public class FfmSquadreApiController : ControllerBase
 {
@@ -53,6 +55,7 @@ public class FfmSquadreApiController : ControllerBase
     }
 
     [HttpPut("{idSquadra:int}/rosa/{idGiocatore:int}")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public async Task<IActionResult> AggiornaDettaglio(int idSquadra, int idGiocatore, [FromBody] AggiornaRosaRequestDto request, CancellationToken ct)
     {
         var idUtente = await ResolveCurrentIdUtenteAsync(ct);
@@ -61,6 +64,7 @@ public class FfmSquadreApiController : ControllerBase
     }
 
     [HttpPost("{idSquadra:int}/rosa/{idGiocatore:int}")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public async Task<IActionResult> AggiungiGiocatore(int idSquadra, int idGiocatore, [FromBody] AggiungiGiocatoreRequestDto request, CancellationToken ct)
     {
         var idUtente = await ResolveCurrentIdUtenteAsync(ct);
@@ -69,6 +73,7 @@ public class FfmSquadreApiController : ControllerBase
     }
 
     [HttpDelete("{idSquadra:int}/rosa/{idGiocatore:int}")]
+    [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
     public async Task<IActionResult> RimuoviGiocatore(int idSquadra, int idGiocatore, CancellationToken ct)
     {
         await _repository.EliminaGiocatorePerSquadraAsync(idSquadra, idGiocatore, ct);

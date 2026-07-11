@@ -1,6 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Rosa squadra";
     int idSquadra = ViewBag.IdSquadra;
+    bool readOnly = ViewBag.ReadOnly ?? false;
 }
 
 <div class="mb-4">
@@ -15,16 +16,22 @@
     <p class="text-muted mb-0">
         Informazioni, finanze e gestione dei giocatori in rosa per la stagione attiva.
     </p>
+    @if (readOnly)
+    {
+        <p class="text-muted mb-0 small"><i class="bi bi-eye me-1"></i>Sola lettura</p>
+    }
 </div>
 
 <div class="card border-0 shadow-sm p-3 p-md-4">
     <!--
         Stesso principio del componente Giocatori: Custom Element indipendente,
-        parametrizzato via attributo HTML (idsquadra), nessuna variabile globale.
+        parametrizzato via attributi HTML (idsquadra, read-only), nessuna
+        variabile globale.
     -->
     <dami-ffm-squadra-roster
         api-base-url="/dami/ffm/api/squadre"
-        idsquadra="@idSquadra"></dami-ffm-squadra-roster>
+        idsquadra="@idSquadra"
+        read-only="@readOnly.ToString().ToLowerInvariant()"></dami-ffm-squadra-roster>
 </div>
 
 @section Scripts {
@@ -34,11 +41,11 @@
         (runtime.js, poi polyfills.js, poi main.js). "?v=..." da incrementare
         a ogni nuova build per bypassare la cache del browser durante il debug.
     -->
-    <link href="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/styles.css?v=1" rel="stylesheet" />
+    <link href="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/styles.css" rel="stylesheet" />
     <script>
         window.DAMI_SYNCFUSION_LICENSE = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.SyncfusionLicenseKey ?? ""));
     </script>
-    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/runtime.js?v=1" type="module"></script>
-    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/polyfills.js?v=1" type="module"></script>
-    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/main.js?v=1" type="module"></script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/runtime.js" type="module"></script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/polyfills.js" type="module"></script>
+    <script src="~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/squadra/main.js" type="module"></script>
 }

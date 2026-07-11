@@ -48,6 +48,9 @@
     <Content Remove="wwwroot\ffm-widgets\giocatori\main.js" />
     <Content Remove="wwwroot\ffm-widgets\giocatori\polyfills.js" />
     <Content Remove="wwwroot\ffm-widgets\giocatori\runtime.js" />
+    <Content Remove="wwwroot\ffm-widgets\squadra\giocatori\main.js" />
+    <Content Remove="wwwroot\ffm-widgets\squadra\giocatori\polyfills.js" />
+    <Content Remove="wwwroot\ffm-widgets\squadra\giocatori\runtime.js" />
     <Content Remove="wwwroot\ffm-widgets\squadra\main.js" />
     <Content Remove="wwwroot\ffm-widgets\squadra\polyfills.js" />
     <Content Remove="wwwroot\ffm-widgets\squadra\runtime.js" />
@@ -103,6 +106,9 @@
     <None Include="wwwroot\ffm-widgets\giocatori\main.js" />
     <None Include="wwwroot\ffm-widgets\giocatori\polyfills.js" />
     <None Include="wwwroot\ffm-widgets\giocatori\runtime.js" />
+    <None Include="wwwroot\ffm-widgets\squadra\giocatori\main.js" />
+    <None Include="wwwroot\ffm-widgets\squadra\giocatori\polyfills.js" />
+    <None Include="wwwroot\ffm-widgets\squadra\giocatori\runtime.js" />
     <None Include="wwwroot\ffm-widgets\squadra\main.js" />
     <None Include="wwwroot\ffm-widgets\squadra\polyfills.js" />
     <None Include="wwwroot\ffm-widgets\squadra\runtime.js" />
