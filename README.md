@@ -554,6 +554,53 @@ dipendenza in meno da mantenere nel bundle Angular.
 > l'accesso al backoffice è già filtrato dal ruolo (`CmsAdmin` in
 > lettura/scrittura, `CmsOperator` in sola lettura).
 
+### 9. Dashboard post-login e log di audit
+
+Percorso backoffice: **`/dami`**, la pagina che segue automaticamente il
+login. Oltre all'elenco "Entità gestite" (già presente dalla fase 3), mostra:
+
+- **Contatori riepilogativi**: entità scaffoldate, pagine (totali e
+  pubblicate), voci di menu, utenti per ruolo.
+- **Attività recente**: le ultime righe del log di audit (vedi sotto).
+- **Pagine recenti**: le ultime `CmsPage` create o modificate, con link
+  diretto alla modifica.
+
+I contatori sugli utenti per ruolo e le voci relative a `CmsUser` nel log di
+audit sono visibili solo a `CmsAdmin`/`CmsOperator`, coerentemente con
+`UsersViewPolicy` (fase 9): un `CmsEditor`, che non ha accesso alla pagina
+Utenti, non vede di riflesso quelle informazioni nemmeno qui.
+
+#### Log di audit
+
+`AuditLogEntry` (nuova tabella `cms.AuditLogEntry`) registra automaticamente
+le operazioni di creazione/modifica/eliminazione sulle entità **CMS-native**:
+`CmsPage`, `CmsMenu`, `CmsMenuItem`, `CmsUser`. La generazione avviene
+interamente dentro `CmsDbContext.SaveChangesAsync` (override che legge il
+`ChangeTracker` di EF Core prima di salvare): **nessun controller scrive
+esplicitamente una riga di audit**, quindi non c'è rischio di dimenticarsene
+in un punto nuovo — funziona automaticamente anche per le scritture fatte
+tramite `UserManager`/`RoleManager` (Identity), che usano lo stesso
+`CmsDbContext` internamente. L'utente che ha eseguito l'operazione si ottiene
+da `IHttpContextAccessor` (registrato con `AddHttpContextAccessor()`), quindi
+resta `null` fuori da una richiesta HTTP (es. seeding all'avvio, strumenti
+`dotnet ef`) — previsto e non un errore.
+
+**Scope deliberatamente limitato**:
+- Copre solo le entità EF-native sopra elencate. **Non copre** le tabelle
+  applicative scaffoldate (sezione "Dati"): quelle sono lette/scritte con SQL
+  dinamico via ADO.NET (`IGenericEntityRepository`), fuori dal ChangeTracker
+  di EF Core. Un audit su quelle richiederebbe un meccanismo separato,
+  esplicitamente fuori scope in questa fase (vedi fase 14 di
+  [`docs/ROADMAP.md`](docs/ROADMAP.md)).
+- Non copre le tabelle di supporto di Identity (ruoli assegnati, claim,
+  token): fuori scope per non generare rumore e non loggare dati sensibili
+  come i token.
+- `MenusController.Save` usa una strategia "full-replace" (elimina tutte le
+  voci e reinserisce): un singolo salvataggio dell'albero del menu genera
+  quindi più righe di audit (una per voce eliminata/creata), non un singolo
+  "Update" — riflette accuratamente come funziona il salvataggio, non è un
+  difetto del log.
+
 ## Sicurezza: come viene evitato SQL injection nel CRUD dinamico
 
 Poiché le tabelle applicative non sono mappate da EF Core, `GenericEntityRepository`

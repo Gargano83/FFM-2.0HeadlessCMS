@@ -252,6 +252,37 @@ metadati salvati nello schema `cms.*` del database).
     `git add`/commit. La pulizia della cronologia pregressa (`git filter-repo`
     o BFG Repo-Cleaner + force-push) resta una scelta a parte, deliberata e
     non urgente quanto la rotazione delle credenziali.
+- [x] **14. Dashboard post-login arricchita**: la pagina che segue il login
+      (`/dami`, `GenericEntityController.Index`) mostra ora, oltre all'elenco
+      "Entità gestite" già presente dalla fase 3:
+  - **Contatori riepilogativi**: entità scaffoldate, pagine (totali e
+    pubblicate), voci di menu, utenti per ruolo — letti con query dirette
+    (nessuna nuova tabella per questi).
+  - **Log di audit** (nuova tabella `cms.AuditLogEntry`): traccia
+    automaticamente le operazioni di creazione/modifica/eliminazione sulle
+    entità CMS-native — `CmsPage`, `CmsMenu`, `CmsMenuItem`, `CmsUser`.
+    Generato interamente da un override di `CmsDbContext.SaveChangesAsync`
+    che legge il `ChangeTracker` di EF Core prima di salvare: nessun
+    controller scrive esplicitamente una riga di audit, funziona anche per le
+    scritture fatte tramite `UserManager`/`RoleManager` (stesso
+    `CmsDbContext`). L'utente corrente si ottiene da `IHttpContextAccessor`
+    (nuova registrazione `AddHttpContextAccessor()`), `null` fuori da una
+    richiesta HTTP (seeding, `dotnet ef`) — atteso, non un errore.
+    **Scope deliberatamente limitato**, come discusso in fase di
+    elicitazione dei requisiti: solo entità EF-native, **non** le tabelle
+    applicative scaffoldate (sezione "Dati", lette/scritte via ADO.NET fuori
+    dal ChangeTracker — richiederebbe un meccanismo separato, rimandato) né
+    le tabelle di supporto Identity (ruoli assegnati/claim/token, per non fare
+    rumore né loggare dati sensibili). Le voci `CmsUser` e i contatori per
+    ruolo sono visibili solo a `CmsAdmin`/`CmsOperator`, coerentemente con
+    `UsersViewPolicy` (fase 9) — un `CmsEditor` non vede di riflesso, qui,
+    informazioni su un'area (Utenti) a cui non ha accesso diretto.
+  - **Pagine recenti**: le ultime `CmsPage` create/modificate, con link
+    diretto alla modifica.
+  - Nota tecnica: `MenusController.Save` (strategia "full-replace") genera
+    più righe di audit per singolo salvataggio dell'albero (una per voce
+    eliminata/creata), non un singolo "Update" — riflette accuratamente
+    l'implementazione del salvataggio, non è un difetto.
 
 ## Prossime fasi
 
@@ -261,11 +292,6 @@ metadati salvati nello schema `cms.*` del database).
       un parametro fisso passato a `AddDAMIHeadlessCMSFfm`). Un selettore
       lingua nel backoffice (per editor multi-lingua sui campi localizzati)
       resta fuori dal perimetro attuale, deferita a quando servirà davvero.
-- [ ] **14. Dashboard post-login arricchita**: la pagina che segue il login
-      (oggi il solo elenco "Entità gestite") arricchita con funzionalità utili
-      al backoffice — da valutare insieme (es. tracciamento attività
-      dell'utente loggato, contatori/riepiloghi sulle entità gestite, ultime
-      modifiche).
 - [ ] **15. Routing di dettaglio per record di entità scaffoldate**: concetto
       **generalizzato** a qualunque tabella scaffoldata (l'esempio
       `WN_CATEGORIE` → `WN_DOCUMENTI` discusso in fase 12 era solo un caso
@@ -314,3 +340,4 @@ metadati salvati nello schema `cms.*` del database).
 | Componenti Angular ad hoc (fase 7) | Pagine di backoffice dedicate, fuori dal CRUD generico, riservate a `CmsAdmin`; un Custom Element + bundle `ngx-build-plus` dedicato per componente |
 | Contenuti statici esterni (fase 8) | Serviti dal progetto host, il CMS espone solo il link nel menu |
 | Mapping utenti legacy (modulo FFM) | Risoluzione via email (`IFfmUserResolver`) verso tabelle utenti legacy quando serve tracciare `IdUtente` su tabelle applicative esistenti |
+| Log di audit (fase 14) | Generato da un override di `CmsDbContext.SaveChangesAsync` sul `ChangeTracker` di EF Core, non da scritture esplicite nei controller; copre solo le entità EF-native (Pagine/Menu/Utenti), non i dati scaffoldati (ADO.NET, fuori dal ChangeTracker) |

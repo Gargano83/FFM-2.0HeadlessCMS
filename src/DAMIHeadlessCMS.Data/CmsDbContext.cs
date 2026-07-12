@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using DAMIHeadlessCMS.Core.Entities;
 using DAMIHeadlessCMS.Data.Configurations;
 using DAMIHeadlessCMS.Data.Identity;
+using System.Security.Claims;
 
 namespace DAMIHeadlessCMS.Data;
 
@@ -20,8 +23,22 @@ public class CmsDbContext : IdentityDbContext<CmsUser, CmsRole, Guid>
 {
     public const string Schema = "cms";
 
-    public CmsDbContext(DbContextOptions<CmsDbContext> options) : base(options)
+    private readonly IHttpContextAccessor? _httpContextAccessor;
+
+    public CmsDbContext(DbContextOptions<CmsDbContext> options) : this(options, null)
     {
+    }
+
+    /// <summary>
+    /// Overload usato dal container DI dell'app host: <c>IHttpContextAccessor</c>
+    /// serve a <see cref="BuildAuditEntries"/> per sapere chi sta salvando.
+    /// Resta opzionale (può essere null, es. per gli strumenti design-time di
+    /// <c>dotnet ef</c> che non passano da un host web) perché il DbContext
+    /// deve restare utilizzabile anche fuori da una richiesta HTTP.
+    /// </summary>
+    public CmsDbContext(DbContextOptions<CmsDbContext> options, IHttpContextAccessor? httpContextAccessor) : base(options)
+    {
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public DbSet<EntityDefinition> EntityDefinitions => Set<EntityDefinition>();
@@ -30,6 +47,7 @@ public class CmsDbContext : IdentityDbContext<CmsUser, CmsRole, Guid>
     public DbSet<CmsMenu> Menus => Set<CmsMenu>();
     public DbSet<CmsMenuItem> MenuItems => Set<CmsMenuItem>();
     public DbSet<LocalizationSource> LocalizationSources => Set<LocalizationSource>();
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,5 +75,104 @@ public class CmsDbContext : IdentityDbContext<CmsUser, CmsRole, Guid>
         modelBuilder.ApplyConfiguration(new CmsMenuConfiguration());
         modelBuilder.ApplyConfiguration(new CmsMenuItemConfiguration());
         modelBuilder.ApplyConfiguration(new LocalizationSourceConfiguration());
+        modelBuilder.ApplyConfiguration(new AuditLogEntryConfiguration());
+    }
+
+    /// <summary>
+    /// Genera automaticamente le righe di <see cref="AuditLogEntry"/> per le
+    /// entità CMS-native modificate in questo salvataggio (vedi
+    /// <see cref="BuildAuditEntries"/> per lo scope esatto), poi salva tutto
+    /// — incluse le righe di audit stesse — in una singola transazione
+    /// implicita di EF Core. Nessun controller deve occuparsene esplicitamente:
+    /// funziona anche per le scritture fatte tramite UserManager/RoleManager
+    /// (Identity), che usano questo stesso DbContext internamente.
+    /// </summary>
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var auditEntries = BuildAuditEntries();
+        if (auditEntries.Count > 0)
+        {
+            AuditLogEntries.AddRange(auditEntries);
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    private List<AuditLogEntry> BuildAuditEntries()
+    {
+        var entries = new List<AuditLogEntry>();
+        var (userId, userEmail) = GetCurrentUser();
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted))
+            {
+                continue;
+            }
+
+            var described = Describe(entry);
+            if (described is null)
+            {
+                // Entità fuori scope per l'audit (es. tabelle di supporto di
+                // Identity come UserClaim/UserToken, o l'AuditLogEntry stessa).
+                continue;
+            }
+
+            var (entityType, entityId, summary) = described.Value;
+
+            entries.Add(new AuditLogEntry
+            {
+                Id = Guid.NewGuid(),
+                TimestampUtc = DateTime.UtcNow,
+                UserId = userId,
+                UserEmail = userEmail,
+                EntityType = entityType,
+                EntityId = entityId,
+                Action = entry.State switch
+                {
+                    EntityState.Added => "Create",
+                    EntityState.Modified => "Update",
+                    EntityState.Deleted => "Delete",
+                    _ => "Unknown"
+                },
+                Summary = summary
+            });
+        }
+
+        return entries;
+    }
+
+    /// <summary>
+    /// Scope dell'audit: solo le entità CMS-native elencate qui sotto (Pagine,
+    /// Menu, voci di Menu, Utenti). Tutto il resto — incluse le tabelle di
+    /// supporto di Identity (ruoli assegnati, claim, token) e ovviamente i
+    /// dati scaffoldati nella sezione "Dati" (fuori dal ChangeTracker, letti
+    /// via ADO.NET) — resta fuori per non generare rumore/dati sensibili
+    /// (es. i token di Identity) nel log.
+    /// </summary>
+    private static (string entityType, string entityId, string? summary)? Describe(EntityEntry entry)
+    {
+        return entry.Entity switch
+        {
+            CmsPage page => ("CmsPage", page.Id.ToString(), $"Pagina \"{page.Title}\" ({page.Slug})"),
+            CmsMenu menu => ("CmsMenu", menu.Id.ToString(), $"Menu \"{menu.Name}\""),
+            CmsMenuItem item => ("CmsMenuItem", item.Id.ToString(), $"Voce di menu \"{item.Label}\""),
+            CmsUser user => ("CmsUser", user.Id.ToString(), $"Utente {user.Email}"),
+            _ => null
+        };
+    }
+
+    private (Guid? userId, string? userEmail) GetCurrentUser()
+    {
+        var principal = _httpContextAccessor?.HttpContext?.User;
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            return (null, null);
+        }
+
+        var idClaim = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        var email = principal.FindFirstValue(ClaimTypes.Email) ?? principal.Identity.Name;
+
+        return (Guid.TryParse(idClaim, out var parsed) ? parsed : null, email);
     }
 }

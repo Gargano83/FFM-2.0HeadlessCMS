@@ -49,7 +49,59 @@ public class GenericEntityController : Controller
             .ThenBy(e => e.DisplayName)
             .ToListAsync(ct);
 
-        return View(entities);
+        // Le voci di audit su CmsUser vengono escluse per chi non ha comunque
+        // visibilità sulla pagina Utenti (stessa logica di UsersViewPolicy):
+        // altrimenti un CmsEditor vedrebbe qui, di riflesso, informazioni su
+        // un'area a cui non ha accesso diretto.
+        var canViewUserAudit = User.IsInRole(CmsRoles.Admin) || User.IsInRole(CmsRoles.Operator);
+        var auditQuery = _db.AuditLogEntries.AsQueryable();
+        if (!canViewUserAudit)
+        {
+            auditQuery = auditQuery.Where(a => a.EntityType != "CmsUser");
+        }
+
+        var model = new DashboardViewModel
+        {
+            Entities = entities,
+            Counters = await BuildCountersAsync(entities.Count, ct),
+            RecentAuditEntries = await auditQuery
+                .OrderByDescending(a => a.TimestampUtc)
+                .Take(15)
+                .ToListAsync(ct),
+            RecentPages = await _db.Pages
+                .OrderByDescending(p => p.UpdatedAtUtc ?? p.CreatedAtUtc)
+                .Take(5)
+                .ToListAsync(ct)
+        };
+
+        return View(model);
+    }
+
+    /// <summary>
+    /// Contatori riepilogativi per la dashboard. Gli utenti per ruolo sono
+    /// letti direttamente dalle tabelle Identity (User/Role/UserRole, tutte
+    /// esposte da CmsDbContext in quanto IdentityDbContext) invece che con
+    /// UserManager.GetUsersInRoleAsync per ciascun ruolo: una singola query
+    /// raggruppata invece di una query per ruolo.
+    /// </summary>
+    private async Task<DashboardCounters> BuildCountersAsync(int scaffoldedEntitiesCount, CancellationToken ct)
+    {
+        var roleCounts = await _db.UserRoles
+            .Join(_db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+            .GroupBy(name => name)
+            .Select(g => new { RoleName = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.RoleName!, g => g.Count, ct);
+
+        return new DashboardCounters
+        {
+            ScaffoldedEntities = scaffoldedEntitiesCount,
+            Pages = await _db.Pages.CountAsync(ct),
+            PublishedPages = await _db.Pages.CountAsync(p => p.IsPublished, ct),
+            MenuItems = await _db.MenuItems.CountAsync(ct),
+            AdminUsers = roleCounts.GetValueOrDefault(CmsRoles.Admin),
+            EditorUsers = roleCounts.GetValueOrDefault(CmsRoles.Editor),
+            OperatorUsers = roleCounts.GetValueOrDefault(CmsRoles.Operator)
+        };
     }
 
     [HttpGet("{entityId:guid}")]

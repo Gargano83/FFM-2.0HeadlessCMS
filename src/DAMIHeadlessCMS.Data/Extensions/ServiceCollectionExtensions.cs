@@ -20,6 +20,7 @@ public static class ServiceCollectionExtensions
         string connectionString,
         Action<SqlServerDbContextOptionsBuilder>? sqlServerOptions = null)
     {
+        services.AddHttpContextAccessor();
         services.AddDbContext<CmsDbContext>(options =>
             options.UseSqlServer(connectionString, sqlServerOptions));
 
