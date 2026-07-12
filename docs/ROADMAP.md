@@ -200,19 +200,10 @@ metadati salvati nello schema `cms.*` del database).
     in `PagesController.Edit` (una pagina non può diventare discendente di una
     propria sotto-pagina), a protezione della coerenza dell'albero — difetto
     latente scoperto analizzando il caso d'uso, non il cuore della richiesta.
-  - **Nota di progettazione (non implementata in questa fase)** — relazione
-    categoria → documento su dati applicativi (es. `WN_CATEGORIE` → una futura
-    `WN_DOCUMENTI`, non ancora scaffoldata): il CMS non ha oggi alcun concetto
-    di "URL di dettaglio" per un singolo record di una tabella scaffoldata — il
-    menu può linkare solo a una `CmsPage`, a un intero listato `Entity`, o a un
-    `ExternalUrl`, mai a "il record N della tabella X". Un'ipotesi per quando
-    servirà davvero: un nuovo `MenuTargetType.EntityRecord` (o simile) con
-    `TargetValue` nel formato `schema.tabella/{chiaveRecord}`, la cui unicità
-    andrebbe verificata contro lo stesso registro di percorsi interni già
-    introdotto qui (`InternalUrlPath`), più una convenzione di URL per i
-    record scaffoldati da concordare con il progetto host (che è comunque il
-    responsabile ultimo del routing/404, coerentemente con l'architettura
-    "il CMS genera/valida i metadati, l'host renderizza").
+  - **Nota di progettazione (non implementata in questa fase)**: il caso
+    d'uso — routing di dettaglio per singoli record di una tabella scaffoldata
+    — è stato generalizzato e promosso a fase a sé stante, vedi **fase 15**
+    più sotto.
 
 ## Prossime fasi
 
@@ -234,6 +225,37 @@ metadati salvati nello schema `cms.*` del database).
       al backoffice — da valutare insieme (es. tracciamento attività
       dell'utente loggato, contatori/riepiloghi sulle entità gestite, ultime
       modifiche).
+- [ ] **15. Routing di dettaglio per record di entità scaffoldate**: concetto
+      **generalizzato** a qualunque tabella scaffoldata (l'esempio
+      `WN_CATEGORIE` → `WN_DOCUMENTI` discusso in fase 12 era solo un caso
+      concreto, non lo scope reale). Oggi il menu può puntare solo a una
+      `CmsPage`, a un intero listato `Entity` (tutta la tabella), o a un
+      `ExternalUrl` — non esiste alcun concetto di "URL del singolo record N
+      della tabella X", per qualunque entità già scaffoldata (FFM.Squadre,
+      WN_CATEGORIE o una qualsiasi tabella futura).
+      Ipotesi di progettazione, da rifinire quando il bisogno diventerà
+      concreto:
+      - Nuove proprietà opzionali su `EntityDefinition`: `DetailRoutePrefix`
+        (percorso interno, es. `/categorie`) e `DetailKeyFieldId` (FK a
+        `FieldDefinition`: la colonna che fornisce il segmento URL del singolo
+        record, es. uno `Slug` dedicato, oppure la PK come fallback). L'URL
+        di un record diventa `{DetailRoutePrefix}/{valore(DetailKeyField)}`.
+      - **Unicità dello spazio di URL** (statica, a configurazione salvata):
+        `DetailRoutePrefix` verificato contro lo stesso registro già
+        introdotto in fase 12 (`InternalUrlPath`) — non deve collidere con
+        nessuno slug di `CmsPage`, nessun percorso `ExternalUrl` di menu, né
+        con il `DetailRoutePrefix` di un'altra entità.
+      - **Unicità dei valori a runtime** (dinamica, per singolo record): che i
+        valori di `DetailKeyField` siano effettivamente univoci riga per riga
+        è una responsabilità dei dati stessi (la tabella legacy sottostante),
+        non qualcosa che il CMS può imporre senza alterare lo schema fisico —
+        coerente con il principio già adottato per le tabelle FFM/legacy
+        (integrità solo applicativa, mai vincoli fisici aggiunti dal CMS). Il
+        CMS può al più segnalarlo/documentarlo, non farlo rispettare.
+      - Il **routing runtime** (far corrispondere l'URL in ingresso al
+        `DetailRoutePrefix` giusto ed estrarne il record) resta comunque
+        responsabilità del progetto host, coerentemente con l'architettura
+        "il CMS genera/valida i metadati, l'host renderizza".
 - [ ] Ulteriori espansioni del modulo FFM o altre tabelle applicative, da
       valutare in base alle esigenze che emergeranno.
 

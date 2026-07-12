@@ -360,11 +360,11 @@ confronto è centralizzata in `InternalUrlPath`
 (`DAMIHeadlessCMS.Admin.Utilities`), condivisa dai due controller.
 
 > Questo controllo copre lo spazio di URL che il CMS **conosce** (Pagine e
-> Menu). Non copre invece URL "di dettaglio" per singoli record di tabelle
-> applicative scaffoldate (es. una futura pagina categoria/documento): il CMS
-> non ha oggi un concetto di routing per record — vedi la nota di
-> progettazione nella fase 12 di [`docs/ROADMAP.md`](docs/ROADMAP.md) per come
-> si potrebbe estendere in futuro.
+> Menu). Non copre invece URL "di dettaglio" per singoli record di **qualunque**
+> tabella scaffoldata (non solo un caso specifico: il concetto è generale,
+> vale per ogni entità): il CMS non ha oggi un concetto di routing per record
+> — vedi la fase 15 di [`docs/ROADMAP.md`](docs/ROADMAP.md) per l'ipotesi di
+> progettazione.
 
 ### 6. Editor avanzati (file, rich text, autocomplete FK)
 
