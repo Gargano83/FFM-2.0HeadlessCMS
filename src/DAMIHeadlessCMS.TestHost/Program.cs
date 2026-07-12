@@ -7,7 +7,7 @@ using DAMIHeadlessCMS.Scaffolding.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? throw new InvalidOperationException("Connection string 'Default' non configurata. Copia appsettings.example.json in appsettings.json e valorizzala.");
+    ?? throw new InvalidOperationException("Connection string 'Default' non configurata. Crea 'appsettings.Development.json' (locale, mai committato — vedi .gitignore) valorizzando ConnectionStrings:Default.");
 
 // Stessa connection string per CmsDbContext (metadati in schema cms.*) e per
 // il repository generico (tabelle applicative in dbo/FFM/TEST/ecc.): vivono

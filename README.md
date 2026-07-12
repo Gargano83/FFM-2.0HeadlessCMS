@@ -99,13 +99,20 @@ versione della libreria.
    libreria priva di `Program.cs`: per generare/applicare le migration, gli
    strumenti `dotnet ef` usano `CmsDbContextFactory`
    (`IDesignTimeDbContextFactory<CmsDbContext>`), che legge la connection
-   string da `src/DAMIHeadlessCMS.Data/appsettings.json` (file locale, **mai**
-   committato — vedi `.gitignore`):
+   string con lo stesso pattern a due file usato dall'host (vedi sotto):
+   `src/DAMIHeadlessCMS.Data/appsettings.json` è versionato ma contiene solo un
+   placeholder (`CAMBIAMI`); crea accanto
+   `src/DAMIHeadlessCMS.Data/appsettings.Development.json` (file locale,
+   **mai** committato — vedi `.gitignore`) con la stessa struttura e i tuoi
+   dati reali:
+   ```json
+   {
+     "ConnectionStrings": {
+       "Default": "Server=localhost,1433;Database=NomeDb;User Id=sa;Password=...;TrustServerCertificate=True;"
+     }
+   }
    ```
-   cp src/DAMIHeadlessCMS.Data/appsettings.example.json src/DAMIHeadlessCMS.Data/appsettings.json
-   ```
-   e valorizza `ConnectionStrings:Default` con i tuoi dati reali. In
-   alternativa, senza toccare file, imposta la variabile d'ambiente
+   In alternativa, senza toccare file, imposta la variabile d'ambiente
    `DAMIHEADLESSCMS_CONNECTIONSTRING`.
 
    > Attenzione alla sintassi: `Trusted_Connection=True` (Windows
@@ -189,6 +196,14 @@ nessuno potrebbe accedere al backoffice per crearne uno):
   }
 }
 ```
+
+> **Dove metterlo**: `appsettings.json` (versionato) contiene solo placeholder
+> vuoti per questi blocchi — di proposito, così il seeding resta disattivato
+> finché non lo configuri esplicitamente. Le credenziali reali vanno in
+> `appsettings.Development.json` (o l'equivalente per il tuo ambiente), **mai
+> committato** — vedi `.gitignore` e la fase 13 di
+> [`docs/ROADMAP.md`](docs/ROADMAP.md) per il perché di questo pattern a due
+> file.
 
 ## Funzionalità implementate
 

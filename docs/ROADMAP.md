@@ -61,6 +61,9 @@ metadati salvati nello schema `cms.*` del database).
       se questi file sono già stati committati in passato; in caso affermativo,
       ruotare immediatamente la password del database e valutare una pulizia
       della cronologia Git (es. `git filter-repo`).
+      **Aggiornamento (fase 13)**: verifica eseguita, i file risultavano
+      effettivamente già committati — vedi fase 13 per l'esito completo e il
+      pattern adottato per evitare che si ripeta.
 - [x] **7. Modulo FFM — componenti Angular/Syncfusion dedicati (solo
       `CmsAdmin`)**: pagine di backoffice dedicate, riservate al ruolo
       `CmsAdmin`, che ospitano componenti Angular/Syncfusion, per tabelle
@@ -204,6 +207,51 @@ metadati salvati nello schema `cms.*` del database).
     d'uso — routing di dettaglio per singoli record di una tabella scaffoldata
     — è stato generalizzato e promosso a fase a sé stante, vedi **fase 15**
     più sotto.
+- [x] **13. `appsettings` per ambiente + pulizia repository**:
+  - **Incidente rilevato**: `git log --all --full-history` ha confermato che
+    sia `src/DAMIHeadlessCMS.TestHost/appsettings.json` sia
+    `src/DAMIHeadlessCMS.Data/appsettings.json` erano stati committati più
+    volte (l'ultima il giorno stesso della fase 9), **nonostante fossero già
+    elencati in `.gitignore`** — perché `.gitignore` impedisce di aggiungere
+    un file mai tracciato, ma non smette di tracciarne uno già presente
+    nell'indice: serve un esplicito `git rm --cached`. Contenevano credenziali
+    reali (password SQL Server, email/password dell'utente admin di seed,
+    chiave di licenza Syncfusion). **Raccomandazione**: ruotare al più presto
+    queste credenziali, indipendentemente da un'eventuale pulizia della
+    cronologia Git (che rimuove la visibilità futura, non annulla
+    un'esposizione già avvenuta).
+  - **Pattern adottato** (due file per progetto, non un file per ogni
+    ambiente — sufficiente per le esigenze attuali): `appsettings.json`
+    **versionato**, con solo placeholder (`CAMBIAMI`, blocchi `SeedAdmin`/
+    `SeedEditor`/`SeedOperator`/`SyncfusionLicenseKey` vuoti — il seeding resta
+    disattivato finché non configurato esplicitamente) +
+    `appsettings.Development.json` **locale, mai committato**, con i valori
+    reali. Applicato a entrambi i progetti con file di configurazione:
+    - `DAMIHeadlessCMS.TestHost`: nessuna modifica di codice necessaria,
+      `WebApplication.CreateBuilder` fa già il layering `appsettings.json` +
+      `appsettings.{ASPNETCORE_ENVIRONMENT}.json` in automatico, e
+      `launchSettings.json` imposta già `Development` su tutti i profili.
+    - `DAMIHeadlessCMS.Data` (libreria senza `Program.cs`, la connection
+      string per `dotnet ef` viene letta da `CmsDbContextFactory`): il
+      **vecchio file `appsettings.example.json` è stato eliminato** e il suo
+      contenuto (già solo placeholder) è diventato il nuovo
+      `appsettings.json` versionato. `CmsDbContextFactory` è stata estesa per
+      fare lo stesso layering a due file dell'host, leggendo
+      `DOTNET_ENVIRONMENT`/`ASPNETCORE_ENVIRONMENT` (default `Development` se
+      nessuna delle due è impostata, coerente con l'uso da riga di comando di
+      `dotnet ef`).
+  - **Comandi Git da eseguire manualmente** (rimuovono dall'indice le versioni
+    con segreti, così i nuovi file placeholder possano essere ri-aggiunti e
+    committati normalmente — non riscrivono la cronologia esistente):
+    ```
+    git rm --cached src/DAMIHeadlessCMS.TestHost/appsettings.json
+    git rm --cached src/DAMIHeadlessCMS.Data/appsettings.json
+    git rm --cached src/DAMIHeadlessCMS.Data/appsettings.example.json
+    ```
+    seguiti dall'applicazione dello zip di questa fase e da un normale
+    `git add`/commit. La pulizia della cronologia pregressa (`git filter-repo`
+    o BFG Repo-Cleaner + force-push) resta una scelta a parte, deliberata e
+    non urgente quanto la rotazione delle credenziali.
 
 ## Prossime fasi
 
@@ -213,13 +261,6 @@ metadati salvati nello schema `cms.*` del database).
       un parametro fisso passato a `AddDAMIHeadlessCMSFfm`). Un selettore
       lingua nel backoffice (per editor multi-lingua sui campi localizzati)
       resta fuori dal perimetro attuale, deferita a quando servirà davvero.
-- [ ] **13. `appsettings` per ambiente + pulizia repository**: adozione del
-      pattern `appsettings.{Environment}.json` (es.
-      `appsettings.Development.json`/`appsettings.Production.json`) al posto
-      di un unico `appsettings.json` con credenziali reali; verifica della
-      cronologia Git per eventuali commit passati con segreti (vedi nota di
-      sicurezza alla fase 6.3) ed eventuale rotazione delle credenziali
-      coinvolte.
 - [ ] **14. Dashboard post-login arricchita**: la pagina che segue il login
       (oggi il solo elenco "Entità gestite") arricchita con funzionalità utili
       al backoffice — da valutare insieme (es. tracciamento attività

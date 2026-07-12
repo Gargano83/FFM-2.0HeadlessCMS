@@ -3,10 +3,11 @@ bin/
 obj/
 .vs/
 
-## Connection string reale con credenziali: mai in git.
-## Solo appsettings.example.json (senza segreti) va versionato.
-src/DAMIHeadlessCMS.Data/appsettings.json
-/src/DAMIHeadlessCMS.TestHost/appsettings.json
+## File con credenziali reali: MAI in git. Il pattern è, per ogni progetto
+## che ha un file di configurazione, una coppia di file:
+##   - appsettings.json              → versionato, solo placeholder/CAMBIAMI
+##   - appsettings.Development.json  → locale, MAI committato, valori reali
+src/DAMIHeadlessCMS.Data/appsettings.Development.json
 /src/DAMIHeadlessCMS.TestHost/appsettings.Development.json
 
 ## Angular (ClientApp dei componenti Syncfusion, modulo FFM)
