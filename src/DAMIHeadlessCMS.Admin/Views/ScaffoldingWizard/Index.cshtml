@@ -270,6 +270,22 @@
                                     <label class="form-label small">Icona (bootstrap-icons, opzionale)</label>
                                     <input type="text" class="form-control entity-icon" value="${entity.icon ?? ''}" placeholder="es. table, tags, people" />
                                 </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small">
+                                        Prefisso URL di dettaglio (opzionale)
+                                        <i class="bi bi-question-circle text-muted" title="Percorso interno per l'URL dei singoli record (es. /categorie). Il routing runtime resta a carico del progetto host."></i>
+                                    </label>
+                                    <input type="text" class="form-control entity-detail-route-prefix" value="${entity.detailRoutePrefix ?? ''}" placeholder="es. /categorie" />
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small">Campo chiave per l'URL di dettaglio</label>
+                                    <select class="form-select entity-detail-key-column">
+                                        <option value="">— Usa la chiave primaria —</option>
+                                        ${entity.fields.map(f =>
+                                            `<option value="${f.columnName}" ${f.columnName === entity.detailKeyColumnName ? 'selected' : ''}>${f.columnName}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm align-middle">
@@ -374,6 +390,8 @@
                         tableName: source.tableName,
                         displayName: card.querySelector('.entity-display-name').value,
                         icon: card.querySelector('.entity-icon').value || null,
+                        detailRoutePrefix: card.querySelector('.entity-detail-route-prefix').value.trim() || null,
+                        detailKeyColumnName: card.querySelector('.entity-detail-key-column').value || null,
                         fields
                     };
                 });
@@ -398,8 +416,12 @@
                     });
 
                     if (!res.ok) {
-                        const text = await res.text();
-                        throw new Error(text || 'Errore durante il salvataggio.');
+                        let message = 'Errore durante il salvataggio.';
+                        try {
+                            const body = await res.json();
+                            if (body && body.message) message = body.message;
+                        } catch { /* risposta non-JSON: si usa il messaggio generico */ }
+                        throw new Error(message);
                     }
 
                     const result = await res.json();

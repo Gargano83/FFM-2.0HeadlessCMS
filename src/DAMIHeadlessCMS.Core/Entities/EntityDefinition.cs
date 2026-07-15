@@ -30,6 +30,27 @@ public class EntityDefinition
     /// <summary>Ordine di visualizzazione nel menu del backoffice.</summary>
     public int SortOrder { get; set; }
 
+    /// <summary>
+    /// Prefisso di percorso interno (es. "/categorie") per l'URL di dettaglio
+    /// dei singoli record di questa entità. Opzionale: se null, l'entità non
+    /// ha un routing di dettaglio configurato (comportamento identico a prima
+    /// di questa fase). Il CMS valida solo che il prefisso sia univoco nello
+    /// spazio di URL che conosce (vedi InternalUrlPath); il routing runtime
+    /// vero e proprio — far corrispondere l'URL in ingresso a questo prefisso
+    /// ed estrarne il record — resta responsabilità del progetto host.
+    /// </summary>
+    public string? DetailRoutePrefix { get; set; }
+
+    /// <summary>
+    /// Campo che fornisce il segmento URL del singolo record (es. uno Slug
+    /// dedicato). Se null ma DetailRoutePrefix è valorizzato, la convenzione
+    /// è usare la chiave primaria come fallback. Ha senso solo insieme a
+    /// DetailRoutePrefix: settarlo da solo non produce alcun URL.
+    /// </summary>
+    public Guid? DetailKeyFieldId { get; set; }
+
+    public FieldDefinition? DetailKeyField { get; set; }
+
     public ICollection<FieldDefinition> Fields { get; set; } = new List<FieldDefinition>();
 
     /// <summary>Nome completo qualificato "schema.tabella", utile per costruire SQL.</summary>

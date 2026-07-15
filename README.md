@@ -239,6 +239,38 @@ Ogni entità scaffoldata ha anche una vista **Struttura** di sola lettura
 (`/dami/{entityId}/structure`) che mostra colonne, tipi, PK/identity/FK e
 configurazione corrente, utile per verificare cosa è stato mappato.
 
+#### 1.1 Routing di dettaglio per i record (opzionale)
+
+Per qualunque entità scaffoldata, nel wizard è possibile configurare
+opzionalmente due proprietà pensate per costruire un URL di dettaglio per i
+singoli record (es. la scheda di una categoria, non l'intero listato):
+
+- **Prefisso URL** (`EntityDefinition.DetailRoutePrefix`, es. `/categorie`):
+  un percorso interno del sito.
+- **Campo chiave** (`EntityDefinition.DetailKeyFieldId`): la colonna che
+  identifica il record nell'URL (es. uno `Slug` dedicato). Se non impostato,
+  convenzione: si usa la chiave primaria.
+
+L'URL del singolo record è quindi `{DetailRoutePrefix}/{valore(campo
+chiave)}`. Il **prefisso** partecipa allo stesso controllo di unicità
+introdotto in fase 12 (`InternalUrlPath`): non può collidere con lo slug di
+una `CmsPage`, un percorso `ExternalUrl` di menu, o il prefisso di un'altra
+entità — verificato sia a livello applicativo
+(`ScaffoldingWizardController`, con messaggio d'errore nel wizard) sia con un
+indice univoco filtrato a livello database (difesa in profondità).
+
+**Cosa NON fa questa funzionalità** — per scelta, non per limite tecnico:
+- **Non genera pagine né rotte**: il CMS valida e conserva solo i metadati
+  (prefisso + campo chiave). Far corrispondere un URL in ingresso al
+  prefisso giusto ed estrarne il record resta responsabilità del progetto
+  host — coerente con l'architettura "il CMS genera/valida i metadati,
+  l'host renderizza", la stessa già adottata per pagine e menu.
+- **Non garantisce l'unicità dei valori del campo chiave riga per riga**: è
+  una responsabilità dei dati stessi (la tabella applicativa sottostante,
+  spesso legacy), non qualcosa che il CMS impone senza alterare uno schema
+  fisico che non gli appartiene — stesso principio di "integrità solo
+  applicativa" già seguito per le tabelle del modulo FFM.
+
 ### 2. CRUD generico sui dati
 
 Percorso backoffice: **Dati** (`/dami`, sidebar dinamica in base alle entità
@@ -374,12 +406,10 @@ interno già usato da una voce `ExternalUrl`. La logica di normalizzazione e
 confronto è centralizzata in `InternalUrlPath`
 (`DAMIHeadlessCMS.Admin.Utilities`), condivisa dai due controller.
 
-> Questo controllo copre lo spazio di URL che il CMS **conosce** (Pagine e
-> Menu). Non copre invece URL "di dettaglio" per singoli record di **qualunque**
-> tabella scaffoldata (non solo un caso specifico: il concetto è generale,
-> vale per ogni entità): il CMS non ha oggi un concetto di routing per record
-> — vedi la fase 15 di [`docs/ROADMAP.md`](docs/ROADMAP.md) per l'ipotesi di
-> progettazione.
+> Questo controllo copre lo spazio di URL "curato a mano" da Pagine e Menu.
+> Per il routing di dettaglio sui singoli record di una tabella scaffoldata
+> (es. `/categorie/{slug}`), vedi la sezione 1.1 più sotto: quello spazio di
+> URL partecipa allo stesso controllo di unicità.
 
 ### 6. Editor avanzati (file, rich text, autocomplete FK)
 

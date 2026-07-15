@@ -204,6 +204,10 @@ public class ScaffoldingService
                     LocalizationSourceId: existingField?.LocalizationSourceId));
             }
 
+            var existingDetailKeyColumnName = existingEntity?.DetailKeyFieldId is Guid detailKeyFieldId
+                ? existingEntity.Fields.FirstOrDefault(f => f.Id == detailKeyFieldId)?.ColumnName
+                : null;
+
             results.Add(new ScaffoldingPreviewEntity(
                 SchemaName: table.SchemaName,
                 TableName: table.TableName,
@@ -211,6 +215,8 @@ public class ScaffoldingService
                 DisplayName: existingEntity?.DisplayName ?? Humanize(table.TableName),
                 Icon: existingEntity?.Icon,
                 IsNew: existingEntity is null,
+                DetailRoutePrefix: existingEntity?.DetailRoutePrefix,
+                DetailKeyColumnName: existingDetailKeyColumnName,
                 Fields: fieldPreviews));
         }
 

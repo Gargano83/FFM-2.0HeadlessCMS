@@ -32,6 +32,8 @@ public sealed record ScaffoldingPreviewEntity(
     string DisplayName,
     string? Icon,
     bool IsNew,
+    string? DetailRoutePrefix,
+    string? DetailKeyColumnName,
     IReadOnlyList<ScaffoldingPreviewField> Fields)
 {
     public string QualifiedName => $"{SchemaName}.{TableName}";

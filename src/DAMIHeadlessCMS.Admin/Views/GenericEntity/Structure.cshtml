@@ -18,6 +18,13 @@
         <div class="text-muted small">
             <code>@Model.QualifiedTableName</code> &middot; PK: <code>@Model.PrimaryKeyColumn</code>
         </div>
+        @if (!string.IsNullOrWhiteSpace(Model.DetailRoutePrefix))
+        {
+            <div class="text-muted small mt-1">
+                <i class="bi bi-link-45deg"></i> Routing di dettaglio: <code>@Model.DetailRoutePrefix/{@(Model.DetailKeyField?.ColumnName ?? Model.PrimaryKeyColumn)}</code>
+                <span class="text-body-tertiary">(routing runtime a carico del progetto host)</span>
+            </div>
+        }
     </div>
     <div class="d-flex flex-wrap gap-2">
         <a href="/dami/@Model.Id" class="btn btn-outline-secondary">

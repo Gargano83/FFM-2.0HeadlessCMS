@@ -1,4 +1,4 @@
-# Roadmap di sviluppo — DAMIHeadlessCMS
+﻿# Roadmap di sviluppo — DAMIHeadlessCMS
 
 CMS .NET 10, distribuito come libreria (Razor Class Library), integrabile in
 un'applicazione MVC host. Approccio scelto per CRUD/scaffolding: **metadata-driven
@@ -284,6 +284,55 @@ metadati salvati nello schema `cms.*` del database).
     eliminata/creata), non un singolo "Update" — riflette accuratamente
     l'implementazione del salvataggio, non è un difetto.
 
+- [x] **15. Routing di dettaglio per record di entità scaffoldate**: implementata
+      esattamente secondo l'ipotesi di progettazione fissata in questa fase —
+      concetto **generalizzato** a qualunque tabella scaffoldata (l'esempio
+      `WN_CATEGORIE` → `WN_DOCUMENTI` discusso in fase 12 era solo un caso
+      concreto che aveva fatto emergere il bisogno, non lo scope reale).
+  - **`EntityDefinition`**: due nuove proprietà opzionali, `DetailRoutePrefix`
+    (percorso interno, es. `/categorie`, max 200 caratteri) e `DetailKeyFieldId`
+    (FK opzionale a `FieldDefinition`, `OnDelete(SetNull)` — non `Cascade`,
+    per non creare un secondo percorso di cascata tra le stesse due tabelle
+    nella direzione opposta a `FieldDefinition.EntityDefinitionId`, che
+    avrebbe causato l'errore SQL Server "may cause cycles or multiple cascade
+    paths"). Se `DetailKeyFieldId` è null ma `DetailRoutePrefix` è valorizzato,
+    convenzione: fallback sulla chiave primaria. L'URL di un record è
+    `{DetailRoutePrefix}/{valore(DetailKeyField ?? chiave primaria)}`.
+  - **Unicità dello spazio di URL** (statica, a configurazione salvata):
+    doppio livello di difesa.
+    - **Applicativo** (`ScaffoldingWizardController.ValidateDetailRoutePrefixesAsync`,
+      eseguito prima di persistere): `DetailRoutePrefix` dev'essere un
+      percorso interno valido (`InternalUrlPath.IsInternal`, stesso registro
+      introdotto in fase 12) e univoco — né duplicato tra le entità dello
+      stesso salvataggio, né in conflitto con un'altra `EntityDefinition` già
+      configurata, né con lo slug di una `CmsPage`, né con un percorso interno
+      `ExternalUrl` di menu. In caso di conflitto: HTTP 400 con messaggio,
+      mostrato dal wizard (stesso pattern di `MenusController.Save`).
+    - **Database** (`EntityDefinitionConfiguration`): indice univoco
+      **filtrato** su `DetailRoutePrefix` (`WHERE [DetailRoutePrefix] IS NOT
+      NULL`) — complementare, non sostitutivo, al controllo applicativo: la
+      tabella `EntityDefinition` da sola non può sapere di `CmsPage`/`CmsMenuItem`.
+  - **Unicità dei valori a runtime** (dinamica, per singolo record):
+      confermata la scelta di non imporla — resta responsabilità dei dati
+      stessi (tabella legacy sottostante), coerente con "integrità solo
+      applicativa" già adottato per le tabelle FFM/legacy. Il CMS non altera
+      lo schema fisico delle tabelle applicative scaffoldate.
+  - **UI**: due nuovi campi nella card di ogni entità nel wizard di
+    scaffolding (`/dami/scaffolding`) — prefisso (testo libero) e campo
+    chiave (select sulle colonne della tabella, "usa la chiave primaria" come
+    default). Il campo chiave viaggia nel payload come **nome colonna**, non
+    come `FieldDefinition.Id`: per una tabella appena selezionata i
+    `FieldDefinition` reali non esistono ancora al momento della
+    compilazione del payload (vengono creati da `ScaffoldTablesAsync` durante
+    lo stesso salvataggio), quindi la risoluzione a `Guid` avviene
+    server-side, dopo lo scaffold. La vista Struttura (`/dami/{id}/structure`)
+    mostra il routing configurato, se presente.
+  - **Routing runtime**: resta, come previsto, responsabilità del progetto
+    host — il CMS genera/valida i metadati (prefisso + campo chiave,
+    garantendone l'unicità), non gestisce il matching URL → record a runtime,
+    coerentemente con l'architettura "il CMS genera/valida i metadati, l'host
+    renderizza".
+
 ## Prossime fasi
 
 - [ ] **10. Localizzazione multi-lingua nel backoffice**: attualmente il CMS
@@ -292,37 +341,6 @@ metadati salvati nello schema `cms.*` del database).
       un parametro fisso passato a `AddDAMIHeadlessCMSFfm`). Un selettore
       lingua nel backoffice (per editor multi-lingua sui campi localizzati)
       resta fuori dal perimetro attuale, deferita a quando servirà davvero.
-- [ ] **15. Routing di dettaglio per record di entità scaffoldate**: concetto
-      **generalizzato** a qualunque tabella scaffoldata (l'esempio
-      `WN_CATEGORIE` → `WN_DOCUMENTI` discusso in fase 12 era solo un caso
-      concreto, non lo scope reale). Oggi il menu può puntare solo a una
-      `CmsPage`, a un intero listato `Entity` (tutta la tabella), o a un
-      `ExternalUrl` — non esiste alcun concetto di "URL del singolo record N
-      della tabella X", per qualunque entità già scaffoldata (FFM.Squadre,
-      WN_CATEGORIE o una qualsiasi tabella futura).
-      Ipotesi di progettazione, da rifinire quando il bisogno diventerà
-      concreto:
-      - Nuove proprietà opzionali su `EntityDefinition`: `DetailRoutePrefix`
-        (percorso interno, es. `/categorie`) e `DetailKeyFieldId` (FK a
-        `FieldDefinition`: la colonna che fornisce il segmento URL del singolo
-        record, es. uno `Slug` dedicato, oppure la PK come fallback). L'URL
-        di un record diventa `{DetailRoutePrefix}/{valore(DetailKeyField)}`.
-      - **Unicità dello spazio di URL** (statica, a configurazione salvata):
-        `DetailRoutePrefix` verificato contro lo stesso registro già
-        introdotto in fase 12 (`InternalUrlPath`) — non deve collidere con
-        nessuno slug di `CmsPage`, nessun percorso `ExternalUrl` di menu, né
-        con il `DetailRoutePrefix` di un'altra entità.
-      - **Unicità dei valori a runtime** (dinamica, per singolo record): che i
-        valori di `DetailKeyField` siano effettivamente univoci riga per riga
-        è una responsabilità dei dati stessi (la tabella legacy sottostante),
-        non qualcosa che il CMS può imporre senza alterare lo schema fisico —
-        coerente con il principio già adottato per le tabelle FFM/legacy
-        (integrità solo applicativa, mai vincoli fisici aggiunti dal CMS). Il
-        CMS può al più segnalarlo/documentarlo, non farlo rispettare.
-      - Il **routing runtime** (far corrispondere l'URL in ingresso al
-        `DetailRoutePrefix` giusto ed estrarne il record) resta comunque
-        responsabilità del progetto host, coerentemente con l'architettura
-        "il CMS genera/valida i metadati, l'host renderizza".
 - [ ] Ulteriori espansioni del modulo FFM o altre tabelle applicative, da
       valutare in base alle esigenze che emergeranno.
 
@@ -341,3 +359,4 @@ metadati salvati nello schema `cms.*` del database).
 | Contenuti statici esterni (fase 8) | Serviti dal progetto host, il CMS espone solo il link nel menu |
 | Mapping utenti legacy (modulo FFM) | Risoluzione via email (`IFfmUserResolver`) verso tabelle utenti legacy quando serve tracciare `IdUtente` su tabelle applicative esistenti |
 | Log di audit (fase 14) | Generato da un override di `CmsDbContext.SaveChangesAsync` sul `ChangeTracker` di EF Core, non da scritture esplicite nei controller; copre solo le entità EF-native (Pagine/Menu/Utenti), non i dati scaffoldati (ADO.NET, fuori dal ChangeTracker) |
+| Routing di dettaglio per record (fase 15) | Il CMS valida/conserva solo prefisso + campo chiave (`EntityDefinition`), doppio controllo di unicità (applicativo + indice DB filtrato); il matching URL → record a runtime resta al progetto host, come per pagine e menu |

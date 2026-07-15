@@ -1,4 +1,5 @@
-﻿using DAMIHeadlessCMS.Admin.ViewModels;
+﻿using DAMIHeadlessCMS.Admin.Utilities;
+using DAMIHeadlessCMS.Admin.ViewModels;
 using DAMIHeadlessCMS.Core.Enums;
 using DAMIHeadlessCMS.Data;
 using DAMIHeadlessCMS.Data.Identity;
@@ -101,6 +102,12 @@ public class ScaffoldingWizardController : Controller
 
         var entities = await _scaffoldingService.ScaffoldTablesAsync(selectedTables, ct);
 
+        var validationError = await ValidateDetailRoutePrefixesAsync(request.Entities, entities, ct);
+        if (validationError is not null)
+        {
+            return BadRequest(new { success = false, message = validationError });
+        }
+
         foreach (var entityRequest in request.Entities)
         {
             var entity = entities.FirstOrDefault(e =>
@@ -114,6 +121,19 @@ public class ScaffoldingWizardController : Controller
 
             entity.DisplayName = entityRequest.DisplayName;
             entity.Icon = entityRequest.Icon;
+
+            var normalizedPrefix = string.IsNullOrWhiteSpace(entityRequest.DetailRoutePrefix)
+                ? null
+                : InternalUrlPath.Normalize(entityRequest.DetailRoutePrefix);
+            entity.DetailRoutePrefix = normalizedPrefix;
+
+            // Il campo chiave ha senso solo insieme al prefisso: se il
+            // prefisso non è (più) valorizzato, si azzera anche il campo,
+            // anche se il client avesse comunque inviato un valore.
+            entity.DetailKeyFieldId = normalizedPrefix is not null && !string.IsNullOrWhiteSpace(entityRequest.DetailKeyColumnName)
+                ? entity.Fields.FirstOrDefault(f =>
+                    string.Equals(f.ColumnName, entityRequest.DetailKeyColumnName, StringComparison.OrdinalIgnoreCase))?.Id
+                : null;
 
             foreach (var fieldRequest in entityRequest.Fields)
             {
@@ -143,5 +163,100 @@ public class ScaffoldingWizardController : Controller
         await _db.SaveChangesAsync(ct);
 
         return Json(new { success = true, redirectUrl = "/dami" });
+    }
+
+    /// <summary>
+    /// Garantisce che i <c>DetailRoutePrefix</c> di questo salvataggio siano
+    /// percorsi interni validi (vedi <see cref="InternalUrlPath"/>) e univoci
+    /// nello spazio di URL che il CMS conosce: né duplicati tra le entità di
+    /// questo stesso salvataggio, né in conflitto con un'ALTRA entità già
+    /// configurata, né con lo slug di una CmsPage, né con un percorso interno
+    /// ExternalUrl di menu. Restituisce il messaggio d'errore, o null se ok.
+    /// </summary>
+    private async Task<string?> ValidateDetailRoutePrefixesAsync(
+        IReadOnlyList<ScaffoldingSaveEntity> requestEntities,
+        IReadOnlyList<Core.Entities.EntityDefinition> savedEntities,
+        CancellationToken ct)
+    {
+        var normalizedByEntity = new List<(ScaffoldingSaveEntity Request, string NormalizedPrefix)>();
+
+        foreach (var entityRequest in requestEntities)
+        {
+            if (string.IsNullOrWhiteSpace(entityRequest.DetailRoutePrefix))
+            {
+                continue;
+            }
+
+            if (!InternalUrlPath.IsInternal(entityRequest.DetailRoutePrefix))
+            {
+                return $"Il prefisso di dettaglio '{entityRequest.DetailRoutePrefix}' di {entityRequest.SchemaName}.{entityRequest.TableName} " +
+                       "dev'essere un percorso interno (es. \"/categorie\"), non un URL esterno.";
+            }
+
+            normalizedByEntity.Add((entityRequest, InternalUrlPath.Normalize(entityRequest.DetailRoutePrefix)));
+        }
+
+        if (normalizedByEntity.Count == 0)
+        {
+            return null;
+        }
+
+        var duplicateGroup = normalizedByEntity
+            .GroupBy(x => x.NormalizedPrefix, StringComparer.Ordinal)
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicateGroup is not null)
+        {
+            return $"Il prefisso di dettaglio '{duplicateGroup.Key}' è usato da più entità in questo salvataggio: dev'essere univoco.";
+        }
+
+        // Id delle entità coinvolte in QUESTO salvataggio, da escludere dal
+        // controllo contro le altre EntityDefinition già persistite (altrimenti
+        // un'entità colliderebbe sempre con se stessa in un semplice re-save).
+        var savedIds = requestEntities
+            .Select(er => savedEntities.FirstOrDefault(e =>
+                string.Equals(e.SchemaName, er.SchemaName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(e.TableName, er.TableName, StringComparison.OrdinalIgnoreCase))?.Id)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToHashSet();
+
+        var normalizedPaths = normalizedByEntity.Select(x => x.NormalizedPrefix).ToHashSet(StringComparer.Ordinal);
+
+        var otherEntityPrefixes = await _db.EntityDefinitions
+            .Where(e => e.DetailRoutePrefix != null && !savedIds.Contains(e.Id))
+            .Select(e => e.DetailRoutePrefix!)
+            .ToListAsync(ct);
+
+        var collidingEntity = otherEntityPrefixes
+            .Select(InternalUrlPath.Normalize)
+            .FirstOrDefault(normalizedPaths.Contains);
+        if (collidingEntity is not null)
+        {
+            return $"Il prefisso di dettaglio '{collidingEntity}' è già usato da un'altra entità.";
+        }
+
+        var pageSlugs = await _db.Pages.Select(p => p.Slug).ToListAsync(ct);
+        var collidingPage = pageSlugs
+            .Select(InternalUrlPath.FromPageSlug)
+            .FirstOrDefault(normalizedPaths.Contains);
+        if (collidingPage is not null)
+        {
+            return $"Il prefisso di dettaglio '{collidingPage}' corrisponde già allo slug di una pagina esistente.";
+        }
+
+        var menuExternalUrls = await _db.MenuItems
+            .Where(i => i.TargetType == MenuTargetType.ExternalUrl)
+            .Select(i => i.TargetValue)
+            .ToListAsync(ct);
+        var collidingMenu = menuExternalUrls
+            .Where(InternalUrlPath.IsInternal)
+            .Select(InternalUrlPath.Normalize)
+            .FirstOrDefault(normalizedPaths.Contains);
+        if (collidingMenu is not null)
+        {
+            return $"Il prefisso di dettaglio '{collidingMenu}' è già usato da una voce di menu di tipo 'URL esterno'.";
+        }
+
+        return null;
     }
 }

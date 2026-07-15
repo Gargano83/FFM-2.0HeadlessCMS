@@ -322,6 +322,7 @@ public class GenericEntityController : Controller
                 .ThenInclude(f => f.ForeignKeyTargetEntity)
             .Include(e => e.Fields)
                 .ThenInclude(f => f.LocalizationSource)
+            .Include(e => e.DetailKeyField)
             .FirstOrDefaultAsync(e => e.Id == entityId && e.IsEnabled, ct);
 
     /// <summary>Legge dal form solo le colonne marcate ShowInForm (whitelist), come si aspetta il repository.</summary>
