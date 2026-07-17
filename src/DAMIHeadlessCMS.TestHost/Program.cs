@@ -25,6 +25,10 @@ builder.Services.AddDAMIHeadlessCMSFfm(connectionString);
 
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 
+// Lettura dei contenuti (WN_Contenuti, FFM.Squadre, ecc.) per le pagine
+// pubbliche simulate da questo host: codice del TestHost, non della libreria.
+builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.LegacyContentReader>();
+
 builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 
 var app = builder.Build();
@@ -43,9 +47,24 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Sito pubblico (simulazione dell'app host definitiva): '/' e le rotte
+// convenzionali standard vanno al HomeController del TestHost.
 app.MapDefaultControllerRoute();
 
-app.MapGet("/", () => Results.Redirect("/dami"));
+// Routing generico per le CmsPage native (contenuto NON proveniente dal
+// legacy, es. pagine nuove create da backoffice): un solo segmento di path,
+// risolto da PagesController.Show in base allo Slug. Essendo una rotta
+// convenzionale "aperta", viene provata solo se nessun'altra rotta più
+// specifica (attribute routing di /dami/*, rotte convenzionali verso
+// controller esistenti) ha già trovato una corrispondenza.
+app.MapControllerRoute(
+    name: "cms-page",
+    pattern: "{slug}",
+    defaults: new { controller = "Pages", action = "Show" });
+
+// Il backoffice resta raggiungibile su /dami tramite l'attribute routing
+// esposto dalla Razor Class Library DAMIHeadlessCMS.Admin.
 
 await DAMIHeadlessCMSIdentitySeeder.SeedAsync(app.Services, app.Configuration);
 

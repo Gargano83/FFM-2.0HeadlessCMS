@@ -333,6 +333,60 @@ metadati salvati nello schema `cms.*` del database).
     coerentemente con l'architettura "il CMS genera/valida i metadati, l'host
     renderizza".
 
+- [~] **16. Migrazione pagine pubbliche legacy → `DAMIHeadlessCMS.TestHost`**
+      (in corso, per checkpoint — vedi PDF "Indicazioni utili per migrazione
+      progetto legacy" per l'elenco pagine/endpoint di riferimento). Non è una
+      feature della libreria: `TestHost` simula l'app host definitiva, quindi
+      questa fase **non** aggiorna il `README.md` della libreria.
+  - **Decisione chiave**: i contenuti legacy (`WN_Contenuti`, `FFM.Squadre`,
+    `FFM.RiepilogoStatistiche`, ecc.) **non vengono ricreati a mano** nel
+    nuovo CMS — si scaffoldano da `/dami/scaffolding` e si leggono da
+    `TestHost` tramite `IGenericEntityRepository` (stesso repository usato
+    dal CRUD generico di backoffice), che risolve già in automatico i campi
+    localizzati via `LocalizationSource` (subquery equivalente a
+    `dbo.udf_Localize`/`WN_LOCALIZZAZIONE`) — nessuna modifica alla libreria
+    necessaria per questo. Introdotto `LegacyContentReader`
+    (`DAMIHeadlessCMS.TestHost/PublicSite`), wrapper sottile sopra
+    `IGenericEntityRepository` per il solo TestHost.
+  - **Menu**: sostituisce l'endpoint legacy `/api/data/menu` (che nel
+    progetto legacy usava un albero per stringa `ca_ordine`, con nota
+    esplicita "va ripensata in base al CMS") con `CmsMenu`/`CmsMenuItem`
+    nativi — albero vero via `ParentId`, non da ricostruire da `WN_Categorie`.
+    Nome del menu principale: convenzione fissa nel codice
+    (`MainMenuViewComponent.MainMenuName = "main-nav"`), non configurabile.
+  - **Routing**: `/` → `HomeController` (pagine pubbliche del TestHost);
+    `/{slug}` → `PagesController.Show`, rotta convenzionale generica per le
+    `CmsPage` native (contenuto **nuovo**, non legacy — interpreta solo
+    blocchi `{"type":"html"}` di `ContentJson` per ora); `/dami/*` resta
+    sull'attribute routing esposto dalla Razor Class Library Admin, non
+    impattato.
+  - **Checkpoint 1/4 — Menu + Hero** ✅: layout pubblico condiviso
+    (`_PublicLayout.cshtml`, Bootstrap 5.3.3 via CDN, stessa versione del
+    backoffice), `MainMenuViewComponent` (navbar responsive con sottomenu
+    annidati), `HomeController.Index` che legge l'hero da `WN_Contenuti`
+    (colonne `co_titolo`/`co_abstract`/`co_corpo`, tutte localizzate — via
+    `Doc.cs`/`Default.xml` legacy, query `GetDocumento`) per l'id configurato
+    in `PublicSite:HomepageDocumentId` (=1, equivalente di
+    `WebConst.HOMEPAGE_ID`). Aggiunta anche l'azione `Error` standard, prima
+    assente (referenziata da `UseExceptionHandler` in `Program.cs` ma
+    orfana finché non esisteva un `HomeController`).
+  - **Checkpoint 2/4 — Squadre** (loghi club, endpoint legacy
+    `/api/club/squadre`, tabella `FFM.Squadre`, nessun filtro): da fare.
+  - **Checkpoint 3/4 — Ultimi articoli comunicazioni** (endpoint legacy
+    `/api/comunicazioni/ultimiarticoli`, `WN_Contenuti` con filtro
+    `co_tipo_doc`/`co_attivo` + `ORDER BY co_data_inizio DESC` + `TOP 6` +
+    join a `WN_Categorie`): da fare. **Richiede** di estendere
+    `IGenericEntityRepository` con un metodo di lettura filtrata/ordinata/
+    limitata (oggi `GetListAsync` pagina solo per PK, `GetByIdAsync` legge
+    una riga sola) — unica modifica di questo lotto che tocca la libreria,
+    non solo il TestHost.
+  - **Checkpoint 4/4 — Riepilogo statistiche "Albo d'oro"** (endpoint legacy
+    `/api/statistiche/riepilogo`, `FFM.RiepilogoStatistiche` + `WN_LOOKUP`):
+    da fare. **Decisione presa**: versione dinamica (colonne generate dai
+    dati/competizioni trovate) invece delle 9 colonne fisse hardcoded per id
+    di lookup (233–241 nel legacy) usate nel widget client-side originale —
+    più manutenibile, non dipende da id specifici dell'installazione.
+
 ## Prossime fasi
 
 - [ ] **10. Localizzazione multi-lingua nel backoffice**: attualmente il CMS

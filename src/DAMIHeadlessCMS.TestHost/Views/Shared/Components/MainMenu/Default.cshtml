@@ -1,0 +1,28 @@
+@model List<DAMIHeadlessCMS.TestHost.PublicSite.MenuNode>
+
+<nav class="navbar navbar-expand-lg public-navbar sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">FFM 2.0</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavCollapse"
+                aria-controls="mainNavCollapse" aria-expanded="false" aria-label="Apri/chiudi menu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNavCollapse">
+            @if (Model.Count == 0)
+            {
+                <span class="navbar-text text-body-secondary small">
+                    Nessun menu "@DAMIHeadlessCMS.TestHost.ViewComponents.MainMenuViewComponent.MainMenuName" configurato — crealo da <a href="/dami/menus">/dami/menus</a>.
+                </span>
+            }
+            else
+            {
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                    @foreach (var node in Model)
+                    {
+                        @await Html.PartialAsync("_MenuNode", node)
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</nav>

@@ -1,0 +1,73 @@
+:root {
+    --public-accent: #0d6efd;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+/* --- Navbar --- */
+
+.public-navbar {
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+}
+
+/* Sottomenu annidati (dropdown-submenu): a destra su desktop, incolonnati su mobile */
+.dropdown-submenu {
+    position: relative;
+}
+
+@media (min-width: 992px) {
+    .dropdown-submenu > .dropdown-menu {
+        top: 0;
+        left: 100%;
+        margin-top: -1px;
+    }
+}
+
+/* --- Hero (Homepage) --- */
+
+.hero-section {
+    background: linear-gradient(135deg, var(--public-accent), #6f42c1);
+    color: #fff;
+    padding: 4rem 0;
+}
+
+.hero-section .lead {
+    color: rgba(255, 255, 255, .9);
+}
+
+/* --- Card loghi squadre --- */
+
+.team-logo-card {
+    border: 1px solid rgba(0, 0, 0, .08);
+    border-radius: .5rem;
+    padding: 1rem;
+    text-align: center;
+    height: 100%;
+    transition: transform .15s ease-in-out;
+}
+
+.team-logo-card:hover {
+    transform: translateY(-2px);
+}
+
+.team-logo-card img {
+    max-height: 64px;
+    width: auto;
+    object-fit: contain;
+}
+
+/* --- Footer --- */
+
+.public-footer {
+    border-top: 1px solid rgba(0, 0, 0, .08);
+    margin-top: 3rem;
+}

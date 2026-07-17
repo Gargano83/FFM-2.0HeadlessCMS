@@ -1,0 +1,14 @@
+@model DAMIHeadlessCMS.TestHost.Models.ErrorViewModel
+@{
+    ViewData["Title"] = "Errore";
+}
+
+<div class="container my-5">
+    <h1 class="text-danger">Si è verificato un errore</h1>
+    <p>Si è verificato un errore durante l'elaborazione della richiesta.</p>
+
+    @if (Model.ShowRequestId)
+    {
+        <p><strong>Request ID:</strong> <code>@Model.RequestId</code></p>
+    }
+</div>

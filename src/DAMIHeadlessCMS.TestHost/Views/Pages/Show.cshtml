@@ -1,0 +1,41 @@
+@using System.Text.Json
+@model DAMIHeadlessCMS.Core.Entities.CmsPage
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="container py-5">
+    <h1 class="mb-4">@Model.Title</h1>
+
+    @{
+        JsonDocument? blocks = null;
+        try
+        {
+            blocks = JsonDocument.Parse(Model.ContentJson);
+        }
+        catch (JsonException)
+        {
+            // ContentJson non valido: mostriamo la pagina senza corpo invece di far esplodere la view.
+        }
+    }
+
+    @if (blocks is not null && blocks.RootElement.ValueKind == JsonValueKind.Array)
+    {
+        foreach (var block in blocks.RootElement.EnumerateArray())
+        {
+            var type = block.TryGetProperty("type", out var t) ? t.GetString() : null;
+
+            @if (type == "html" && block.TryGetProperty("html", out var html))
+            {
+                <div class="cms-block cms-block-html mb-4">
+                    @Html.Raw(html.GetString())
+                </div>
+            }
+            else
+            {
+                @* Tipi di blocco non ancora supportati da questa view (component/entityList,
+                   vedi CmsPage.ContentJson): verranno gestiti quando serviranno davvero. *@
+            }
+        }
+    }
+</div>

@@ -1,0 +1,42 @@
+@model DAMIHeadlessCMS.TestHost.PublicSite.MenuNode
+
+@{
+    var hasChildren = Model.Children.Count > 0;
+    var target = Model.OpenInNewTab ? "_blank" : null;
+}
+
+@if (!hasChildren)
+{
+    <li class="nav-item">
+        <a class="nav-link" href="@Model.Url" target="@target">@Model.Label</a>
+    </li>
+}
+else
+{
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            @Model.Label
+        </a>
+        <ul class="dropdown-menu">
+            @foreach (var child in Model.Children)
+            {
+                if (child.Children.Count == 0)
+                {
+                    <li><a class="dropdown-item" href="@child.Url" target="@(child.OpenInNewTab ? "_blank" : null)">@child.Label</a></li>
+                }
+                else
+                {
+                    <li class="dropdown-submenu">
+                        <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">@child.Label</a>
+                        <ul class="dropdown-menu">
+                            @foreach (var grandChild in child.Children)
+                            {
+                                <li><a class="dropdown-item" href="@grandChild.Url" target="@(grandChild.OpenInNewTab ? "_blank" : null)">@grandChild.Label</a></li>
+                            }
+                        </ul>
+                    </li>
+                }
+            }
+        </ul>
+    </li>
+}

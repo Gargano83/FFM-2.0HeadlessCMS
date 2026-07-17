@@ -16,4 +16,14 @@
     <ProjectReference Include="..\DAMIHeadlessCMS.Admin\DAMIHeadlessCMS.Admin.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Controllers\" />
+    <Folder Include="Models\PublicSite\" />
+    <Folder Include="PublicSite\" />
+    <Folder Include="ViewComponents\" />
+    <Folder Include="Views\Home\" />
+    <Folder Include="Views\Pages\" />
+    <Folder Include="Views\Shared\Components\MainMenu\" />
+  </ItemGroup>
+
 </Project>

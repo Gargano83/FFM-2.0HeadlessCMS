@@ -1,0 +1,41 @@
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.HeroContentViewModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+@if (!Model.Found)
+{
+    <div class="container my-5">
+        <div class="alert alert-warning" role="alert">
+            <h2 class="h5">Contenuto Homepage non disponibile</h2>
+            <p class="mb-0">
+                La tabella <code>WN_Contenuti</code> non è ancora stata scaffoldata, oppure non esiste una riga con
+                l'id configurato in <code>PublicSite:HomepageDocumentId</code> (appsettings.json). Scaffolda la
+                tabella da <a href="/dami/scaffolding">/dami/scaffolding</a> e verifica l'id.
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="display-5 fw-bold">@Model.Titolo</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.Abstract))
+            {
+                <p class="lead col-lg-8">@Model.Abstract</p>
+            }
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Corpo))
+    {
+        <section class="container py-5">
+            <div class="col-lg-8">
+                @Html.Raw(Model.Corpo)
+            </div>
+        </section>
+    }
+}
+
+@* I blocchi Squadre / Ultimi articoli / Riepilogo statistiche arrivano nei prossimi checkpoint. *@
