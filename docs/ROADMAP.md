@@ -370,8 +370,22 @@ metadati salvati nello schema `cms.*` del database).
     `WebConst.HOMEPAGE_ID`). Aggiunta anche l'azione `Error` standard, prima
     assente (referenziata da `UseExceptionHandler` in `Program.cs` ma
     orfana finché non esisteva un `HomeController`).
-  - **Checkpoint 2/4 — Squadre** (loghi club, endpoint legacy
-    `/api/club/squadre`, tabella `FFM.Squadre`, nessun filtro): da fare.
+    - **Bug scoperto in fase di test** (non introdotto da questo checkpoint,
+      ma emerso qui perché è il primo punto che interroga `CmsMenuItem` con
+      EF): la migration `20260705092847_AddOpenInNewTabToMenuItem` aveva
+      `Up()`/`Down()` vuoti — la colonna non veniva creata da nessuna parte,
+      nemmeno su un DB nuovo. Contenuto ripristinato nel repository; su
+      database già migrati va applicato a mano un `ALTER TABLE` una tantum
+      (non recuperabile da `dotnet ef database update`, la cronologia la
+      segna già come applicata).
+  - **Checkpoint 2/4 — Squadre** ✅: slider loghi squadre
+    (`FFM.Squadre`, nessun filtro — letto con `LegacyContentReader.GetAllRowsAsync`,
+    wrapper su `GetListAsync` con una sola pagina "grande", nessuna modifica
+    alla libreria) con [swiffy-slider](https://swiffyslider.com) via CDN
+    (stessa libreria usata dal client-side legacy). Url dei loghi composta da
+    `PublicSite:LegacyFileBaseUrl` + colonna `LogoStatistiche` (path
+    relativo) — **valore da confermare**, al momento impostato a titolo
+    indicativo in `appsettings.json`.
   - **Checkpoint 3/4 — Ultimi articoli comunicazioni** (endpoint legacy
     `/api/comunicazioni/ultimiarticoli`, `WN_Contenuti` con filtro
     `co_tipo_doc`/`co_attivo` + `ORDER BY co_data_inizio DESC` + `TOP 6` +

@@ -1,9 +1,13 @@
-@model DAMIHeadlessCMS.TestHost.Models.PublicSite.HeroContentViewModel
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.HomeViewModel
 @{
     ViewData["Title"] = "Home";
 }
 
-@if (!Model.Found)
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiffy-slider@2.1.0/dist/css/swiffy-slider.min.css" />
+}
+
+@if (!Model.Hero.Found)
 {
     <div class="container my-5">
         <div class="alert alert-warning" role="alert">
@@ -20,22 +24,56 @@ else
 {
     <section class="hero-section">
         <div class="container">
-            <h1 class="display-5 fw-bold">@Model.Titolo</h1>
-            @if (!string.IsNullOrWhiteSpace(Model.Abstract))
+            <h1 class="display-5 fw-bold">@Model.Hero.Titolo</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.Hero.Abstract))
             {
-                <p class="lead col-lg-8">@Model.Abstract</p>
+                <p class="lead col-lg-8">@Model.Hero.Abstract</p>
             }
         </div>
     </section>
 
-    @if (!string.IsNullOrWhiteSpace(Model.Corpo))
+    @if (!string.IsNullOrWhiteSpace(Model.Hero.Corpo))
     {
         <section class="container py-5">
             <div class="col-lg-8">
-                @Html.Raw(Model.Corpo)
+                @Html.Raw(Model.Hero.Corpo)
             </div>
         </section>
     }
 }
 
-@* I blocchi Squadre / Ultimi articoli / Riepilogo statistiche arrivano nei prossimi checkpoint. *@
+@if (Model.Teams.Count > 0)
+{
+    <section class="container py-4">
+        <div class="swiffy-slider slider-item-show4 slider-nav-outside slider-nav-dark slider-nav-sm
+                    slider-nav-visible slider-nav-page slider-item-snapstart
+                    bg-white shadow-lg py-3 py-lg-4">
+            <ul class="slider-container list-unstyled mb-0">
+                @foreach (var team in Model.Teams)
+                {
+                    <li class="team-logo-card">
+                        <div class="fw-semibold small mb-2">@team.Nome</div>
+                        @if (!string.IsNullOrWhiteSpace(team.LogoPath))
+                        {
+                            <img src="@team.LogoPath" loading="lazy" alt="@team.Nome" />
+                        }
+                    </li>
+                }
+            </ul>
+            <button type="button" class="slider-nav" aria-label="Squadra precedente"></button>
+            <button type="button" class="slider-nav slider-nav-next" aria-label="Squadra successiva"></button>
+        </div>
+    </section>
+}
+
+@* Il blocco Ultimi articoli / Riepilogo statistiche arriva nei prossimi checkpoint. *@
+
+@section Scripts {
+    @if (Model.Teams.Count > 0)
+    {
+        <script type="module">
+            import { swiffyslider } from 'https://cdn.jsdelivr.net/npm/swiffy-slider@2.1.0/dist/js/swiffy-slider.js';
+            window.addEventListener('load', () => swiffyslider.init());
+        </script>
+    }
+}

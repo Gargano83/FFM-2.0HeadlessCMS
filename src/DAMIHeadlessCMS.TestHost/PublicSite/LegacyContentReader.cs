@@ -46,4 +46,19 @@ public class LegacyContentReader
         var row = await _repository.GetByIdAsync(entity, id, ct);
         return row is null ? null : new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// Legge fino a <paramref name="maxRows"/> righe, senza filtro (equivalente delle query
+    /// legacy "senza WHERE", es. FFM.Squadre). Wrapper su GetListAsync richiedendo un'unica
+    /// pagina abbastanza grande: nessuna modifica alla libreria necessaria per questo caso —
+    /// diverso dal caso "filtro + ordina + TOP N" (es. ultimi articoli), che invece la richiederà.
+    /// </summary>
+    public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> GetAllRowsAsync(
+        EntityDefinition entity, int maxRows = 500, CancellationToken ct = default)
+    {
+        var page = await _repository.GetListAsync(entity, page: 1, pageSize: maxRows, ct);
+        return page.Rows
+            .Select(row => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+    }
 }

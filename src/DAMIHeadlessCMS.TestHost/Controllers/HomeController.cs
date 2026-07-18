@@ -27,6 +27,14 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
+        var hero = await LoadHeroAsync(ct);
+        var teams = await LoadTeamsAsync(ct);
+
+        return View(new HomeViewModel { Hero = hero, Teams = teams });
+    }
+
+    private async Task<HeroContentViewModel> LoadHeroAsync(CancellationToken ct)
+    {
         var homepageDocumentId = _configuration.GetValue("PublicSite:HomepageDocumentId", 1);
 
         var entity = await _content.GetEntityAsync("dbo", "WN_Contenuti", ct);
@@ -35,7 +43,7 @@ public class HomeController : Controller
             _logger.LogWarning(
                 "WN_Contenuti non risulta ancora scaffoldata: la Homepage viene mostrata senza contenuto hero. " +
                 "Scaffoldala da /dami/scaffolding per popolare questo blocco.");
-            return View(HeroContentViewModel.NotFound);
+            return HeroContentViewModel.NotFound;
         }
 
         var row = await _content.GetRowByIdAsync(entity, homepageDocumentId, ct);
@@ -44,18 +52,53 @@ public class HomeController : Controller
             _logger.LogWarning(
                 "Nessuna riga trovata in WN_Contenuti per id={HomepageDocumentId} (PublicSite:HomepageDocumentId).",
                 homepageDocumentId);
-            return View(HeroContentViewModel.NotFound);
+            return HeroContentViewModel.NotFound;
         }
 
-        var hero = new HeroContentViewModel
+        return new HeroContentViewModel
         {
             Found = true,
             Titolo = row.GetValueOrDefault("co_titolo") as string,
             Abstract = row.GetValueOrDefault("co_abstract") as string,
             Corpo = row.GetValueOrDefault("co_corpo") as string
         };
+    }
 
-        return View(hero);
+    private async Task<IReadOnlyList<TeamLogoViewModel>> LoadTeamsAsync(CancellationToken ct)
+    {
+        var entity = await _content.GetEntityAsync("FFM", "Squadre", ct);
+        if (entity is null)
+        {
+            _logger.LogWarning(
+                "FFM.Squadre non risulta ancora scaffoldata: lo slider squadre viene omesso. " +
+                "Scaffoldala da /dami/scaffolding per popolare questo blocco.");
+            return [];
+        }
+
+        var baseUrl = _configuration["PublicSite:LegacyFileBaseUrl"] ?? string.Empty;
+        var rows = await _content.GetAllRowsAsync(entity, ct: ct);
+
+        return rows
+            .Select(row => new TeamLogoViewModel
+            {
+                Nome = row.GetValueOrDefault("Nome") as string ?? string.Empty,
+                LogoPath = ResolveLogoUrl(row.GetValueOrDefault("LogoStatistiche") as string, baseUrl)
+            })
+            .Where(t => !string.IsNullOrWhiteSpace(t.Nome))
+            .ToList();
+    }
+
+    private static string? ResolveLogoUrl(string? relativePath, string baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return null;
+        }
+
+        return relativePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+               relativePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            ? relativePath
+            : $"{baseUrl.TrimEnd('/')}/{relativePath.TrimStart('/')}";
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
