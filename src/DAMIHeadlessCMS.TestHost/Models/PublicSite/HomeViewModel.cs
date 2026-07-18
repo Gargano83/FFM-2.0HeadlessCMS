@@ -6,4 +6,6 @@ public class HomeViewModel
     public required HeroContentViewModel Hero { get; init; }
 
     public IReadOnlyList<TeamLogoViewModel> Teams { get; init; } = [];
+
+    public IReadOnlyList<LatestArticleViewModel> LatestArticles { get; init; } = [];
 }

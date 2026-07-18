@@ -66,7 +66,36 @@ else
     </section>
 }
 
-@* Il blocco Ultimi articoli / Riepilogo statistiche arriva nei prossimi checkpoint. *@
+@if (Model.LatestArticles.Count > 0)
+{
+    <section class="container py-4">
+        <h2 class="h4 mb-3">Ultime comunicazioni</h2>
+        <div class="row g-3">
+            @foreach (var article in Model.LatestArticles)
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="h-100 p-3 border rounded">
+                        @if (!string.IsNullOrWhiteSpace(article.NomeCategoria))
+                        {
+                            <span class="badge text-bg-secondary mb-2">@article.NomeCategoria</span>
+                        }
+                        <h3 class="h6">@article.Titolo</h3>
+                        @if (!string.IsNullOrWhiteSpace(article.Abstract))
+                        {
+                            <p class="small text-body-secondary mb-1">@article.Abstract</p>
+                        }
+                        @if (article.Data is not null)
+                        {
+                            <div class="small text-body-secondary">@article.Data.Value.ToString("d MMMM yyyy")</div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@* Il blocco Riepilogo statistiche arriva nel prossimo checkpoint. *@
 
 @section Scripts {
     @if (Model.Teams.Count > 0)

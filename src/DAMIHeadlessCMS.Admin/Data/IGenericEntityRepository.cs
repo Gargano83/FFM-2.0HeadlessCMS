@@ -59,6 +59,26 @@ public interface IGenericEntityRepository
     /// <summary>Etichetta di un singolo record FK, usata per pre-popolare l'autocomplete in Edit.</summary>
     Task<string?> GetLookupLabelAsync(
         EntityDefinition targetEntity, string? displayColumn, object id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lettura filtrata/ordinata/limitata, pensata per i consumatori pubblici (host)
+    /// che devono leggere un sottoinsieme di righe secondo criteri noti a compile-time
+    /// (es. "ultimi N articoli attivi di una categoria"), a differenza di
+    /// <see cref="GetListAsync"/> che pagina l'intera tabella per la sola PK (uso CRUD
+    /// di backoffice). Filtri e ordinamento operano solo su colonne NON localizzate
+    /// (per una colonna localizzata il valore fisico è una chiave intera verso la
+    /// LocalizationSource, non il testo — filtrare/ordinare su quel testo richiederebbe
+    /// una semantica diversa, non supportata qui): se referenziata, viene lanciata
+    /// <see cref="InvalidOperationException"/>. Le colonne selezionate sono tutte quelle
+    /// di <c>entity.Fields</c> (stesso criterio di <see cref="GetByIdAsync"/>), incluse
+    /// quelle localizzate (risolte in lettura come sempre).
+    /// </summary>
+    Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> QueryAsync(
+        EntityDefinition entity,
+        IReadOnlyList<QueryFilter>? filters = null,
+        IReadOnlyList<QuerySort>? sort = null,
+        int top = 100,
+        CancellationToken ct = default);
 }
 
 /// <summary>Risultato paginato per la vista Index del CRUD generico.</summary>
@@ -70,3 +90,24 @@ public sealed record GenericEntityPage(
 
 /// <summary>Coppia valore/etichetta per una &lt;select&gt; FK.</summary>
 public sealed record LookupOption(string Value, string Label);
+
+/// <summary>Operatore di confronto per un filtro di <see cref="IGenericEntityRepository.QueryAsync"/>.</summary>
+public enum QueryFilterOperator
+{
+    Equal,
+    NotEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+    LessThan,
+    LessThanOrEqual
+}
+
+/// <summary>
+/// Condizione di filtro per <see cref="IGenericEntityRepository.QueryAsync"/>: tutti i filtri
+/// passati vengono combinati in AND. ColumnName deve corrispondere a un FieldDefinition
+/// esistente e NON localizzato dell'entità interrogata.
+/// </summary>
+public sealed record QueryFilter(string ColumnName, QueryFilterOperator Operator, object? Value);
+
+/// <summary>Criterio di ordinamento per <see cref="IGenericEntityRepository.QueryAsync"/>, applicato nell'ordine passato.</summary>
+public sealed record QuerySort(string ColumnName, bool Descending = false);

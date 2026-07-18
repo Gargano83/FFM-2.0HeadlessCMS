@@ -308,6 +308,103 @@ public class GenericEntityRepository : IGenericEntityRepository
         return result is null or DBNull ? null : result.ToString();
     }
 
+    public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> QueryAsync(
+        EntityDefinition entity,
+        IReadOnlyList<QueryFilter>? filters = null,
+        IReadOnlyList<QuerySort>? sort = null,
+        int top = 100,
+        CancellationToken ct = default)
+    {
+        top = Math.Clamp(top, 1, 500);
+        filters ??= [];
+        sort ??= [];
+
+        var selectFields = entity.Fields.OrderBy(f => f.SortOrder).ToList();
+        var qualifiedTable = QualifiedTable(entity);
+        const string alias = "t";
+        var selectColumns = string.Join(", ", selectFields.Select(f => BuildSelectExpression(f, alias)));
+
+        var whereClauses = new List<string>();
+        var parameters = new List<SqlParameter>();
+        for (var i = 0; i < filters.Count; i++)
+        {
+            var filter = filters[i];
+            var field = FindFilterableField(entity, filter.ColumnName);
+            var paramName = $"@f{i}";
+            whereClauses.Add($"{alias}.{QuoteIdentifier(field.ColumnName)} {SqlOperator(filter.Operator)} {paramName}");
+            parameters.Add(BuildParameter(paramName, field, filter.Value));
+        }
+
+        var orderByClauses = sort
+            .Select(s => $"{alias}.{QuoteIdentifier(FindFilterableField(entity, s.ColumnName).ColumnName)}{(s.Descending ? " DESC" : "")}")
+            .ToList();
+        // Se non viene richiesto un ordinamento esplicito, ordina comunque per PK per un
+        // risultato deterministico (stesso criterio "minimo" usato da GetListAsync).
+        if (orderByClauses.Count == 0)
+        {
+            orderByClauses.Add($"{alias}.{QuoteIdentifier(GetPrimaryKeyField(entity).ColumnName)}");
+        }
+
+        var whereClause = whereClauses.Count == 0 ? "" : $"WHERE {string.Join(" AND ", whereClauses)}";
+
+        var sql = $"""
+            SELECT TOP (@Top) {selectColumns}
+            FROM {qualifiedTable} {alias}
+            {whereClause}
+            ORDER BY {string.Join(", ", orderByClauses)};
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add(new SqlParameter("@Top", SqlDbType.Int) { Value = top });
+        foreach (var parameter in parameters)
+        {
+            command.Parameters.Add(parameter);
+        }
+
+        var rows = new List<IReadOnlyDictionary<string, object?>>();
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            rows.Add(ReadRow(reader, selectFields.Select(f => f.ColumnName)));
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// Risolve un FieldDefinition per nome colonna, valido come filtro/ordinamento di
+    /// QueryAsync: deve esistere ed essere NON localizzato (vedi commento sull'interfaccia).
+    /// </summary>
+    private static FieldDefinition FindFilterableField(EntityDefinition entity, string columnName)
+    {
+        var field = entity.Fields.FirstOrDefault(f => string.Equals(f.ColumnName, columnName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException(
+                $"'{columnName}' non è un campo scaffoldato di '{entity.QualifiedTableName}'.");
+
+        if (field.IsLocalized)
+        {
+            throw new InvalidOperationException(
+                $"'{columnName}' è un campo localizzato: non può essere usato come filtro/ordinamento diretto " +
+                "in QueryAsync (il valore fisico è una chiave, non il testo tradotto).");
+        }
+
+        return field;
+    }
+
+    private static string SqlOperator(QueryFilterOperator op) => op switch
+    {
+        QueryFilterOperator.Equal => "=",
+        QueryFilterOperator.NotEqual => "<>",
+        QueryFilterOperator.GreaterThan => ">",
+        QueryFilterOperator.GreaterThanOrEqual => ">=",
+        QueryFilterOperator.LessThan => "<",
+        QueryFilterOperator.LessThanOrEqual => "<=",
+        _ => throw new ArgumentOutOfRangeException(nameof(op), op, null)
+    };
+
     // --- Helpers -----------------------------------------------------
 
     private static FieldDefinition GetPrimaryKeyField(EntityDefinition entity)

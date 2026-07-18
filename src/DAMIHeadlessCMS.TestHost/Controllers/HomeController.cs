@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using DAMIHeadlessCMS.Admin.Data;
 using DAMIHeadlessCMS.TestHost.Models;
 using DAMIHeadlessCMS.TestHost.Models.PublicSite;
 using DAMIHeadlessCMS.TestHost.PublicSite;
@@ -29,8 +30,9 @@ public class HomeController : Controller
     {
         var hero = await LoadHeroAsync(ct);
         var teams = await LoadTeamsAsync(ct);
+        var articles = await LoadLatestArticlesAsync(ct);
 
-        return View(new HomeViewModel { Hero = hero, Teams = teams });
+        return View(new HomeViewModel { Hero = hero, Teams = teams, LatestArticles = articles });
     }
 
     private async Task<HeroContentViewModel> LoadHeroAsync(CancellationToken ct)
@@ -99,6 +101,62 @@ public class HomeController : Controller
                relativePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
             ? relativePath
             : $"{baseUrl.TrimEnd('/')}/{relativePath.TrimStart('/')}";
+    }
+
+    private async Task<IReadOnlyList<LatestArticleViewModel>> LoadLatestArticlesAsync(CancellationToken ct)
+    {
+        var articleDocTypeId = _configuration.GetValue<int?>("PublicSite:ArticleDocTypeId");
+        if (articleDocTypeId is null)
+        {
+            _logger.LogWarning(
+                "PublicSite:ArticleDocTypeId non configurato: il blocco ultimi articoli viene omesso. " +
+                "Valorizzalo con l'id corrispondente a WebConst.COMUNICAZIONE_ARTICOLO_TPD nel progetto legacy.");
+            return [];
+        }
+
+        var contentEntity = await _content.GetEntityAsync("dbo", "WN_Contenuti", ct);
+        if (contentEntity is null)
+        {
+            return [];
+        }
+
+        var rows = await _content.GetFilteredRowsAsync(
+            contentEntity,
+            filters:
+            [
+                new QueryFilter("co_tipo_doc", QueryFilterOperator.Equal, articleDocTypeId.Value),
+                new QueryFilter("co_attivo", QueryFilterOperator.Equal, true)
+            ],
+            sort:
+            [
+                new QuerySort("co_data_inizio", Descending: true),
+                new QuerySort("co_id", Descending: true)
+            ],
+            top: 6,
+            ct: ct);
+
+        var categoryEntity = await _content.GetEntityAsync("dbo", "WN_Categorie", ct);
+
+        var articles = new List<LatestArticleViewModel>();
+        foreach (var row in rows)
+        {
+            string? categoryName = null;
+            if (categoryEntity is not null && row.GetValueOrDefault("co_categoria") is { } categoryId)
+            {
+                var categoryRow = await _content.GetRowByIdAsync(categoryEntity, categoryId, ct);
+                categoryName = categoryRow?.GetValueOrDefault("ca_nome") as string;
+            }
+
+            articles.Add(new LatestArticleViewModel
+            {
+                Titolo = row.GetValueOrDefault("co_titolo") as string ?? string.Empty,
+                Abstract = row.GetValueOrDefault("co_abstract") as string,
+                NomeCategoria = categoryName,
+                Data = row.GetValueOrDefault("co_data_inizio") as DateTime?
+            });
+        }
+
+        return articles;
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

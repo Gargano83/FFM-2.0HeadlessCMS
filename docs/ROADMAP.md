@@ -386,14 +386,24 @@ metadati salvati nello schema `cms.*` del database).
     `PublicSite:LegacyFileBaseUrl` + colonna `LogoStatistiche` (path
     relativo) — **valore da confermare**, al momento impostato a titolo
     indicativo in `appsettings.json`.
-  - **Checkpoint 3/4 — Ultimi articoli comunicazioni** (endpoint legacy
-    `/api/comunicazioni/ultimiarticoli`, `WN_Contenuti` con filtro
-    `co_tipo_doc`/`co_attivo` + `ORDER BY co_data_inizio DESC` + `TOP 6` +
-    join a `WN_Categorie`): da fare. **Richiede** di estendere
-    `IGenericEntityRepository` con un metodo di lettura filtrata/ordinata/
-    limitata (oggi `GetListAsync` pagina solo per PK, `GetByIdAsync` legge
-    una riga sola) — unica modifica di questo lotto che tocca la libreria,
-    non solo il TestHost.
+  - **Checkpoint 3/4 — Ultimi articoli comunicazioni** ✅: **estesa la
+    libreria** — nuovo `IGenericEntityRepository.QueryAsync(entity, filters,
+    sort, top)` (+ tipi ausiliari `QueryFilter`/`QueryFilterOperator`/
+    `QuerySort` in `DAMIHeadlessCMS.Admin.Data`), filtro/ordinamento solo su
+    colonne NON localizzate (lancia `InvalidOperationException` altrimenti —
+    filtrare/ordinare sul testo tradotto di una colonna localizzata
+    richiederebbe una semantica diversa, non supportata). Riusa
+    `BuildSelectExpression`/whitelisting esistenti, stesso approccio di
+    `GetListAsync`/`GetByIdAsync`. `LegacyContentReader.GetFilteredRowsAsync`
+    (TestHost) ne è il wrapper. `HomeController.LoadLatestArticlesAsync`:
+    `WN_Contenuti` filtrata per `co_tipo_doc`/`co_attivo`, ordinata per
+    `co_data_inizio DESC, co_id DESC`, `TOP 6`; nome categoria risolto **a
+    parte, riga per riga** (`WN_Categorie` via `GetRowByIdAsync`, che risolve
+    già la localizzazione di `ca_nome` — scelta deliberata: N+1 accettabile
+    per 6 righe, evita di dover fare join dinamici in `QueryAsync`).
+    **Richiede configurazione**: `PublicSite:ArticleDocTypeId` (valore di
+    `WebConst.COMUNICAZIONE_ARTICOLO_TPD` nel legacy) non è ancora
+    valorizzato — da confermare prima del test.
   - **Checkpoint 4/4 — Riepilogo statistiche "Albo d'oro"** (endpoint legacy
     `/api/statistiche/riepilogo`, `FFM.RiepilogoStatistiche` + `WN_LOOKUP`):
     da fare. **Decisione presa**: versione dinamica (colonne generate dai

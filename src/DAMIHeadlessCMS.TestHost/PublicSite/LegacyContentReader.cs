@@ -61,4 +61,21 @@ public class LegacyContentReader
             .Select(row => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase))
             .ToList();
     }
+
+    /// <summary>
+    /// Lettura filtrata/ordinata/limitata (es. "ultimi N articoli attivi di un tipo").
+    /// Wrapper su <see cref="IGenericEntityRepository.QueryAsync"/>.
+    /// </summary>
+    public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> GetFilteredRowsAsync(
+        EntityDefinition entity,
+        IReadOnlyList<QueryFilter>? filters = null,
+        IReadOnlyList<QuerySort>? sort = null,
+        int top = 100,
+        CancellationToken ct = default)
+    {
+        var rows = await _repository.QueryAsync(entity, filters, sort, top, ct);
+        return rows
+            .Select(row => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+    }
 }

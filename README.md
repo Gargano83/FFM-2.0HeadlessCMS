@@ -292,6 +292,19 @@ Razor giusto in base all'`EditorType` del campo: testo, area di testo, rich
 text (Quill), numero, checkbox, data/data-ora, select con autocomplete su FK,
 upload file, campo nascosto.
 
+**Lettura filtrata/ordinata per consumatori esterni** — oltre a
+`GetListAsync` (paginazione per PK, uso CRUD di backoffice) e `GetByIdAsync`
+(singola riga), `IGenericEntityRepository.QueryAsync(entity, filters, sort,
+top)` permette a un'applicazione host di leggere un sottoinsieme di righe
+secondo criteri noti a compile-time (es. "ultimi N record attivi di una
+categoria, più recenti prima") senza dover scrivere SQL a mano: stesso
+whitelisting di identificatori e stessa parametrizzazione dei valori delle
+altre operazioni. Filtro e ordinamento operano solo su colonne **non
+localizzate** (il valore fisico di una colonna localizzata è una chiave
+intera verso la `LocalizationSource`, non il testo tradotto — filtrarci/
+ordinarci sopra richiederebbe una semantica diversa, non supportata: viene
+sollevata `InvalidOperationException` se referenziata).
+
 ### 3. Identity e ruoli
 
 ASP.NET Core Identity **dedicato al backoffice**, separato da un eventuale
