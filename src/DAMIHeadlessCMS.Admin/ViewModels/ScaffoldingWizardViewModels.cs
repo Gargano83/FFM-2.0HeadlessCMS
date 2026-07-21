@@ -53,4 +53,17 @@ public sealed class ScaffoldingSaveField
     public bool ShowInForm { get; init; }
     public bool IsRequired { get; init; }
     public Guid? LocalizationSourceId { get; init; }
+
+    /// <summary>
+    /// Riferimento manuale (nessun vincolo FK fisico richiesto) verso un'altra tabella,
+    /// configurato nel wizard. Se ForeignKeyTargetTable è valorizzato, la tabella
+    /// target viene scaffoldata automaticamente insieme a questa se non lo è già.
+    /// Se null, il campo NON viene toccato (preserva un'eventuale FK fisica già rilevata).
+    /// </summary>
+    public string? ForeignKeyTargetSchema { get; init; }
+    public string? ForeignKeyTargetTable { get; init; }
+    public string? ForeignKeyDisplayColumn { get; init; }
+
+    /// <summary>JSON grezzo (array di {ColumnName, Operator, Value}), passato così com'è al layer dati.</summary>
+    public string? ForeignKeyFiltersJson { get; init; }
 }

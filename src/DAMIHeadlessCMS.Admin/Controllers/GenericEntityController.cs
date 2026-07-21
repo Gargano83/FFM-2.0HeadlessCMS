@@ -113,7 +113,7 @@ public class GenericEntityController : Controller
             return NotFound();
         }
 
-        var result = await _repository.GetListAsync(entity, page, DefaultPageSize, ct);
+        var result = await _repository.GetListAsync(entity, page, DefaultPageSize, resolveForeignKeys: true, ct: ct);
 
         return View(new GenericEntityIndexViewModel
         {
@@ -279,6 +279,7 @@ public class GenericEntityController : Controller
         var field = await _db.FieldDefinitions
             .Include(f => f.ForeignKeyTargetEntity)
                 .ThenInclude(e => e!.Fields)
+                    .ThenInclude(tf => tf.LocalizationSource)
             .FirstOrDefaultAsync(f => f.Id == fieldId, ct);
 
         if (field is null || !field.IsForeignKey || field.ForeignKeyTargetEntity is null)
@@ -287,7 +288,8 @@ public class GenericEntityController : Controller
         }
 
         var options = await _repository.GetLookupOptionsAsync(
-            field.ForeignKeyTargetEntity, field.ForeignKeyDisplayColumn, q, ct);
+            field.ForeignKeyTargetEntity, field.ForeignKeyDisplayColumn, q,
+            ParseForeignKeyFilters(field.ForeignKeyFiltersJson), ct);
 
         return Json(options);
     }
@@ -303,6 +305,8 @@ public class GenericEntityController : Controller
 
         var field = await _db.FieldDefinitions
             .Include(f => f.ForeignKeyTargetEntity)
+                .ThenInclude(e => e!.Fields)
+                    .ThenInclude(tf => tf.LocalizationSource)
             .FirstOrDefaultAsync(f => f.Id == fieldId, ct);
 
         if (field is null || !field.IsForeignKey || field.ForeignKeyTargetEntity is null)
@@ -314,12 +318,35 @@ public class GenericEntityController : Controller
         return Json(new { label = label ?? id });
     }
 
+    /// <summary>
+    /// Deserializza FieldDefinition.ForeignKeyFiltersJson; tollerante: JSON assente o
+    /// non valido produce nessun filtro invece di far fallire l'autocomplete.
+    /// </summary>
+    private static IReadOnlyList<ForeignKeyFilterCondition>? ParseForeignKeyFilters(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<ForeignKeyFilterCondition>>(json);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
     // --- Helpers -----------------------------------------------------
 
     private Task<EntityDefinition?> LoadEntityAsync(Guid entityId, CancellationToken ct)
         => _db.EntityDefinitions
             .Include(e => e.Fields)
                 .ThenInclude(f => f.ForeignKeyTargetEntity)
+                    .ThenInclude(te => te!.Fields)
+                        .ThenInclude(tf => tf.LocalizationSource)
             .Include(e => e.Fields)
                 .ThenInclude(f => f.LocalizationSource)
             .Include(e => e.DetailKeyField)

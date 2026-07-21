@@ -19,7 +19,7 @@ public class GenericEntityRepository : IGenericEntityRepository
     }
 
     public async Task<GenericEntityPage> GetListAsync(
-        EntityDefinition entity, int page, int pageSize, CancellationToken ct = default)
+        EntityDefinition entity, int page, int pageSize, bool resolveForeignKeys = false, CancellationToken ct = default)
     {
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 200);
@@ -33,7 +33,7 @@ public class GenericEntityRepository : IGenericEntityRepository
         var pkColumn = GetPrimaryKeyField(entity);
         var qualifiedTable = QualifiedTable(entity);
         const string alias = "t";
-        var selectColumns = string.Join(", ", listFields.Select(f => BuildSelectExpression(f, alias)));
+        var selectColumns = string.Join(", ", listFields.Select(f => BuildSelectExpression(f, alias, resolveForeignKeys)));
 
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(ct);
@@ -247,30 +247,50 @@ public class GenericEntityRepository : IGenericEntityRepository
     }
 
     public async Task<IReadOnlyList<LookupOption>> GetLookupOptionsAsync(
-        EntityDefinition targetEntity, string? displayColumn, string? searchText, CancellationToken ct = default)
+        EntityDefinition targetEntity,
+        string? displayColumn,
+        string? searchText,
+        IReadOnlyList<ForeignKeyFilterCondition>? filters = null,
+        CancellationToken ct = default)
     {
         var pkField = GetPrimaryKeyField(targetEntity);
         var labelColumnName = displayColumn ?? pkField.ColumnName;
-        var qualifiedTable = QualifiedTable(targetEntity);
+        var (fromClause, labelExpression) = BuildForeignKeyLabelSource(targetEntity, labelColumnName, "fk");
+        filters ??= [];
 
-        var whereClause = string.IsNullOrWhiteSpace(searchText)
-            ? ""
-            : $"WHERE {QuoteIdentifier(labelColumnName)} LIKE @Search";
+        var whereClauses = new List<string>();
+        var parameters = new List<SqlParameter>();
+        for (var i = 0; i < filters.Count; i++)
+        {
+            var condition = filters[i];
+            var field = FindFilterableField(targetEntity, condition.ColumnName);
+            var paramName = $"@ff{i}";
+            whereClauses.Add($"fk.{QuoteIdentifier(field.ColumnName)} {SqlOperator(condition.Operator)} {paramName}");
+            parameters.Add(BuildParameter(paramName, field, ConvertFormValue(field, condition.Value)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            whereClauses.Add($"{labelExpression} LIKE @Search");
+            parameters.Add(new SqlParameter("@Search", SqlDbType.NVarChar) { Value = $"%{searchText}%" });
+        }
+
+        var whereClause = whereClauses.Count == 0 ? "" : $"WHERE {string.Join(" AND ", whereClauses)}";
 
         var sql = $"""
-            SELECT TOP (50) {QuoteIdentifier(pkField.ColumnName)}, {QuoteIdentifier(labelColumnName)}
-            FROM {qualifiedTable}
+            SELECT TOP (50) fk.{QuoteIdentifier(pkField.ColumnName)}, {labelExpression}
+            FROM {fromClause}
             {whereClause}
-            ORDER BY {QuoteIdentifier(labelColumnName)};
+            ORDER BY {labelExpression};
             """;
 
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(ct);
 
         await using var command = new SqlCommand(sql, connection);
-        if (!string.IsNullOrWhiteSpace(searchText))
+        foreach (var parameter in parameters)
         {
-            command.Parameters.Add(new SqlParameter("@Search", SqlDbType.NVarChar) { Value = $"%{searchText}%" });
+            command.Parameters.Add(parameter);
         }
 
         var results = new List<LookupOption>();
@@ -290,12 +310,12 @@ public class GenericEntityRepository : IGenericEntityRepository
     {
         var pkField = GetPrimaryKeyField(targetEntity);
         var labelColumnName = displayColumn ?? pkField.ColumnName;
-        var qualifiedTable = QualifiedTable(targetEntity);
+        var (fromClause, labelExpression) = BuildForeignKeyLabelSource(targetEntity, labelColumnName, "fk");
 
         var sql = $"""
-            SELECT {QuoteIdentifier(labelColumnName)}
-            FROM {qualifiedTable}
-            WHERE {QuoteIdentifier(pkField.ColumnName)} = @Id;
+            SELECT {labelExpression}
+            FROM {fromClause}
+            WHERE fk.{QuoteIdentifier(pkField.ColumnName)} = @Id;
             """;
 
         await using var connection = new SqlConnection(_connectionString);
@@ -436,7 +456,44 @@ public class GenericEntityRepository : IGenericEntityRepository
     /// selettore multi-lingua per ora). Il DefaultLanguageId è un metadato configurato
     /// solo da CmsAdmin, non input utente a runtime: incorporarlo nel testo SQL è sicuro.
     /// </summary>
-    private static string BuildSelectExpression(FieldDefinition field, string tableAlias)
+    /// <param name="resolveForeignKeys">
+    /// True solo per la lista Dati (sola lettura): risolve anche i campi FK nella loro
+    /// etichetta, con lo stesso approccio a subquery già usato per i campi localizzati.
+    /// Deve restare false per GetByIdAsync/QueryAsync: lì serve il valore grezzo (l'id),
+    /// perché il form di editing lega l'input al valore reale e risolve l'etichetta
+    /// separatamente via l'autocomplete AJAX (endpoint lookup/{fieldId}/label).
+    /// </param>
+    /// <summary>
+    /// Risolve come leggere l'etichetta di una FK: se la colonna scelta come display è a
+    /// sua volta localizzata (stesso pattern "udf_Localize" di WN_Contenuti/WN_Categorie/
+    /// FFM.Squadre), serve un secondo salto attraverso la sua LocalizationSource — non
+    /// basta leggerla direttamente. Riusato da BuildSelectExpression (lista Dati),
+    /// GetLookupOptionsAsync e GetLookupLabelAsync (autocomplete), stessa logica ovunque.
+    /// </summary>
+    /// <param name="targetAlias">Alias SQL della tabella di destinazione della FK.</param>
+    private static (string FromClause, string LabelExpression) BuildForeignKeyLabelSource(
+        EntityDefinition target, string displayColumn, string targetAlias)
+    {
+        var targetTable = $"{QuoteIdentifier(target.SchemaName)}.{QuoteIdentifier(target.TableName)}";
+        var displayField = target.Fields.FirstOrDefault(f =>
+            string.Equals(f.ColumnName, displayColumn, StringComparison.OrdinalIgnoreCase));
+
+        if (displayField is { IsLocalized: true, LocalizationSource: { } source })
+        {
+            var contentTable = $"{QuoteIdentifier(source.ContentSchemaName)}.{QuoteIdentifier(source.ContentTableName)}";
+            var fromClause = $"""
+                {targetTable} {targetAlias}
+                INNER JOIN {contentTable} loc
+                    ON loc.{QuoteIdentifier(source.ContentIdColumn)} = {targetAlias}.{QuoteIdentifier(displayColumn)}
+                   AND loc.{QuoteIdentifier(source.LanguageIdColumn)} = {source.DefaultLanguageId}
+                """;
+            return (fromClause, $"loc.{QuoteIdentifier(source.TextColumn)}");
+        }
+
+        return ($"{targetTable} {targetAlias}", $"{targetAlias}.{QuoteIdentifier(displayColumn)}");
+    }
+
+    private static string BuildSelectExpression(FieldDefinition field, string tableAlias, bool resolveForeignKeys = false)
     {
         if (field.IsLocalized && field.LocalizationSource is { } source)
         {
@@ -446,6 +503,17 @@ public class GenericEntityRepository : IGenericEntityRepository
                  FROM {contentTable} loc
                  WHERE loc.{QuoteIdentifier(source.ContentIdColumn)} = {tableAlias}.{QuoteIdentifier(field.ColumnName)}
                    AND loc.{QuoteIdentifier(source.LanguageIdColumn)} = {source.DefaultLanguageId}
+                ) AS {QuoteIdentifier(field.ColumnName)}
+                """;
+        }
+
+        if (resolveForeignKeys && field is { IsForeignKey: true, ForeignKeyTargetEntity: { } target, ForeignKeyDisplayColumn: { } displayColumn })
+        {
+            var (fromClause, labelExpression) = BuildForeignKeyLabelSource(target, displayColumn, "fk");
+            return $"""
+                (SELECT TOP (1) {labelExpression}
+                 FROM {fromClause}
+                 WHERE fk.{QuoteIdentifier(target.PrimaryKeyColumn)} = {tableAlias}.{QuoteIdentifier(field.ColumnName)}
                 ) AS {QuoteIdentifier(field.ColumnName)}
                 """;
         }

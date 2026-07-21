@@ -18,8 +18,14 @@ namespace DAMIHeadlessCMS.Admin.Data;
 /// </summary>
 public interface IGenericEntityRepository
 {
+    /// <param name="resolveForeignKeys">
+    /// True per risolvere anche i campi FK nella loro etichetta (uso tipico: griglia
+    /// dati del backoffice, sola lettura per l'utente). Default false: i consumatori
+    /// esterni (host) che leggono via questo metodo si aspettano il valore grezzo,
+    /// per poterlo eventualmente risolvere/join-are a modo loro (es. TestHost).
+    /// </param>
     Task<GenericEntityPage> GetListAsync(
-        EntityDefinition entity, int page, int pageSize, CancellationToken ct = default);
+        EntityDefinition entity, int page, int pageSize, bool resolveForeignKeys = false, CancellationToken ct = default);
 
     Task<IReadOnlyDictionary<string, object?>?> GetByIdAsync(
         EntityDefinition entity, object id, CancellationToken ct = default);
@@ -51,10 +57,17 @@ public interface IGenericEntityRepository
 
     /// <summary>
     /// Righe minime {Value, Label} per popolare l'autocomplete di una FK via AJAX,
-    /// filtrate da searchText (LIKE case-insensitive sulla colonna display).
+    /// filtrate da searchText (LIKE case-insensitive sulla colonna display) e,
+    /// opzionalmente, da condizioni fisse aggiuntive (vedi
+    /// <see cref="FieldDefinition.ForeignKeyFiltersJson"/>) — utile quando la stessa
+    /// tabella di destinazione serve più campi/liste distinte (es. WN_LOOKUP).
     /// </summary>
     Task<IReadOnlyList<LookupOption>> GetLookupOptionsAsync(
-        EntityDefinition targetEntity, string? displayColumn, string? searchText, CancellationToken ct = default);
+        EntityDefinition targetEntity,
+        string? displayColumn,
+        string? searchText,
+        IReadOnlyList<ForeignKeyFilterCondition>? filters = null,
+        CancellationToken ct = default);
 
     /// <summary>Etichetta di un singolo record FK, usata per pre-popolare l'autocomplete in Edit.</summary>
     Task<string?> GetLookupLabelAsync(
@@ -111,3 +124,12 @@ public sealed record QueryFilter(string ColumnName, QueryFilterOperator Operator
 
 /// <summary>Criterio di ordinamento per <see cref="IGenericEntityRepository.QueryAsync"/>, applicato nell'ordine passato.</summary>
 public sealed record QuerySort(string ColumnName, bool Descending = false);
+
+/// <summary>
+/// Condizione di filtro fissa per le opzioni di una FK (vedi
+/// <see cref="FieldDefinition.ForeignKeyFiltersJson"/> e
+/// <see cref="IGenericEntityRepository.GetLookupOptionsAsync"/>). Stessa forma di
+/// <see cref="QueryFilter"/> ma con Value sempre stringa (così come arriva dal wizard/JSON),
+/// convertito al tipo reale della colonna di destinazione al momento della query.
+/// </summary>
+public sealed record ForeignKeyFilterCondition(string ColumnName, QueryFilterOperator Operator, string Value);

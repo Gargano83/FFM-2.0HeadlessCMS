@@ -95,7 +95,37 @@ else
     </section>
 }
 
-@* Il blocco Riepilogo statistiche arriva nel prossimo checkpoint. *@
+@if (Model.HallOfFame is not null)
+{
+    <section class="container py-4">
+        <h2 class="h4 mb-3">Albo d'oro</h2>
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">Stagione</th>
+                        @foreach (var competition in Model.HallOfFame.CompetitionNames)
+                        {
+                            <th scope="col">@competition</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.HallOfFame.Rows)
+                    {
+                        <tr>
+                            <th scope="row">@row.SeasonLabel</th>
+                            @foreach (var team in row.Teams)
+                            {
+                                <td>@(string.IsNullOrWhiteSpace(team) ? "—" : team)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
 
 @section Scripts {
     @if (Model.Teams.Count > 0)

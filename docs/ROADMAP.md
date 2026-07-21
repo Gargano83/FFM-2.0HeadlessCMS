@@ -333,7 +333,7 @@ metadati salvati nello schema `cms.*` del database).
     coerentemente con l'architettura "il CMS genera/valida i metadati, l'host
     renderizza".
 
-- [~] **16. Migrazione pagine pubbliche legacy → `DAMIHeadlessCMS.TestHost`**
+- [x] **16. Migrazione pagine pubbliche legacy → `DAMIHeadlessCMS.TestHost`**
       (in corso, per checkpoint — vedi PDF "Indicazioni utili per migrazione
       progetto legacy" per l'elenco pagine/endpoint di riferimento). Non è una
       feature della libreria: `TestHost` simula l'app host definitiva, quindi
@@ -404,12 +404,102 @@ metadati salvati nello schema `cms.*` del database).
     **Richiede configurazione**: `PublicSite:ArticleDocTypeId` (valore di
     `WebConst.COMUNICAZIONE_ARTICOLO_TPD` nel legacy) non è ancora
     valorizzato — da confermare prima del test.
-  - **Checkpoint 4/4 — Riepilogo statistiche "Albo d'oro"** (endpoint legacy
-    `/api/statistiche/riepilogo`, `FFM.RiepilogoStatistiche` + `WN_LOOKUP`):
-    da fare. **Decisione presa**: versione dinamica (colonne generate dai
-    dati/competizioni trovate) invece delle 9 colonne fisse hardcoded per id
-    di lookup (233–241 nel legacy) usate nel widget client-side originale —
-    più manutenibile, non dipende da id specifici dell'installazione.
+  - **Checkpoint 4/4 — Riepilogo statistiche "Albo d'oro"** ✅:
+    `FFM.RiepilogoStatistiche` (`Id`, `Stagione`/`Competizione` FK a
+    `WN_LOOKUP`, `Squadra` FK a `FFM.Squadre`) letta senza filtro
+    (`GetAllRowsAsync`), pivotata dinamicamente in `HomeController.LoadHallOfFameAsync`:
+    righe = stagioni trovate nei dati, colonne = competizioni trovate nei
+    dati (nessun id hardcoded), entrambe ordinate per `LK_ORDINE` di
+    `WN_LOOKUP` (stesso criterio della query legacy, applicato dinamicamente
+    invece che con colonne fisse). Etichette risolte con cache in-memory per
+    id già visti (stagioni/competizioni via `WN_LOOKUP.LK_Valore`, squadre
+    via `FFM.Squadre.Nome`, già disponibile dal checkpoint 2) — evita
+    risoluzioni ripetute per lo stesso id su più righe.
+    - **Correzione**: le istruzioni originali dicevano di NON marcare
+      `WN_LOOKUP.LK_Valore` come localizzato — errato, è localizzato come
+      tutto il resto (stesso pattern `udf_Localize`/`WN_LOCALIZZAZIONE`).
+      Scoperto in fase 17 lavorando sul riferimento manuale FK. Da
+      correggere nello scaffold di `WN_LOOKUP` (marcare `LK_Valore` come
+      Localizzato) perché anche questo blocco mostri le etichette invece
+      degli id grezzi.
+
+**Fase 16 completata** (tutti i 4 checkpoint della Homepage). Prossima
+pagina da migrare: **Statistiche** (vedi PDF di riferimento), che riusa
+`/api/data/menu` (già coperto) e introduce `/api/statistiche/campionato` +
+gli altri endpoint statistiche non ancora affrontati.
+
+- [x] **17. Wizard di scaffolding: riferimento manuale a un'altra tabella
+      (FK senza vincolo fisico), con filtri**. Scoperto durante il test del
+      Checkpoint 4 della fase 16: `FFM.RiepilogoStatistiche.Stagione` e
+      `.Competizione` puntano a `WN_LOOKUP`, ma filtrate per `LK_LG_ID`
+      diverso (1 e 32) — nessun vincolo FK fisico, e la stessa tabella serve
+      più campi con sottoinsiemi diversi. Il wizard oggi rilevava FK solo da
+      vincoli fisici reali: nessun modo di dichiararle manualmente.
+  - **Libreria** (`DAMIHeadlessCMS.Core`/`Admin`/`Scaffolding`): nuova
+    `FieldDefinition.ForeignKeyFiltersJson` (JSON, array di condizioni
+    `{ColumnName, Operator, Value}`, tutte in AND); `IGenericEntityRepository
+    .GetLookupOptionsAsync` esteso con un parametro `filters` opzionale
+    (`ForeignKeyFilterCondition`, stessi 6 operatori di `QueryFilterOperator`
+    già introdotto in fase 16 checkpoint 3); `ScaffoldingService` espone
+    `GetTableColumnsAsync` (colonne di una tabella qualsiasi, scaffoldata o
+    meno) e `PreviewAsync` ora riporta anche l'eventuale riferimento manuale
+    già salvato in precedenza (per precompilare il wizard).
+  - **Tabella di destinazione scelta anche non ancora scaffoldata**: se un
+    campo referenzia una tabella non ancora mappata, `ScaffoldingWizardController
+    .Save` la include automaticamente nello stesso batch passato a
+    `ScaffoldTablesAsync` (scaffold "a cascata", impostazioni di default —
+    rifinibile poi manualmente).
+  - **Non tocca mai una FK fisica già rilevata**: il riferimento manuale si
+    applica solo se esplicitamente configurato per quel campo in questo
+    salvataggio.
+  - **Wizard** (`Views/ScaffoldingWizard/Index.cshtml`): nuova colonna
+    "Riferimento" per campo, riga espandibile con select tabella (raggruppata
+    per schema, tutte le tabelle del DB) + select colonna etichetta
+    (popolata via AJAX su `/dami/scaffolding/columns`) + elenco filtri
+    aggiungibili/rimovibili (colonna/operatore/valore).
+  - **Bug scoperto in fase di test**: la lista "Dati" mostrava il valore
+    grezzo (l'id) anche per campi FK correttamente configurati — comportamento
+    preesistente per **qualsiasi** FK (fisica o manuale), non legato a questa
+    feature: `GetListAsync`/`BuildSelectExpression` risolveva in lettura solo
+    i campi localizzati, mai le FK (che venivano risolte solo lato form di
+    editing, tramite l'autocomplete AJAX). Esteso `BuildSelectExpression` con
+    lo stesso approccio a subquery già usato per la localizzazione, attivo
+    **solo** per `GetListAsync` (parametro `resolveForeignKeys`) — `GetByIdAsync`/
+    `QueryAsync` restano invariati e continuano a restituire il valore grezzo,
+    necessario al form di editing per legare l'input al valore reale.
+  - **Secondo bug scoperto in fase di test**: anche dopo il fix sopra, i
+    campi FK mostravano ancora il valore grezzo quando la colonna scelta
+    come etichetta è a sua volta localizzata (es. `WN_LOOKUP.LK_Valore`,
+    `FFM.Squadre.Nome`: entrambe seguono il pattern `udf_Localize` — non è
+    un caso isolato, è la norma per le colonne di testo delle tabelle
+    legacy). Serve un doppio salto: FK → riga di destinazione → colonna
+    etichetta → (se localizzata) `WN_LOCALIZZAZIONE`. Aggiunto
+    `GenericEntityRepository.BuildForeignKeyLabelSource`, helper condiviso
+    da `BuildSelectExpression` (lista Dati), `GetLookupOptionsAsync` e
+    `GetLookupLabelAsync` (autocomplete) — prima quest'ultime due leggevano
+    la colonna etichetta senza risolverne la localizzazione, quindi
+    ricerca/ordinamento nell'autocomplete erano silenziosamente rotti per
+    qualunque FK con etichetta localizzata (confronto testo digitato contro
+    id grezzo). Estesi anche gli `Include` di `LoadEntityAsync`/`Lookup`/
+    `LookupLabel` per caricare i campi (e le rispettive `LocalizationSource`)
+    dell'entità di destinazione, necessari per la risoluzione.
+  - **Terzo bug scoperto in fase di test (regressione)**: il fix del punto
+    precedente rendeva `GetListAsync` sempre risolutivo delle FK, senza
+    possibilità di scegliere — questo ha rotto silenziosamente il blocco
+    "Albo d'oro" della Homepage pubblica (fase 16, checkpoint 4):
+    `LegacyContentReader.GetAllRowsAsync` (wrapper su `GetListAsync`, usato
+    anche da `LoadHallOfFameAsync`) si aspettava id grezzi da convertire a
+    `int`, e invece riceveva le etichette già risolte (stringhe) per
+    `Stagione`/`Competizione`/`Squadra` — la conversione falliva
+    silenziosamente (`as int? ?? 0`), tutte le righe venivano scartate, il
+    blocco spariva senza errori visibili. **Fix**: `GetListAsync` ha ora un
+    parametro esplicito `resolveForeignKeys` (default `false`, per non
+    sorprendere i consumatori esterni che si aspettano il valore grezzo);
+    solo `GenericEntityController.List` (griglia Dati del backoffice) lo
+    passa `true`. Aggiornati tutti i punti di chiamata coerentemente.
+  - **Migration**: solo modifica al modello (`ForeignKeyFiltersJson` su
+    `FieldDefinition`) consegnata; migration EF generata/applicata in locale
+    da Alessio (`dotnet ef migrations add`), come da prassi.
 
 ## Prossime fasi
 

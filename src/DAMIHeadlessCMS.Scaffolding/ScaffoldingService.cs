@@ -169,6 +169,13 @@ public class ScaffoldingService
     {
         var results = new List<ScaffoldingPreviewEntity>();
 
+        // Serve per risolvere schema/tabella di un eventuale riferimento manuale già
+        // salvato (FieldDefinition.ForeignKeyTargetEntityId), qualunque sia l'entità
+        // target — non necessariamente una di quelle selezionate in questa preview.
+        var entitiesById = await _db.EntityDefinitions
+            .Select(e => new { e.Id, e.SchemaName, e.TableName })
+            .ToDictionaryAsync(e => e.Id, ct);
+
         foreach (var table in selectedTables)
         {
             var details = await _reader.GetTableDetailsAsync(table.SchemaName, table.TableName, ct);
@@ -187,6 +194,15 @@ public class ScaffoldingService
                 var existingField = existingEntity?.Fields.FirstOrDefault(f =>
                     string.Equals(f.ColumnName, column.ColumnName, StringComparison.OrdinalIgnoreCase));
 
+                string? manualTargetSchema = null;
+                string? manualTargetTable = null;
+                if (existingField?.ForeignKeyTargetEntityId is Guid targetId &&
+                    entitiesById.TryGetValue(targetId, out var targetInfo))
+                {
+                    manualTargetSchema = targetInfo.SchemaName;
+                    manualTargetTable = targetInfo.TableName;
+                }
+
                 fieldPreviews.Add(new ScaffoldingPreviewField(
                     ColumnName: column.ColumnName,
                     SqlDataType: column.SqlDataType,
@@ -201,7 +217,11 @@ public class ScaffoldingService
                     ShowInList: existingField?.ShowInList ?? true,
                     ShowInForm: existingField?.ShowInForm ?? !(column.IsPrimaryKey && column.IsIdentity),
                     IsRequired: existingField?.IsRequired ?? (!column.IsNullable && !column.IsIdentity && !column.IsPrimaryKey),
-                    LocalizationSourceId: existingField?.LocalizationSourceId));
+                    LocalizationSourceId: existingField?.LocalizationSourceId,
+                    ManualForeignKeyTargetSchema: manualTargetSchema,
+                    ManualForeignKeyTargetTable: manualTargetTable,
+                    ManualForeignKeyDisplayColumn: existingField?.ForeignKeyDisplayColumn,
+                    ManualForeignKeyFiltersJson: existingField?.ForeignKeyFiltersJson));
             }
 
             var existingDetailKeyColumnName = existingEntity?.DetailKeyFieldId is Guid detailKeyFieldId
@@ -221,6 +241,19 @@ public class ScaffoldingService
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Nomi delle colonne di una tabella qualsiasi del database, scaffoldata o meno —
+    /// usato dal wizard per popolare le select "colonna etichetta"/"colonna filtro"
+    /// quando si configura un riferimento manuale verso una tabella non ancora
+    /// scaffoldata in questa sessione. Nessuna scrittura: sola lettura da sys.columns.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> GetTableColumnsAsync(
+        string schemaName, string tableName, CancellationToken ct = default)
+    {
+        var details = await _reader.GetTableDetailsAsync(schemaName, tableName, ct);
+        return details.Columns.Select(c => c.ColumnName).ToList();
     }
 
     /// <summary>"OrderDate" -> "Order Date", "order_date" -> "Order date".</summary>

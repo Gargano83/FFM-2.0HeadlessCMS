@@ -271,6 +271,32 @@ indice univoco filtrato a livello database (difesa in profondità).
   fisico che non gli appartiene — stesso principio di "integrità solo
   applicativa" già seguito per le tabelle del modulo FFM.
 
+#### 1.2 Riferimento manuale a un'altra tabella (FK senza vincolo fisico)
+
+Quando esiste un vincolo FK fisico nel database, il wizard rileva
+automaticamente destinazione e colonna etichetta. Molte tabelle legacy, però,
+esprimono relazioni solo a livello applicativo, senza alcun vincolo (tipico
+delle tabelle di lookup condivise, es. una `WN_LOOKUP` usata da più colonne
+per liste diverse). Per questi casi, ogni campo può essere configurato
+**manualmente** nel wizard con:
+
+- **Tabella di destinazione**: scelta tra qualunque tabella del database, non
+  solo quelle già scaffoldate — se non lo è ancora, viene scaffoldata
+  automaticamente (con impostazioni di default) nello stesso salvataggio,
+  cascata inclusa nella stessa chiamata a `ScaffoldTablesAsync`.
+- **Colonna etichetta**: quale colonna mostrare nell'autocomplete.
+- **Filtri** (`FieldDefinition.ForeignKeyFiltersJson`, opzionali, in AND): una
+  o più condizioni `colonna / operatore / valore` (stessi 6 operatori di
+  `QueryFilterOperator`) applicate alle opzioni dell'autocomplete — es. due
+  campi diversi che puntano entrambi a `WN_LOOKUP` ma devono offrire
+  sottoinsiemi diversi (`LK_LG_ID = 1` per le stagioni, `LK_LG_ID = 32` per le
+  competizioni). Non applicati alla risoluzione dell'etichetta di un valore
+  già scelto (la chiave primaria è già univoca di per sé).
+
+La configurazione manuale non viene mai applicata automaticamente sopra una
+FK fisica già rilevata: si attiva solo se esplicitamente impostata per quel
+campo nel wizard.
+
 ### 2. CRUD generico sui dati
 
 Percorso backoffice: **Dati** (`/dami`, sidebar dinamica in base alle entità

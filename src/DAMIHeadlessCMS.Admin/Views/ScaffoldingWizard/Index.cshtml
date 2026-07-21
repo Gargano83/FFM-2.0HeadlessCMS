@@ -162,6 +162,45 @@
 
             const LOCALIZATION_SOURCES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AvailableLocalizationSources));
 
+            // Tutte le tabelle del DB (non solo quelle già scaffoldate): un campo può
+            // riferirsi manualmente anche a una tabella non ancora configurata, che in
+            // tal caso verrà scaffoldata automaticamente al salvataggio.
+            const ALL_TABLES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Tables));
+
+            // Stessi valori di DAMIHeadlessCMS.Admin.Data.QueryFilterOperator (int, ordine di dichiarazione).
+            const FK_OPERATORS = [
+                [0, "="], [1, "&ne;"], [2, "&gt;"], [3, "&ge;"], [4, "&lt;"], [5, "&le;"]
+            ];
+
+            const columnsCache = new Map();
+            async function fetchTableColumns(schema, table) {
+                const key = `${schema}.${table}`;
+                if (columnsCache.has(key)) return columnsCache.get(key);
+                const promise = fetch(`/dami/scaffolding/columns?schema=${encodeURIComponent(schema)}&table=${encodeURIComponent(table)}`)
+                    .then(res => res.ok ? res.json() : [])
+                    .catch(() => []);
+                columnsCache.set(key, promise);
+                return promise;
+            }
+
+            function buildTableOptionsHtml(selectedSchema, selectedTable) {
+                const bySchema = new Map();
+                ALL_TABLES.forEach(t => {
+                    if (!bySchema.has(t.SchemaName)) bySchema.set(t.SchemaName, []);
+                    bySchema.get(t.SchemaName).push(t);
+                });
+                let html = '<option value="">— Nessuno —</option>';
+                Array.from(bySchema.keys()).sort().forEach(schema => {
+                    html += `<optgroup label="${schema}">`;
+                    bySchema.get(schema).sort((a, b) => a.TableName.localeCompare(b.TableName)).forEach(t => {
+                        const selected = t.SchemaName === selectedSchema && t.TableName === selectedTable ? 'selected' : '';
+                        html += `<option value="${t.SchemaName}.${t.TableName}" ${selected}>${t.TableName}${t.AlreadyScaffolded ? '' : ' (nuova)'}</option>`;
+                    });
+                    html += '</optgroup>';
+                });
+                return html;
+            }
+
             const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
             const step1 = document.getElementById('step1');
@@ -241,6 +280,87 @@
                 setActiveStep(1);
             });
 
+            function renderFkFilters(configTr, columns) {
+                const list = configTr.querySelector('.fk-filters-list');
+                const conditions = configTr._fkFilters || [];
+
+                if (conditions.length === 0) {
+                    list.innerHTML = '<div class="text-muted small">Nessun filtro: verranno mostrate tutte le righe.</div>';
+                    return;
+                }
+
+                list.innerHTML = conditions.map((cond, i) => `
+                    <div class="d-flex gap-2 align-items-center fk-filter-row" data-index="${i}">
+                        <select class="form-select form-select-sm fk-filter-column" style="max-width:200px;">
+                            ${columns.map(c => `<option value="${c}" ${c === cond.ColumnName ? 'selected' : ''}>${c}</option>`).join('')}
+                        </select>
+                        <select class="form-select form-select-sm fk-filter-operator" style="max-width:80px;">
+                            ${FK_OPERATORS.map(([val, label]) => `<option value="${val}" ${val === cond.Operator ? 'selected' : ''}>${label}</option>`).join('')}
+                        </select>
+                        <input type="text" class="form-control form-control-sm fk-filter-value" value="${cond.Value ?? ''}" placeholder="valore" />
+                        <button type="button" class="btn btn-sm btn-outline-danger fk-remove-filter"><i class="bi bi-trash"></i></button>
+                    </div>
+                `).join('');
+
+                list.querySelectorAll('.fk-filter-row').forEach(row => {
+                    const i = Number(row.dataset.index);
+                    row.querySelector('.fk-filter-column').addEventListener('change', e => conditions[i].ColumnName = e.target.value);
+                    row.querySelector('.fk-filter-operator').addEventListener('change', e => conditions[i].Operator = Number(e.target.value));
+                    row.querySelector('.fk-filter-value').addEventListener('input', e => conditions[i].Value = e.target.value);
+                    row.querySelector('.fk-remove-filter').addEventListener('click', () => {
+                        conditions.splice(i, 1);
+                        renderFkFilters(configTr, columns);
+                    });
+                });
+            }
+
+            function initFkConfigRow(tr, configTr, field) {
+                const toggleBtn = tr.querySelector('.fk-config-toggle');
+                const targetSelect = configTr.querySelector('.fk-target-table');
+                const displaySelect = configTr.querySelector('.fk-display-column');
+                const addFilterBtn = configTr.querySelector('.fk-add-filter');
+
+                let currentColumns = [];
+                configTr._fkFilters = field.manualForeignKeyFiltersJson
+                    ? (JSON.parse(field.manualForeignKeyFiltersJson) || [])
+                    : [];
+
+                async function onTargetChanged(preselectDisplayColumn) {
+                    const value = targetSelect.value;
+                    if (!value) {
+                        currentColumns = [];
+                        displaySelect.innerHTML = '<option value="">—</option>';
+                        addFilterBtn.disabled = true;
+                        configTr._fkFilters = [];
+                        renderFkFilters(configTr, []);
+                        toggleBtn.textContent = 'Nessuno';
+                        return;
+                    }
+
+                    const [schema, table] = value.split('.');
+                    currentColumns = await fetchTableColumns(schema, table);
+                    displaySelect.innerHTML = currentColumns.map(c =>
+                        `<option value="${c}" ${c === preselectDisplayColumn ? 'selected' : ''}>${c}</option>`
+                    ).join('');
+                    addFilterBtn.disabled = false;
+                    renderFkFilters(configTr, currentColumns);
+                    toggleBtn.textContent = `→ ${table}`;
+                }
+
+                targetSelect.addEventListener('change', () => onTargetChanged(null));
+                addFilterBtn.addEventListener('click', () => {
+                    configTr._fkFilters.push({ ColumnName: currentColumns[0] ?? '', Operator: 0, Value: '' });
+                    renderFkFilters(configTr, currentColumns);
+                });
+
+                // Precarica le colonne se il campo ha già un riferimento configurato in precedenza.
+                if (targetSelect.value) {
+                    onTargetChanged(field.manualForeignKeyDisplayColumn);
+                } else {
+                    addFilterBtn.disabled = true;
+                }
+            }
+
             function renderStep2() {
                 entityConfigContainer.innerHTML = '';
 
@@ -298,6 +418,7 @@
                                             <th class="text-center">Form</th>
                                             <th class="text-center">Obbligatorio</th>
                                             <th style="min-width:160px;">Localizzazione</th>
+                                            <th style="min-width:160px;">Riferimento</th>
                                             <th>Info</th>
                                         </tr>
                                     </thead>
@@ -328,6 +449,9 @@
                             !field.isNullable ? '<span class="badge bg-secondary-subtle text-secondary">Not null</span>' : ''
                         ].filter(Boolean).join(' ');
 
+                        const fkConfigId = `fkcfg-${entityIndex}-${fieldIndex}`;
+                        const hasManualRef = !!(field.manualForeignKeyTargetSchema && field.manualForeignKeyTargetTable);
+
                         tr.innerHTML = `
                             <td><code>${field.columnName}</code><div class="text-muted small">${field.sqlDataType}</div></td>
                             <td><input type="text" class="form-control form-control-sm field-display-name" value="${field.displayName}" /></td>
@@ -336,9 +460,43 @@
                             <td class="text-center"><input type="checkbox" class="form-check-input field-show-in-form" ${field.showInForm ? 'checked' : ''} /></td>
                             <td class="text-center"><input type="checkbox" class="form-check-input field-is-required" ${field.isRequired ? 'checked' : ''} /></td>
                             <td><select class="form-select form-select-sm field-localization-source"><option value="">— Nessuna —</option>${localizationOptions}</select></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-secondary fk-config-toggle" data-bs-toggle="collapse" data-bs-target="#${fkConfigId}">
+                                    ${hasManualRef ? `&rarr; ${field.manualForeignKeyTargetTable}` : 'Nessuno'}
+                                </button>
+                            </td>
                             <td>${infoBadges}</td>
                         `;
                         tbody.appendChild(tr);
+
+                        const configTr = document.createElement('tr');
+                        configTr.innerHTML = `
+                            <td colspan="9" class="p-0 border-0">
+                                <div id="${fkConfigId}" class="collapse">
+                                    <div class="p-3 bg-light border-top">
+                                        <div class="row g-2 align-items-end mb-2">
+                                            <div class="col-12 col-md-6">
+                                                <label class="form-label small">Tabella di riferimento</label>
+                                                <select class="form-select form-select-sm fk-target-table">${buildTableOptionsHtml(field.manualForeignKeyTargetSchema, field.manualForeignKeyTargetTable)}</select>
+                                            </div>
+                                            <div class="col-12 col-md-6">
+                                                <label class="form-label small">Colonna etichetta</label>
+                                                <select class="form-select form-select-sm fk-display-column"><option value="">—</option></select>
+                                            </div>
+                                        </div>
+                                        <label class="form-label small mb-1">Filtri (tutti in AND)</label>
+                                        <div class="fk-filters-list d-flex flex-column gap-2 mb-2"></div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary fk-add-filter">
+                                            <i class="bi bi-plus-lg"></i> Aggiungi filtro
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(configTr);
+
+                        initFkConfigRow(tr, configTr, field);
+
                         const localizationSelect = tr.querySelector('.field-localization-source');
                         const editorSelect = tr.querySelector('.field-editor-type');
                         localizationSelect.addEventListener('change', () => {
@@ -374,6 +532,12 @@
                     const fields = Array.from(card.querySelectorAll('.cms-field-row')).map(row => {
                         const fieldIndex = Number(row.dataset.fieldIndex);
                         const sourceField = source.fields[fieldIndex];
+
+                        const configRow = row.nextElementSibling;
+                        const targetValue = configRow.querySelector('.fk-target-table').value;
+                        const [fkSchema, fkTable] = targetValue ? targetValue.split('.') : [null, null];
+                        const filters = (configRow._fkFilters || []).filter(f => f.ColumnName);
+
                         return {
                             columnName: sourceField.columnName,
                             displayName: row.querySelector('.field-display-name').value,
@@ -381,7 +545,11 @@
                             showInList: row.querySelector('.field-show-in-list').checked,
                             showInForm: row.querySelector('.field-show-in-form').checked,
                             isRequired: row.querySelector('.field-is-required').checked,
-                            localizationSourceId: row.querySelector('.field-localization-source').value || null
+                            localizationSourceId: row.querySelector('.field-localization-source').value || null,
+                            foreignKeyTargetSchema: fkSchema,
+                            foreignKeyTargetTable: fkTable,
+                            foreignKeyDisplayColumn: targetValue ? (configRow.querySelector('.fk-display-column').value || null) : null,
+                            foreignKeyFiltersJson: targetValue && filters.length > 0 ? JSON.stringify(filters) : null
                         };
                     });
 

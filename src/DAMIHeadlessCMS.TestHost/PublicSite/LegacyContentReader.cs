@@ -56,7 +56,7 @@ public class LegacyContentReader
     public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> GetAllRowsAsync(
         EntityDefinition entity, int maxRows = 500, CancellationToken ct = default)
     {
-        var page = await _repository.GetListAsync(entity, page: 1, pageSize: maxRows, ct);
+        var page = await _repository.GetListAsync(entity, page: 1, pageSize: maxRows, resolveForeignKeys: false, ct: ct);
         return page.Rows
             .Select(row => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase))
             .ToList();

@@ -84,6 +84,22 @@ public class ScaffoldingWizardController : Controller
     }
 
     /// <summary>
+    /// Colonne di una tabella qualsiasi (scaffoldata o meno), per popolare le select
+    /// "colonna etichetta"/"colonna filtro" quando si configura un riferimento manuale.
+    /// </summary>
+    [HttpGet("columns")]
+    public async Task<IActionResult> Columns([FromQuery] string schema, [FromQuery] string table, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(schema) || string.IsNullOrWhiteSpace(table))
+        {
+            return BadRequest("Schema e tabella sono obbligatori.");
+        }
+
+        var columns = await _scaffoldingService.GetTableColumnsAsync(schema, table, ct);
+        return Json(columns);
+    }
+
+    /// <summary>
     /// Salvataggio unico: esegue lo scaffold strutturale idempotente e applica
     /// nello stesso passaggio le personalizzazioni scelte nel wizard.
     /// </summary>
@@ -100,7 +116,21 @@ public class ScaffoldingWizardController : Controller
             .Select(e => new DatabaseTableInfo(e.SchemaName, e.TableName))
             .ToList();
 
-        var entities = await _scaffoldingService.ScaffoldTablesAsync(selectedTables, ct);
+        // Tabelle referenziate come target di un riferimento manuale ma non incluse
+        // nella selezione dell'utente: le scaffoldiamo comunque, con impostazioni di
+        // default (l'utente potrà rifinirle in un secondo momento da /dami/scaffolding),
+        // altrimenti non ci sarebbe nessuna EntityDefinition a cui agganciare la FK.
+        var manualTargets = request.Entities
+            .SelectMany(e => e.Fields)
+            .Where(f => !string.IsNullOrWhiteSpace(f.ForeignKeyTargetSchema) && !string.IsNullOrWhiteSpace(f.ForeignKeyTargetTable))
+            .Select(f => new DatabaseTableInfo(f.ForeignKeyTargetSchema!, f.ForeignKeyTargetTable!))
+            .Distinct()
+            .Where(t => !selectedTables.Any(s =>
+                string.Equals(s.SchemaName, t.SchemaName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(s.TableName, t.TableName, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        var entities = await _scaffoldingService.ScaffoldTablesAsync(selectedTables.Concat(manualTargets), ct);
 
         var validationError = await ValidateDetailRoutePrefixesAsync(request.Entities, entities, ct);
         if (validationError is not null)
@@ -157,12 +187,53 @@ public class ScaffoldingWizardController : Controller
                 field.ShowInForm = fieldRequest.ShowInForm;
                 field.IsRequired = fieldRequest.IsRequired;
                 field.LocalizationSourceId = fieldRequest.LocalizationSourceId;
+
+                // Riferimento manuale: applicato solo se esplicitamente specificato in
+                // questa richiesta, per non toccare mai un'eventuale FK fisica già
+                // rilevata automaticamente da ScaffoldTablesAsync su un campo che qui
+                // non è stato configurato manualmente.
+                if (!string.IsNullOrWhiteSpace(fieldRequest.ForeignKeyTargetSchema) &&
+                    !string.IsNullOrWhiteSpace(fieldRequest.ForeignKeyTargetTable))
+                {
+                    var target = entities.FirstOrDefault(e =>
+                        string.Equals(e.SchemaName, fieldRequest.ForeignKeyTargetSchema, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(e.TableName, fieldRequest.ForeignKeyTargetTable, StringComparison.OrdinalIgnoreCase));
+
+                    if (target is not null)
+                    {
+                        field.IsForeignKey = true;
+                        field.ForeignKeyTargetEntityId = target.Id;
+                        field.ForeignKeyDisplayColumn = fieldRequest.ForeignKeyDisplayColumn;
+                        field.ForeignKeyFiltersJson = IsValidFilterJson(fieldRequest.ForeignKeyFiltersJson)
+                            ? fieldRequest.ForeignKeyFiltersJson
+                            : null;
+                    }
+                }
             }
         }
 
         await _db.SaveChangesAsync(ct);
 
         return Json(new { success = true, redirectUrl = "/dami" });
+    }
+
+    /// <summary>Verifica solo che sia un JSON sintatticamente valido: la semantica (colonne esistenti, tipi) resta a carico di chi la consuma.</summary>
+    private static bool IsValidFilterJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return false;
+        }
+
+        try
+        {
+            System.Text.Json.JsonDocument.Parse(json);
+            return true;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
     }
 
     /// <summary>

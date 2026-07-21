@@ -31,8 +31,9 @@ public class HomeController : Controller
         var hero = await LoadHeroAsync(ct);
         var teams = await LoadTeamsAsync(ct);
         var articles = await LoadLatestArticlesAsync(ct);
+        var hallOfFame = await LoadHallOfFameAsync(ct);
 
-        return View(new HomeViewModel { Hero = hero, Teams = teams, LatestArticles = articles });
+        return View(new HomeViewModel { Hero = hero, Teams = teams, LatestArticles = articles, HallOfFame = hallOfFame });
     }
 
     private async Task<HeroContentViewModel> LoadHeroAsync(CancellationToken ct)
@@ -157,6 +158,105 @@ public class HomeController : Controller
         }
 
         return articles;
+    }
+
+    private async Task<HallOfFameViewModel?> LoadHallOfFameAsync(CancellationToken ct)
+    {
+        var statsEntity = await _content.GetEntityAsync("FFM", "RiepilogoStatistiche", ct);
+        var lookupEntity = await _content.GetEntityAsync("dbo", "WN_LOOKUP", ct);
+        var teamEntity = await _content.GetEntityAsync("FFM", "Squadre", ct);
+        if (statsEntity is null || lookupEntity is null || teamEntity is null)
+        {
+            _logger.LogWarning(
+                "FFM.RiepilogoStatistiche / WN_LOOKUP / FFM.Squadre non risultano tutte scaffoldate: " +
+                "il blocco Albo d'oro viene omesso.");
+            return null;
+        }
+
+        var rows = await _content.GetAllRowsAsync(statsEntity, ct: ct);
+        if (rows.Count == 0)
+        {
+            return null;
+        }
+
+        // Cache per evitare di risolvere più volte lo stesso id di lookup/squadra
+        // (le stesse stagioni/competizioni/squadre ricorrono su più righe).
+        var lookupCache = new Dictionary<int, (string Label, int Order)>();
+        var teamCache = new Dictionary<int, string>();
+
+        async Task<(string Label, int Order)> ResolveLookupAsync(int id)
+        {
+            if (lookupCache.TryGetValue(id, out var cached))
+            {
+                return cached;
+            }
+
+            var row = await _content.GetRowByIdAsync(lookupEntity, id, ct);
+            var result = (
+                Label: row?.GetValueOrDefault("LK_Valore") as string ?? $"#{id}",
+                Order: row?.GetValueOrDefault("LK_ORDINE") as int? ?? 0);
+            lookupCache[id] = result;
+            return result;
+        }
+
+        async Task<string> ResolveTeamNameAsync(int id)
+        {
+            if (teamCache.TryGetValue(id, out var cached))
+            {
+                return cached;
+            }
+
+            var row = await _content.GetRowByIdAsync(teamEntity, id, ct);
+            var name = row?.GetValueOrDefault("Nome") as string ?? $"#{id}";
+            teamCache[id] = name;
+            return name;
+        }
+
+        var seasons = new Dictionary<int, (string Label, int Order)>();
+        var competitions = new Dictionary<int, (string Label, int Order)>();
+        var cells = new Dictionary<(int Season, int Competition), string>();
+
+        foreach (var row in rows)
+        {
+            var seasonId = row.GetValueOrDefault("Stagione") as int? ?? 0;
+            var competitionId = row.GetValueOrDefault("Competizione") as int? ?? 0;
+            var teamId = row.GetValueOrDefault("Squadra") as int? ?? 0;
+            if (seasonId <= 0 || competitionId <= 0)
+            {
+                continue;
+            }
+
+            seasons.TryAdd(seasonId, await ResolveLookupAsync(seasonId));
+            competitions.TryAdd(competitionId, await ResolveLookupAsync(competitionId));
+            cells[(seasonId, competitionId)] = teamId > 0 ? await ResolveTeamNameAsync(teamId) : string.Empty;
+        }
+
+        if (seasons.Count == 0 || competitions.Count == 0)
+        {
+            return null;
+        }
+
+        // Ordinamento sia delle stagioni (righe) sia delle competizioni (colonne) per
+        // LK_ORDINE — lo stesso criterio usato dalla query legacy (ORDER BY ..., LK_ORDINE),
+        // ma qui applicato dinamicamente a qualsiasi competizione presente nei dati.
+        var orderedCompetitions = competitions.OrderBy(c => c.Value.Order).ToList();
+        var orderedSeasons = seasons.OrderBy(s => s.Value.Order).ToList();
+
+        var hallOfFameRows = orderedSeasons
+            .Select(season => new HallOfFameRow
+            {
+                SeasonLabel = season.Value.Label,
+                Teams = orderedCompetitions
+                    .Select(competition => cells.GetValueOrDefault((season.Key, competition.Key)))
+                    .ToList()
+            })
+            .ToList();
+
+        return new HallOfFameViewModel
+        {
+            CompetitionNames = orderedCompetitions.Select(c => c.Value.Label).ToList(),
+            Rows = hallOfFameRows
+        };
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

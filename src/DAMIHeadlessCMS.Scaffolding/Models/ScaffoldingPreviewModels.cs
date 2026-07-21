@@ -22,7 +22,14 @@ public sealed record ScaffoldingPreviewField(
     bool ShowInList,
     bool ShowInForm,
     bool IsRequired,
-    Guid? LocalizationSourceId);
+    Guid? LocalizationSourceId,
+    // Riferimento manuale (nessun vincolo FK fisico nel DB), configurato nel wizard.
+    // ManualForeignKeyTarget è valorizzato sia per FK fisiche già risolte sia per
+    // riferimenti manuali già salvati in precedenza, per precompilare il wizard.
+    string? ManualForeignKeyTargetSchema = null,
+    string? ManualForeignKeyTargetTable = null,
+    string? ManualForeignKeyDisplayColumn = null,
+    string? ManualForeignKeyFiltersJson = null);
 
 /// <summary>Anteprima (non persistita) di un'intera tabella/entità per il wizard.</summary>
 public sealed record ScaffoldingPreviewEntity(

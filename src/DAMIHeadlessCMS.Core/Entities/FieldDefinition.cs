@@ -40,6 +40,17 @@ public class FieldDefinition
     public string? ForeignKeyDisplayColumn { get; set; }
 
     /// <summary>
+    /// Condizioni opzionali (JSON, array di {ColumnName, Operator, Value}) da applicare come
+    /// filtro AND sulla tabella di destinazione della FK quando si popolano le opzioni
+    /// dell'autocomplete — utile quando più campi condividono la stessa tabella di lookup
+    /// ma con sottoinsiemi diversi (es. WN_LOOKUP con più "liste" distinte per LK_LG_ID).
+    /// Non applicato alla risoluzione dell'etichetta per un id già scelto (la PK è già
+    /// univoca di per sé). Nessuna FK fisica richiesta: relazione dichiarata manualmente
+    /// nel wizard di scaffolding. Parsing/validazione a carico di chi la consuma (Admin).
+    /// </summary>
+    public string? ForeignKeyFiltersJson { get; set; }
+
+    /// <summary>
     /// Se valorizzato, questa colonna (tipicamente un intero) non è il dato reale ma un
     /// id di contenuto da risolvere tramite la LocalizationSource indicata, filtrando
     /// per lingua. Non esiste una FK fisica verso questa relazione: l'associazione è

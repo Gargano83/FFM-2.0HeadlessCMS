@@ -8,4 +8,6 @@ public class HomeViewModel
     public IReadOnlyList<TeamLogoViewModel> Teams { get; init; } = [];
 
     public IReadOnlyList<LatestArticleViewModel> LatestArticles { get; init; } = [];
+
+    public HallOfFameViewModel? HallOfFame { get; init; }
 }
