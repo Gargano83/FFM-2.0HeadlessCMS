@@ -71,3 +71,13 @@ main {
     border-top: 1px solid rgba(0, 0, 0, .08);
     margin-top: 3rem;
 }
+
+/* --- Loghi inline nelle tabelle statistiche --- */
+
+.alb-logo {
+    height: 20px;
+    width: 20px;
+    object-fit: contain;
+    margin-right: .35rem;
+    vertical-align: text-bottom;
+}

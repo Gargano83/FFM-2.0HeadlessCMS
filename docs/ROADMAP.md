@@ -501,6 +501,55 @@ gli altri endpoint statistiche non ancora affrontati.
     `FieldDefinition`) consegnata; migration EF generata/applicata in locale
     da Alessio (`dotnet ef migrations add`), come da prassi.
 
+- [~] **18. Migrazione pagina pubblica Statistiche → `DAMIHeadlessCMS.TestHost`**
+      (in corso, per checkpoint — vedi PDF di riferimento). Pagina molto più
+      estesa della Homepage: ~20 sezioni nel legacy, raggruppate in famiglie
+      per forma dei dati (non una per competizione). Layout scelto: accordion
+      Bootstrap (non scroll unico come il legacy) — un `accordion-item` per
+      sezione. Non aggiorna il `README.md` (stesso motivo della fase 16: è
+      lavoro del TestHost, non della libreria).
+  - **Id di competizione**: mappa `PublicSite:Competizioni:*` in
+    `appsettings.json` (Campionato=233, PoppaCampioni=234, ecc.), presa
+    dagli `utils.js` del client legacy — a differenza dell'Albo d'oro
+    Homepage (dinamico, nessun id), qui ogni sezione della pagina è
+    dedicata a una competizione specifica: l'id è inevitabile, ma resta
+    configurabile, non hardcoded nel codice.
+  - **Checkpoint 1/4 — Titoli condiviso + Campionato risultati** ✅:
+    - `StatisticheDataService` (TestHost): cache per-richiesta di
+      `FFM.Squadre` e `WN_LOOKUP` (lette **una sola volta** con
+      `GetAllRowsAsync`, non per singolo id come `LoadHallOfFameAsync` della
+      Homepage — con ~20 sezioni sulla stessa pagina converrebbe troppe
+      chiamate), riusate da tutti i widget della pagina.
+    - `BuildTitlesTableAsync(competizioneId, ...)`: tabella "Titoli" —
+      quante volte ogni squadra ha vinto una competizione — **generica**,
+      derivata da `FFM.RiepilogoStatistiche` (già scaffoldata per la
+      Homepage), riusabile identica per **tutte** le prossime competizioni,
+      Campionato incluso (conferma dal client legacy: anche
+      `Alb_Campionato_Titoli` chiama lo stesso endpoint
+      `/api/statistiche/riepilogo?IdCompetizione=`).
+    - `GetCampionatoResultsAsync`: risultati Campionato da
+      `FFM.CampionatoStatistiche` — solo Primo/Secondo/Terzo mostrati (la
+      tabella fisica arriva al dodicesimo posto con punti, non usati da
+      questo widget, come nel client legacy).
+    - Estratto `LegacyMediaUrlResolver.ResolveLogoUrl` (prima duplicato
+      solo in `HomeController`) per riuso tra Homepage e Statistiche.
+    - Partial riusabili: `_TeamCell` (logo+nome squadra), `_TitleTable`
+      (tabella Titoli) — pensate per essere riusate identiche nei prossimi
+      checkpoint.
+  - **Checkpoint 2/4 — Famiglia standard** (Poppa Campioni, Coppa delle
+    Poppe, Poppa di Lega: risultati con Vincitore/Finalista/Sede finale,
+    stessa forma tra loro) + relative tabelle Titoli (già pronte): da fare.
+  - **Checkpoint 3/4 — Famiglia speciale** (Popa Libertadores andata/ritorno,
+    SuperPoppa di Lega doppio vincitore con eccezione "non disputata" per
+    una stagione, SuperPoppa Europea doppio vincitore, Poppa Intercontinentale
+    doppio vincitore) + relative Titoli: da fare.
+  - **Checkpoint 4/4 — Campionato partecipazioni + Allenatori + Presidenti**:
+    da fare. **Decisione presa** (diversa da quella per l'Albo d'oro
+    Homepage): colonne **fisse** per squadra, non dinamiche — replica
+    esatta della logica legacy (switch per ~13-16 id squadra fissi), scelta
+    esplicita di Alessio nonostante la fragilità (installazione-specifica)
+    già segnalata.
+
 ## Prossime fasi
 
 - [ ] **10. Localizzazione multi-lingua nel backoffice**: attualmente il CMS

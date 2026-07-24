@@ -1,0 +1,29 @@
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.TitleTableViewModel
+
+<div class="table-responsive">
+    <table class="table table-striped table-sm align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Squadra</th>
+                <th scope="col">Titoli</th>
+                <th scope="col">Edizioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(row.LogoPath))
+                        {
+                            <img src="@row.LogoPath" class="alb-logo" loading="lazy" alt="" />
+                        }
+                        @row.TeamName
+                    </td>
+                    <td>@row.TitleCount</td>
+                    <td class="small text-body-secondary">@row.Seasons</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

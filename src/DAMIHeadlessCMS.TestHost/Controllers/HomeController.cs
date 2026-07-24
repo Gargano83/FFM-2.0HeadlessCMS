@@ -85,23 +85,10 @@ public class HomeController : Controller
             .Select(row => new TeamLogoViewModel
             {
                 Nome = row.GetValueOrDefault("Nome") as string ?? string.Empty,
-                LogoPath = ResolveLogoUrl(row.GetValueOrDefault("LogoStatistiche") as string, baseUrl)
+                LogoPath = LegacyMediaUrlResolver.ResolveLogoUrl(row.GetValueOrDefault("LogoStatistiche") as string, baseUrl)
             })
             .Where(t => !string.IsNullOrWhiteSpace(t.Nome))
             .ToList();
-    }
-
-    private static string? ResolveLogoUrl(string? relativePath, string baseUrl)
-    {
-        if (string.IsNullOrWhiteSpace(relativePath))
-        {
-            return null;
-        }
-
-        return relativePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-               relativePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-            ? relativePath
-            : $"{baseUrl.TrimEnd('/')}/{relativePath.TrimStart('/')}";
     }
 
     private async Task<IReadOnlyList<LatestArticleViewModel>> LoadLatestArticlesAsync(CancellationToken ct)

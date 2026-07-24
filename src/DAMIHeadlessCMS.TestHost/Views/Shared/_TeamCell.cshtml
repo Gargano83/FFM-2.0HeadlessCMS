@@ -1,0 +1,14 @@
+@model DAMIHeadlessCMS.TestHost.PublicSite.TeamRef?
+
+@if (Model is null)
+{
+    <text>—</text>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(Model.LogoPath))
+    {
+        <img src="@Model.LogoPath" class="alb-logo" loading="lazy" alt="" />
+    }
+    @Model.Name
+}

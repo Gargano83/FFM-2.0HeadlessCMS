@@ -22,6 +22,7 @@
     <Folder Include="PublicSite\" />
     <Folder Include="ViewComponents\" />
     <Folder Include="Views\Home\" />
+    <Folder Include="Views\Statistiche\" />
     <Folder Include="Views\Pages\" />
     <Folder Include="Views\Shared\Components\MainMenu\" />
   </ItemGroup>

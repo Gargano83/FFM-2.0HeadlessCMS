@@ -1,0 +1,72 @@
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.StatistichePageViewModel
+@{
+    ViewData["Title"] = "Statistiche";
+}
+
+<div class="container py-4 py-lg-5">
+    <h1 class="mb-4">Statistiche</h1>
+
+    <div class="accordion" id="statisticheAccordion">
+
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-campionato-risultati">
+                    Campionato — Risultati
+                </button>
+            </h2>
+            <div id="collapse-campionato-risultati" class="accordion-collapse collapse show" data-bs-parent="#statisticheAccordion">
+                <div class="accordion-body">
+                    @if (Model.CampionatoRisultati.Count == 0)
+                    {
+                        <p class="text-body-secondary mb-0">Nessun dato disponibile.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Stagione</th>
+                                        <th scope="col">1&deg;</th>
+                                        <th scope="col">2&deg;</th>
+                                        <th scope="col">3&deg;</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.CampionatoRisultati)
+                                    {
+                                        <tr>
+                                            <th scope="row">@row.SeasonLabel</th>
+                                            <td>@await Html.PartialAsync("_TeamCell", row.Primo)</td>
+                                            <td>@await Html.PartialAsync("_TeamCell", row.Secondo)</td>
+                                            <td>@await Html.PartialAsync("_TeamCell", row.Terzo)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (Model.CampionatoTitoli is not null)
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-campionato-titoli">
+                        Campionato — Titoli
+                    </button>
+                </h2>
+                <div id="collapse-campionato-titoli" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                    <div class="accordion-body">
+                        @await Html.PartialAsync("_TitleTable", Model.CampionatoTitoli)
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Le prossime competizioni (Poppa Campioni, Coppa delle Poppe, ecc.) arrivano nei prossimi checkpoint. *@
+
+    </div>
+</div>
