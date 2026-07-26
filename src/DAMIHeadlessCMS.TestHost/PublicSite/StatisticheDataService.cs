@@ -31,6 +31,12 @@ public class StatisticheDataService
     /// <summary>Id di competizione configurati (PublicSite:Competizioni:*), stesso significato di "statistiche" in utils.js del client legacy.</summary>
     public int? GetCompetitionId(string key) => _configuration.GetValue<int?>($"PublicSite:Competizioni:{key}");
 
+    /// <summary>
+    /// Etichetta stagione dell'eccezione storica "non disputata" di SuperPoppa di Lega
+    /// (equivalente di exception_match in utils.js del client legacy).
+    /// </summary>
+    public string? GetNonDisputataSeasonLabel() => _configuration["PublicSite:SuperpoppaDiLegaStagioneNonDisputata"];
+
     private async Task<IReadOnlyDictionary<int, TeamRef>> GetTeamsAsync(CancellationToken ct)
     {
         if (_teamCache is not null)
@@ -184,6 +190,90 @@ public class StatisticheDataService
                     Risultato = r.GetValueOrDefault("Risultato") as string,
                     SedeFinale = teams.GetValueOrDefault(r.GetValueOrDefault("SedeFinale") as int? ?? 0),
                     SedeFinaleStadio = r.GetValueOrDefault("SedeFinaleStadio") as string
+                };
+            })
+            .OrderBy(r => r.SeasonOrder)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Risultati per la famiglia "doppia sorgente" (il vincitore proviene da una delle due
+    /// squadre sorgente, es. vincitrice Campionato vs vincitrice Poppa di Lega) — stessa
+    /// forma per SuperPoppa di Lega, SuperPoppa Europea, Poppa Intercontinentale: cambiano
+    /// solo i nomi delle due colonne sorgente. <paramref name="nonDisputataSeasonLabel"/>
+    /// gestisce l'eccezione storica di SuperPoppa di Lega (stagione senza partita disputata).
+    /// </summary>
+    public async Task<IReadOnlyList<DualSourceResultRowViewModel>> GetDualSourceCompetitionResultsAsync(
+        string tableName, string sourceAColumn, string sourceBColumn, string? nonDisputataSeasonLabel, CancellationToken ct)
+    {
+        var entity = await _content.GetEntityAsync("FFM", tableName, ct);
+        if (entity is null)
+        {
+            _logger.LogWarning("FFM.{Table} non risulta ancora scaffoldata: la sezione viene omessa.", tableName);
+            return [];
+        }
+
+        var teams = await GetTeamsAsync(ct);
+        var lookups = await GetLookupsAsync(ct);
+        var rows = await _content.GetAllRowsAsync(entity, ct: ct);
+
+        return rows
+            .Select(r =>
+            {
+                var seasonId = r.GetValueOrDefault("Stagione") as int? ?? 0;
+                var seasonInfo = lookups.GetValueOrDefault(seasonId);
+                var seasonLabel = string.IsNullOrEmpty(seasonInfo.Label) ? $"#{seasonId}" : seasonInfo.Label;
+                var nonDisputata = nonDisputataSeasonLabel is not null &&
+                                    string.Equals(seasonLabel, nonDisputataSeasonLabel, StringComparison.OrdinalIgnoreCase);
+
+                return new DualSourceResultRowViewModel
+                {
+                    SeasonLabel = seasonLabel,
+                    SeasonOrder = seasonInfo.Order,
+                    NonDisputata = nonDisputata,
+                    SourceA = nonDisputata ? null : teams.GetValueOrDefault(r.GetValueOrDefault(sourceAColumn) as int? ?? 0),
+                    SourceB = nonDisputata ? null : teams.GetValueOrDefault(r.GetValueOrDefault(sourceBColumn) as int? ?? 0),
+                    Vincitore = nonDisputata ? null : teams.GetValueOrDefault(r.GetValueOrDefault("Vincitore") as int? ?? 0),
+                    Risultato = nonDisputata ? null : r.GetValueOrDefault("Risultato") as string,
+                    SedeFinale = nonDisputata ? null : teams.GetValueOrDefault(r.GetValueOrDefault("SedeFinale") as int? ?? 0),
+                    SedeFinaleStadio = nonDisputata ? null : r.GetValueOrDefault("SedeFinaleStadio") as string
+                };
+            })
+            .OrderBy(r => r.SeasonOrder)
+            .ToList();
+    }
+
+    /// <summary>Risultati Popa Libertadores (FFM.PopaLibertadoresStatistiche): unica competizione a doppio turno.</summary>
+    public async Task<IReadOnlyList<PopaLibertadoresResultRowViewModel>> GetPopaLibertadoresResultsAsync(CancellationToken ct)
+    {
+        var entity = await _content.GetEntityAsync("FFM", "PopaLibertadoresStatistiche", ct);
+        if (entity is null)
+        {
+            _logger.LogWarning("FFM.PopaLibertadoresStatistiche non risulta ancora scaffoldata: la sezione viene omessa.");
+            return [];
+        }
+
+        var teams = await GetTeamsAsync(ct);
+        var lookups = await GetLookupsAsync(ct);
+        var rows = await _content.GetAllRowsAsync(entity, ct: ct);
+
+        return rows
+            .Select(r =>
+            {
+                var seasonId = r.GetValueOrDefault("Stagione") as int? ?? 0;
+                var seasonInfo = lookups.GetValueOrDefault(seasonId);
+                return new PopaLibertadoresResultRowViewModel
+                {
+                    SeasonLabel = string.IsNullOrEmpty(seasonInfo.Label) ? $"#{seasonId}" : seasonInfo.Label,
+                    SeasonOrder = seasonInfo.Order,
+                    Vincitore = teams.GetValueOrDefault(r.GetValueOrDefault("Vincitore") as int? ?? 0),
+                    FinalistaPerdente = teams.GetValueOrDefault(r.GetValueOrDefault("FinalistaPerdente") as int? ?? 0),
+                    RisultatoAndata = r.GetValueOrDefault("RisultatoAndata") as string,
+                    SedeAndata = teams.GetValueOrDefault(r.GetValueOrDefault("SedeFinaleAndata") as int? ?? 0),
+                    SedeAndataStadio = r.GetValueOrDefault("SedeFinaleAndataStadio") as string,
+                    RisultatoRitorno = r.GetValueOrDefault("RisultatoRitorno") as string,
+                    SedeRitorno = teams.GetValueOrDefault(r.GetValueOrDefault("SedeFinaleRitorno") as int? ?? 0),
+                    SedeRitornoStadio = r.GetValueOrDefault("SedeFinaleRitornoStadio") as string
                 };
             })
             .OrderBy(r => r.SeasonOrder)

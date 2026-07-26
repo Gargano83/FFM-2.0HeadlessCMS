@@ -1,0 +1,49 @@
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.DualSourceCompetitionSectionViewModel
+
+@if (Model.Risultati.Count == 0)
+{
+    <p class="text-body-secondary mb-0">Nessun dato disponibile.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-sm align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Stagione</th>
+                    <th scope="col">@Model.SourceALabel</th>
+                    <th scope="col">@Model.SourceBLabel</th>
+                    <th scope="col">Vincitore</th>
+                    <th scope="col">Risultato</th>
+                    <th scope="col">Sede finale</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Risultati)
+                {
+                    <tr>
+                        <th scope="row">@row.SeasonLabel</th>
+                        @if (row.NonDisputata)
+                        {
+                            <td colspan="5"><strong>NON DISPUTATA</strong> — per riforma calendario</td>
+                        }
+                        else
+                        {
+                            <td>@await Html.PartialAsync("_TeamCell", row.SourceA)</td>
+                            <td>@await Html.PartialAsync("_TeamCell", row.SourceB)</td>
+                            <td>@await Html.PartialAsync("_TeamCell", row.Vincitore)</td>
+                            <td>@row.Risultato</td>
+                            <td>
+                                @await Html.PartialAsync("_TeamCell", row.SedeFinale)
+                                @if (!string.IsNullOrWhiteSpace(row.SedeFinaleStadio))
+                                {
+                                    <div class="small text-body-secondary">@row.SedeFinaleStadio</div>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

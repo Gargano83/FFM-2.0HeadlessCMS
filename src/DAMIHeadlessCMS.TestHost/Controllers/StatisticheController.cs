@@ -28,9 +28,20 @@ public class StatisticheController : Controller
         ("PoppaDiLegaStatistiche", "Poppa di Lega", "PoppaDiLega", "poppa-dilega")
     ];
 
+    // Nome tabella FFM.*, etichette delle due colonne sorgente, chiave in
+    // PublicSite:Competizioni, slug per l'accordion: stessa forma per tutt'e tre
+    // (confermato dalle query legacy), un solo metodo generico le serve.
+    private static readonly (string Table, string Label, string SourceAColumn, string SourceALabel, string SourceBColumn, string SourceBLabel, string ConfigKey, string Slug, bool HasNonDisputataException)[] DualSourceCompetitions =
+    [
+        ("SuperpoppaDiLegaStatistiche", "SuperPoppa di Lega", "VincitoreCampionato", "Vincitore Campionato", "VincitorePoppaDiLega", "Vincitore Poppa di Lega", "SuperpoppaDiLega", "superpoppa-dilega", true),
+        ("SuperpoppaEuropeaStatistiche", "SuperPoppa Europea", "VincitorePoppaDeiCampioni", "Vincitore Poppa dei Campioni", "VincitorePoppaUefa", "Vincitore Poppa Uefa", "SuperpoppaEuropea", "superpoppa-europea", false),
+        ("PoppaIntercontinentaleStatistiche", "Poppa Intercontinentale", "VincitoreCoppaDellePoppe", "Vincitore Coppa delle Poppe", "VincitorePopaLibertadores", "Vincitore Popa Libertadores", "PoppaIntercontinentale", "poppa-intercontinentale", false)
+    ];
+
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var campionatoId = _data.GetCompetitionId("Campionato");
+        var popaLibertadoresId = _data.GetCompetitionId("PopaLibertadores");
 
         var model = new StatistichePageViewModel
         {
@@ -38,10 +49,46 @@ public class StatisticheController : Controller
             CampionatoTitoli = campionatoId is int id
                 ? await _data.BuildTitlesTableAsync(id, "Campionato", ct)
                 : null,
-            CompetizioniStandard = await BuildStandardCompetitionSectionsAsync(ct)
+            CompetizioniStandard = await BuildStandardCompetitionSectionsAsync(ct),
+            PopaLibertadoresRisultati = await _data.GetPopaLibertadoresResultsAsync(ct),
+            PopaLibertadoresTitoli = popaLibertadoresId is int popaId
+                ? await _data.BuildTitlesTableAsync(popaId, "Popa Libertadores", ct)
+                : null,
+            CompetizioniDoppiaSorgente = await BuildDualSourceCompetitionSectionsAsync(ct)
         };
 
         return View(model);
+    }
+
+    private async Task<IReadOnlyList<DualSourceCompetitionSectionViewModel>> BuildDualSourceCompetitionSectionsAsync(CancellationToken ct)
+    {
+        var nonDisputataLabel = _data.GetNonDisputataSeasonLabel();
+        var sections = new List<DualSourceCompetitionSectionViewModel>();
+
+        foreach (var (table, label, sourceAColumn, sourceALabel, sourceBColumn, sourceBLabel, configKey, slug, hasException) in DualSourceCompetitions)
+        {
+            var risultati = await _data.GetDualSourceCompetitionResultsAsync(
+                table, sourceAColumn, sourceBColumn, hasException ? nonDisputataLabel : null, ct);
+            var competitionId = _data.GetCompetitionId(configKey);
+            var titoli = competitionId is int id ? await _data.BuildTitlesTableAsync(id, label, ct) : null;
+
+            if (risultati.Count == 0 && titoli is null)
+            {
+                continue;
+            }
+
+            sections.Add(new DualSourceCompetitionSectionViewModel
+            {
+                Label = label,
+                Slug = slug,
+                SourceALabel = sourceALabel,
+                SourceBLabel = sourceBLabel,
+                Risultati = risultati,
+                Titoli = titoli
+            });
+        }
+
+        return sections;
     }
 
     private async Task<IReadOnlyList<StandardCompetitionSectionViewModel>> BuildStandardCompetitionSectionsAsync(CancellationToken ct)

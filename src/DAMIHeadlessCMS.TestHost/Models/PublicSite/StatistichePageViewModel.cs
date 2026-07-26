@@ -12,4 +12,10 @@ public class StatistichePageViewModel
     public TitleTableViewModel? CampionatoTitoli { get; init; }
 
     public IReadOnlyList<StandardCompetitionSectionViewModel> CompetizioniStandard { get; init; } = [];
+
+    public IReadOnlyList<PopaLibertadoresResultRowViewModel> PopaLibertadoresRisultati { get; init; } = [];
+
+    public TitleTableViewModel? PopaLibertadoresTitoli { get; init; }
+
+    public IReadOnlyList<DualSourceCompetitionSectionViewModel> CompetizioniDoppiaSorgente { get; init; } = [];
 }

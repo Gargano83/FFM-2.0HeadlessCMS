@@ -101,7 +101,74 @@
             }
         }
 
-        @* Le famiglie speciali (Popa Libertadores, SuperPoppa...) e i pivot Allenatori/Presidenti arrivano nei prossimi checkpoint. *@
+        @if (Model.PopaLibertadoresRisultati.Count > 0)
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-popalibertadores-risultati">
+                        Popa Libertadores — Risultati
+                    </button>
+                </h2>
+                <div id="collapse-popalibertadores-risultati" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                    <div class="accordion-body">
+                        @await Html.PartialAsync("_PopaLibertadoresResultsTable", Model.PopaLibertadoresRisultati)
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.PopaLibertadoresTitoli is not null)
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-popalibertadores-titoli">
+                        Popa Libertadores — Titoli
+                    </button>
+                </h2>
+                <div id="collapse-popalibertadores-titoli" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                    <div class="accordion-body">
+                        @await Html.PartialAsync("_TitleTable", Model.PopaLibertadoresTitoli)
+                    </div>
+                </div>
+            </div>
+        }
+
+        @foreach (var competition in Model.CompetizioniDoppiaSorgente)
+        {
+            @if (competition.Risultati.Count > 0)
+            {
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@(competition.Slug)-risultati">
+                            @competition.Label — Risultati
+                        </button>
+                    </h2>
+                    <div id="collapse-@(competition.Slug)-risultati" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                        <div class="accordion-body">
+                            @await Html.PartialAsync("_DualSourceResultsTable", competition)
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (competition.Titoli is not null)
+            {
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@(competition.Slug)-titoli">
+                            @competition.Label — Titoli
+                        </button>
+                    </h2>
+                    <div id="collapse-@(competition.Slug)-titoli" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                        <div class="accordion-body">
+                            @await Html.PartialAsync("_TitleTable", competition.Titoli)
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+
+        @* I pivot Allenatori/Presidenti e le partecipazioni Campionato arrivano nel prossimo checkpoint. *@
 
     </div>
 </div>

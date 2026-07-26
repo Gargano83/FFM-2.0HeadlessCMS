@@ -544,10 +544,18 @@ gli altri endpoint statistiche non ancora affrontati.
     (`BuildTitlesTableAsync`, stessa `FFM.RiepilogoStatistiche`, solo id
     competizione diverso). Nuova partial `_StandardResultsTable` (riusabile
     anche da eventuali future competizioni con questa stessa forma).
-  - **Checkpoint 3/4 — Famiglia speciale** (Popa Libertadores andata/ritorno,
-    SuperPoppa di Lega doppio vincitore con eccezione "non disputata" per
-    una stagione, SuperPoppa Europea doppio vincitore, Poppa Intercontinentale
-    doppio vincitore) + relative Titoli: da fare.
+  - **Checkpoint 3/4 — Famiglia speciale** ✅: scoperto che SuperPoppa di
+    Lega/SuperPoppa Europea/Poppa Intercontinentale condividono in realtà la
+    stessa forma "doppia sorgente" (vincitore proveniente da una di due
+    squadre sorgente, es. Campionato vs Poppa di Lega) — un solo metodo
+    generico `GetDualSourceCompetitionResultsAsync` per tutt'e tre, non tre
+    metodi separati. Popa Libertadores resta a sé (doppio turno andata/
+    ritorno): nel client legacy reso su due righe HTML separate, qui
+    modernizzato su una sola riga per stagione con andata/ritorno
+    affiancati. Eccezione storica "stagione non disputata" (SuperPoppa di
+    Lega, 2019/2020 — trovata in `exception_match` di `utils.js` del client
+    legacy, confrontata per **etichetta stagione**, non per id) gestita via
+    `PublicSite:SuperpoppaDiLegaStagioneNonDisputata`, configurabile.
   - **Checkpoint 4/4 — Campionato partecipazioni + Allenatori + Presidenti**:
     da fare. **Decisione presa** (diversa da quella per l'Albo d'oro
     Homepage): colonne **fisse** per squadra, non dinamiche — replica
