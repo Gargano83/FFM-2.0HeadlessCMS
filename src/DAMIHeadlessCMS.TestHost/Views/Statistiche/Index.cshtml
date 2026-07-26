@@ -66,7 +66,42 @@
             </div>
         }
 
-        @* Le prossime competizioni (Poppa Campioni, Coppa delle Poppe, ecc.) arrivano nei prossimi checkpoint. *@
+        @foreach (var competition in Model.CompetizioniStandard)
+        {
+            @if (competition.Risultati.Count > 0)
+            {
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@(competition.Slug)-risultati">
+                            @competition.Label — Risultati
+                        </button>
+                    </h2>
+                    <div id="collapse-@(competition.Slug)-risultati" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                        <div class="accordion-body">
+                            @await Html.PartialAsync("_StandardResultsTable", competition.Risultati)
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (competition.Titoli is not null)
+            {
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@(competition.Slug)-titoli">
+                            @competition.Label — Titoli
+                        </button>
+                    </h2>
+                    <div id="collapse-@(competition.Slug)-titoli" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                        <div class="accordion-body">
+                            @await Html.PartialAsync("_TitleTable", competition.Titoli)
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+
+        @* Le famiglie speciali (Popa Libertadores, SuperPoppa...) e i pivot Allenatori/Presidenti arrivano nei prossimi checkpoint. *@
 
     </div>
 </div>

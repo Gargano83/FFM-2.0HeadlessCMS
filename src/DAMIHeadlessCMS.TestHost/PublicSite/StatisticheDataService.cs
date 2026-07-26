@@ -152,6 +152,45 @@ public class StatisticheDataService
     }
 
     /// <summary>
+    /// Risultati per la famiglia "standard" di competizioni (Vincitore/Finalista perdente/
+    /// Risultato/Sede finale) — stessa forma per Poppa Campioni, Coppa delle Poppe, Poppa di
+    /// Lega: un solo metodo, parametrizzato sul nome tabella (schema FFM).
+    /// </summary>
+    public async Task<IReadOnlyList<StandardResultRowViewModel>> GetStandardCompetitionResultsAsync(
+        string tableName, CancellationToken ct)
+    {
+        var entity = await _content.GetEntityAsync("FFM", tableName, ct);
+        if (entity is null)
+        {
+            _logger.LogWarning("FFM.{Table} non risulta ancora scaffoldata: la sezione viene omessa.", tableName);
+            return [];
+        }
+
+        var teams = await GetTeamsAsync(ct);
+        var lookups = await GetLookupsAsync(ct);
+        var rows = await _content.GetAllRowsAsync(entity, ct: ct);
+
+        return rows
+            .Select(r =>
+            {
+                var seasonId = r.GetValueOrDefault("Stagione") as int? ?? 0;
+                var seasonInfo = lookups.GetValueOrDefault(seasonId);
+                return new StandardResultRowViewModel
+                {
+                    SeasonLabel = string.IsNullOrEmpty(seasonInfo.Label) ? $"#{seasonId}" : seasonInfo.Label,
+                    SeasonOrder = seasonInfo.Order,
+                    Vincitore = teams.GetValueOrDefault(r.GetValueOrDefault("Vincitore") as int? ?? 0),
+                    FinalistaPerdente = teams.GetValueOrDefault(r.GetValueOrDefault("FinalistaPerdente") as int? ?? 0),
+                    Risultato = r.GetValueOrDefault("Risultato") as string,
+                    SedeFinale = teams.GetValueOrDefault(r.GetValueOrDefault("SedeFinale") as int? ?? 0),
+                    SedeFinaleStadio = r.GetValueOrDefault("SedeFinaleStadio") as string
+                };
+            })
+            .OrderBy(r => r.SeasonOrder)
+            .ToList();
+    }
+
+    /// <summary>
     /// Risultati Campionato (FFM.CampionatoStatistiche): solo Primo/Secondo/Terzo, come
     /// mostrato dal client legacy (la tabella fisica arriva fino al dodicesimo posto con
     /// relativi punti, non usati in questo widget).

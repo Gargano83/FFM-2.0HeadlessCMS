@@ -536,9 +536,14 @@ gli altri endpoint statistiche non ancora affrontati.
     - Partial riusabili: `_TeamCell` (logo+nome squadra), `_TitleTable`
       (tabella Titoli) — pensate per essere riusate identiche nei prossimi
       checkpoint.
-  - **Checkpoint 2/4 — Famiglia standard** (Poppa Campioni, Coppa delle
-    Poppe, Poppa di Lega: risultati con Vincitore/Finalista/Sede finale,
-    stessa forma tra loro) + relative tabelle Titoli (già pronte): da fare.
+  - **Checkpoint 2/4 — Famiglia standard** ✅: `GetStandardCompetitionResultsAsync`
+    (`StatisticheDataService`), unico metodo generico parametrizzato sul nome
+    tabella (`FFM.PoppaCampioniStatistiche`/`FFM.CoppaDellePoppeStatistiche`/
+    `FFM.PoppaDiLegaStatistiche` — colonne identiche, confermato dalle query
+    legacy). Tabelle Titoli riusate identiche dal checkpoint 1
+    (`BuildTitlesTableAsync`, stessa `FFM.RiepilogoStatistiche`, solo id
+    competizione diverso). Nuova partial `_StandardResultsTable` (riusabile
+    anche da eventuali future competizioni con questa stessa forma).
   - **Checkpoint 3/4 — Famiglia speciale** (Popa Libertadores andata/ritorno,
     SuperPoppa di Lega doppio vincitore con eccezione "non disputata" per
     una stagione, SuperPoppa Europea doppio vincitore, Poppa Intercontinentale

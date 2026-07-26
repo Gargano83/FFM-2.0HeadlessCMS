@@ -10,4 +10,6 @@ public class StatistichePageViewModel
     public IReadOnlyList<CampionatoResultRowViewModel> CampionatoRisultati { get; init; } = [];
 
     public TitleTableViewModel? CampionatoTitoli { get; init; }
+
+    public IReadOnlyList<StandardCompetitionSectionViewModel> CompetizioniStandard { get; init; } = [];
 }
