@@ -501,7 +501,7 @@ gli altri endpoint statistiche non ancora affrontati.
     `FieldDefinition`) consegnata; migration EF generata/applicata in locale
     da Alessio (`dotnet ef migrations add`), come da prassi.
 
-- [~] **18. Migrazione pagina pubblica Statistiche → `DAMIHeadlessCMS.TestHost`**
+- [x] **18. Migrazione pagina pubblica Statistiche → `DAMIHeadlessCMS.TestHost`**
       (in corso, per checkpoint — vedi PDF di riferimento). Pagina molto più
       estesa della Homepage: ~20 sezioni nel legacy, raggruppate in famiglie
       per forma dei dati (non una per competizione). Layout scelto: accordion
@@ -556,13 +556,22 @@ gli altri endpoint statistiche non ancora affrontati.
     Lega, 2019/2020 — trovata in `exception_match` di `utils.js` del client
     legacy, confrontata per **etichetta stagione**, non per id) gestita via
     `PublicSite:SuperpoppaDiLegaStagioneNonDisputata`, configurabile.
-  - **Checkpoint 4/4 — Campionato partecipazioni + Allenatori + Presidenti**:
-    da fare. **Decisione presa** (diversa da quella per l'Albo d'oro
-    Homepage): colonne **fisse** per squadra, non dinamiche — replica
-    esatta della logica legacy (switch per ~13-16 id squadra fissi), scelta
+  - **Checkpoint 4/4 — Campionato partecipazioni + Allenatori + Presidenti** ✅:
+    colonne **fisse** per squadra confermate (13 per Allenatori, +SPI/AQS/MAU
+    per Presidenti = 16), stessi id/abbreviazioni del client legacy — scelta
     esplicita di Alessio nonostante la fragilità (installazione-specifica)
-    già segnalata.
+    già segnalata. `GetAllenatoriPivotAsync`/`GetPresidentiPivotAsync`
+    condividono l'helper privato `BuildPivot` (una riga per stagione, celle
+    per le colonne fisse). Caso particolare Allenatori: la colonna può
+    contenere **più** allenatori per stagione/squadra (lista di id separati
+    da virgola, in un'altra lista `WN_LOOKUP` dedicata — risolti comunque
+    dalla stessa cache, l'id è univoco nell'intera tabella). Partecipazioni
+    Campionato invece **dinamiche** anche nel client legacy (nessun id
+    hardcoded: aggregato titoli/2°/3°/podi per ogni squadra trovata tra le
+    12 posizioni) — nessun conflitto con la scelta "colonne fisse" sopra,
+    che riguarda solo Allenatori/Presidenti.
 
+**Fase 18 completata** (tutti i 4 checkpoint della pagina Statistiche).
 ## Prossime fasi
 
 - [ ] **10. Localizzazione multi-lingua nel backoffice**: attualmente il CMS

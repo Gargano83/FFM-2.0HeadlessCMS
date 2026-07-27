@@ -168,7 +168,53 @@
             }
         }
 
-        @* I pivot Allenatori/Presidenti e le partecipazioni Campionato arrivano nel prossimo checkpoint. *@
+        @if (Model.CampionatoPartecipazioni.Count > 0)
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-campionato-partecipazioni">
+                        Campionato — Partecipazioni
+                    </button>
+                </h2>
+                <div id="collapse-campionato-partecipazioni" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                    <div class="accordion-body">
+                        @await Html.PartialAsync("_CampionatoPartecipazioniTable", Model.CampionatoPartecipazioni)
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.AllenatoriPivot is not null)
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-allenatori">
+                        Allenatori
+                    </button>
+                </h2>
+                <div id="collapse-allenatori" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                    <div class="accordion-body">
+                        @await Html.PartialAsync("_PivotTable", Model.AllenatoriPivot)
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.PresidentiPivot is not null)
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-presidenti">
+                        Presidenti
+                    </button>
+                </h2>
+                <div id="collapse-presidenti" class="accordion-collapse collapse" data-bs-parent="#statisticheAccordion">
+                    <div class="accordion-body">
+                        @await Html.PartialAsync("_PivotTable", Model.PresidentiPivot)
+                    </div>
+                </div>
+            </div>
+        }
 
     </div>
 </div>

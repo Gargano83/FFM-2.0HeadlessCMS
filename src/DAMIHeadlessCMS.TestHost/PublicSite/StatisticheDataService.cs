@@ -280,6 +280,176 @@ public class StatisticheDataService
             .ToList();
     }
 
+    // Colonne fisse per squadra (Allenatori/Presidenti) — scelta esplicita di Alessio,
+    // replica esatta della logica legacy (switch per id squadra), non generata dai dati
+    // come invece l'Albo d'oro della Homepage. Stessi id/abbreviazioni di alb_tabella_
+    // allenatori.js / alb_tabella_presidenti.js del client legacy.
+    private static readonly (string Abbr, int TeamId)[] AllenatoriColumns =
+    [
+        ("VBA", 2), ("VCA", 3), ("GAR", 4), ("PZT", 5), ("OCL", 8), ("RDF", 9),
+        ("BPG", 10), ("ADF", 11), ("RAT", 12), ("KKL", 13), ("PES", 14), ("SAL", 15), ("NRK", 16)
+    ];
+
+    private static readonly (string Abbr, int TeamId)[] PresidentiColumns =
+    [
+        .. AllenatoriColumns,
+        ("SPI", 18), ("AQS", 20), ("MAU", 21)
+    ];
+
+    private static readonly string[] CampionatoPositionColumns =
+        ["Primo", "Secondo", "Terzo", "Quarto", "Quinto", "Sesto", "Settimo", "Ottavo", "Nono", "Decimo", "Undicesimo", "Dodicesimo"];
+
+    /// <summary>Pivot Allenatori: una riga per stagione, una colonna per squadra (fisse), cella = nome/i allenatore/i (WN_LOOKUP, lista separata da virgole).</summary>
+    public async Task<PivotTableViewModel?> GetAllenatoriPivotAsync(CancellationToken ct)
+    {
+        var entity = await _content.GetEntityAsync("FFM", "AllenatoriStatistiche", ct);
+        if (entity is null)
+        {
+            _logger.LogWarning("FFM.AllenatoriStatistiche non risulta ancora scaffoldata: la sezione viene omessa.");
+            return null;
+        }
+
+        var lookups = await GetLookupsAsync(ct);
+        var rows = await _content.GetAllRowsAsync(entity, ct: ct);
+
+        string ResolveAllenatori(IReadOnlyDictionary<string, object?> row)
+        {
+            var raw = row.GetValueOrDefault("Allenatori") as string;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return "N/A";
+            }
+
+            var names = raw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => int.TryParse(s, out var id) ? lookups.GetValueOrDefault(id).Label : null)
+                .Where(n => !string.IsNullOrEmpty(n));
+
+            var joined = string.Join(" / ", names);
+            return string.IsNullOrEmpty(joined) ? "N/A" : joined;
+        }
+
+        return BuildPivot(rows, lookups, AllenatoriColumns, ResolveAllenatori, extraColumnHeader: "Giornate",
+            extraLabelSelector: row => row.GetValueOrDefault("Giornate") as string);
+    }
+
+    /// <summary>Pivot Presidenti: una riga per stagione, una colonna per squadra (fisse), cella = nome presidente (testo semplice).</summary>
+    public async Task<PivotTableViewModel?> GetPresidentiPivotAsync(CancellationToken ct)
+    {
+        var entity = await _content.GetEntityAsync("FFM", "PresidentiStatistiche", ct);
+        if (entity is null)
+        {
+            _logger.LogWarning("FFM.PresidentiStatistiche non risulta ancora scaffoldata: la sezione viene omessa.");
+            return null;
+        }
+
+        var lookups = await GetLookupsAsync(ct);
+        var rows = await _content.GetAllRowsAsync(entity, ct: ct);
+
+        return BuildPivot(rows, lookups, PresidentiColumns,
+            row => (row.GetValueOrDefault("Presidente") as string) is { Length: > 0 } presidente ? presidente : "N/A",
+            extraColumnHeader: null, extraLabelSelector: null);
+    }
+
+    private static PivotTableViewModel? BuildPivot(
+        IReadOnlyList<IReadOnlyDictionary<string, object?>> rows,
+        IReadOnlyDictionary<int, (string Label, int Order)> lookups,
+        (string Abbr, int TeamId)[] columns,
+        Func<IReadOnlyDictionary<string, object?>, string> cellSelector,
+        string? extraColumnHeader,
+        Func<IReadOnlyDictionary<string, object?>, string?>? extraLabelSelector)
+    {
+        var seasons = rows
+            .Select(r => r.GetValueOrDefault("Stagione") as int? ?? 0)
+            .Distinct()
+            .Select(id => (Id: id, Info: lookups.GetValueOrDefault(id)))
+            .OrderBy(x => x.Info.Order)
+            .ToList();
+
+        var pivotRows = seasons
+            .Select(season =>
+            {
+                var seasonRows = rows.Where(r => (r.GetValueOrDefault("Stagione") as int? ?? 0) == season.Id).ToList();
+
+                var cells = columns
+                    .Select(col => seasonRows.FirstOrDefault(r => (r.GetValueOrDefault("Squadra") as int? ?? 0) == col.TeamId))
+                    .Select(row => row is null ? "N/A" : cellSelector(row))
+                    .ToList();
+
+                return new PivotRowViewModel
+                {
+                    SeasonLabel = string.IsNullOrEmpty(season.Info.Label) ? $"#{season.Id}" : season.Info.Label,
+                    SeasonOrder = season.Info.Order,
+                    ExtraLabel = extraLabelSelector is null ? null : seasonRows.Select(extraLabelSelector).FirstOrDefault(l => !string.IsNullOrEmpty(l)),
+                    Cells = cells
+                };
+            })
+            .ToList();
+
+        return pivotRows.Count == 0
+            ? null
+            : new PivotTableViewModel
+            {
+                ColumnHeaders = columns.Select(c => c.Abbr).ToList(),
+                ExtraColumnHeader = extraColumnHeader,
+                Rows = pivotRows
+            };
+    }
+
+    /// <summary>
+    /// Partecipazioni Campionato: un aggregato per squadra (titoli/2°/3°/podi/partecipazioni),
+    /// costruito dinamicamente dai dati (Primo..Dodicesimo di FFM.CampionatoStatistiche) —
+    /// già così nel client legacy, nessun id hardcoded qui (a differenza dei pivot sopra).
+    /// </summary>
+    public async Task<IReadOnlyList<PartecipazioniRowViewModel>> GetCampionatoPartecipazioniAsync(CancellationToken ct)
+    {
+        var entity = await _content.GetEntityAsync("FFM", "CampionatoStatistiche", ct);
+        if (entity is null)
+        {
+            _logger.LogWarning("FFM.CampionatoStatistiche non risulta ancora scaffoldata: la sezione partecipazioni viene omessa.");
+            return [];
+        }
+
+        var teams = await GetTeamsAsync(ct);
+        var rows = await _content.GetAllRowsAsync(entity, ct: ct);
+
+        var stats = new Dictionary<int, (int Titoli, int Secondo, int Terzo, int Partecipazioni)>();
+
+        foreach (var row in rows)
+        {
+            var seenInThisRow = new HashSet<int>();
+            for (var position = 0; position < CampionatoPositionColumns.Length; position++)
+            {
+                var teamId = row.GetValueOrDefault(CampionatoPositionColumns[position]) as int? ?? 0;
+                if (teamId <= 0 || !seenInThisRow.Add(teamId))
+                {
+                    continue;
+                }
+
+                var current = stats.GetValueOrDefault(teamId);
+                stats[teamId] = (
+                    current.Titoli + (position == 0 ? 1 : 0),
+                    current.Secondo + (position == 1 ? 1 : 0),
+                    current.Terzo + (position == 2 ? 1 : 0),
+                    current.Partecipazioni + 1);
+            }
+        }
+
+        return stats
+            .Select(kv => new PartecipazioniRowViewModel
+            {
+                Team = teams.GetValueOrDefault(kv.Key),
+                Titoli = kv.Value.Titoli,
+                SecondoPosto = kv.Value.Secondo,
+                TerzoPosto = kv.Value.Terzo,
+                Podi = kv.Value.Titoli + kv.Value.Secondo + kv.Value.Terzo,
+                Partecipazioni = kv.Value.Partecipazioni
+            })
+            .OrderByDescending(r => r.Titoli)
+            .ThenByDescending(r => r.Podi)
+            .ToList();
+    }
+
     /// <summary>
     /// Risultati Campionato (FFM.CampionatoStatistiche): solo Primo/Secondo/Terzo, come
     /// mostrato dal client legacy (la tabella fisica arriva fino al dodicesimo posto con

@@ -18,4 +18,10 @@ public class StatistichePageViewModel
     public TitleTableViewModel? PopaLibertadoresTitoli { get; init; }
 
     public IReadOnlyList<DualSourceCompetitionSectionViewModel> CompetizioniDoppiaSorgente { get; init; } = [];
+
+    public IReadOnlyList<PartecipazioniRowViewModel> CampionatoPartecipazioni { get; init; } = [];
+
+    public PivotTableViewModel? AllenatoriPivot { get; init; }
+
+    public PivotTableViewModel? PresidentiPivot { get; init; }
 }

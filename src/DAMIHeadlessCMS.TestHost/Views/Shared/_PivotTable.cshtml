@@ -1,0 +1,35 @@
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.PivotTableViewModel
+
+<div class="table-responsive">
+    <table class="table table-striped table-sm align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Stagione</th>
+                @if (Model.ExtraColumnHeader is not null)
+                {
+                    <th scope="col">@Model.ExtraColumnHeader</th>
+                }
+                @foreach (var header in Model.ColumnHeaders)
+                {
+                    <th scope="col">@header</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <th scope="row">@row.SeasonLabel</th>
+                    @if (Model.ExtraColumnHeader is not null)
+                    {
+                        <td>@row.ExtraLabel</td>
+                    }
+                    @foreach (var cell in row.Cells)
+                    {
+                        <td class="small">@cell</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

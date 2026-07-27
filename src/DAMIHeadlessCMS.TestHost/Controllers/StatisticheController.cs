@@ -6,9 +6,9 @@ namespace DAMIHeadlessCMS.TestHost.Controllers;
 
 /// <summary>
 /// Pagina pubblica Statistiche (vedi docs/ROADMAP.md, migrazione pagine legacy — fase
-/// dedicata, sviluppata per checkpoint data la dimensione: ~20 sezioni nel legacy).
-/// Checkpoint 1/4: componente Titoli condiviso (riusabile da tutte le prossime sezioni,
-/// derivato da FFM.RiepilogoStatistiche già scaffoldata) + risultati Campionato.
+/// 18, sviluppata per checkpoint data la dimensione: ~20 sezioni nel legacy). Tutti e 4
+/// i checkpoint completati: Titoli condiviso + Campionato, famiglia standard, famiglia
+/// speciale, partecipazioni Campionato + pivot Allenatori/Presidenti.
 /// </summary>
 public class StatisticheController : Controller
 {
@@ -54,7 +54,10 @@ public class StatisticheController : Controller
             PopaLibertadoresTitoli = popaLibertadoresId is int popaId
                 ? await _data.BuildTitlesTableAsync(popaId, "Popa Libertadores", ct)
                 : null,
-            CompetizioniDoppiaSorgente = await BuildDualSourceCompetitionSectionsAsync(ct)
+            CompetizioniDoppiaSorgente = await BuildDualSourceCompetitionSectionsAsync(ct),
+            CampionatoPartecipazioni = await _data.GetCampionatoPartecipazioniAsync(ct),
+            AllenatoriPivot = await _data.GetAllenatoriPivotAsync(ct),
+            PresidentiPivot = await _data.GetPresidentiPivotAsync(ct)
         };
 
         return View(model);
