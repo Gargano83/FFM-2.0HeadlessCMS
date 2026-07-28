@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkffmregolamento=self.webpackChunkffmregolamento||[]).push([[1903],{1912:e=>{e.exports=JSON.parse('{"blogBasePath":"/regolamento/blog","blogTitle":"Blog","authorsListPath":"/regolamento/blog/authors"}')}}]);

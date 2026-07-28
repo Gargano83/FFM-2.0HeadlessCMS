@@ -572,6 +572,53 @@ gli altri endpoint statistiche non ancora affrontati.
     che riguarda solo Allenatori/Presidenti.
 
 **Fase 18 completata** (tutti i 4 checkpoint della pagina Statistiche).
+
+- [x] **19. Migrazione pagina pubblica Regolamento → `DAMIHeadlessCMS.TestHost`**.
+      A differenza di ogni altra pagina del PDF di riferimento, non ha
+      controller/endpoint/query/template associati: è un **sito statico
+      Docusaurus** separato (build già pronta, fornita da Alessio), montato
+      sotto `/regolamento/` — nessuna integrazione con il CMS necessaria per
+      il contenuto.
+  - **Build statica** copiata in `src/DAMIHeadlessCMS.TestHost/wwwroot/regolamento/`
+    (~4,2 MB, 158 file). Verificato `docusaurus.config.ts`: `baseUrl:
+    '/regolamento/'`, tutti i path degli asset nell'HTML generato sono già
+    assoluti e coerenti con questo prefisso — copia diretta, nessun
+    riscrittura di path necessaria.
+  - **`Program.cs`**: aggiunto `app.UseDefaultFiles()` (prima di
+    `UseStaticFiles()`, ordine obbligatorio) — mancava, necessario perché
+    `/regolamento/` (senza nome file esplicito) risolva su `index.html`.
+    Nessun'altra modifica: il resto della pipeline (routing MVC, `/dami`)
+    non è impattato, essendo `/regolamento/*` intercettato prima da
+    `UseStaticFiles`.
+  - **Sorgenti Docusaurus** (progetto Node/TypeScript completo, non
+    `node_modules`) copiati dentro `src/DAMIHeadlessCMS.TestHost/docusaurusV3/`
+    (non alla radice del repo: su richiesta di Alessio, è specifico del
+    progetto host — non una funzionalità della libreria) — per poter
+    rigenerare la build in futuro: `cd src/DAMIHeadlessCMS.TestHost/docusaurusV3
+    && yarn && yarn build`, poi copiare il contenuto di
+    `docusaurusV3/build/` dentro `src/DAMIHeadlessCMS.TestHost/wwwroot/regolamento/`
+    (sostituendo).
+  - **Menu**: voce "Regolamento" da configurare manualmente da
+    `/dami/menus` (`TargetType` Url esterno, valore `/regolamento/`,
+    "Apri in nuova scheda" attivo) — stesso meccanismo già in uso dal
+    Checkpoint 1 della Homepage, nessun codice aggiuntivo.
+  - **Bug scoperto e corretto** (mio, in fase di estrazione degli zip
+    ricevuti): il comando `unzip` da shell corrompeva i nomi file con
+    caratteri accentati (es. `realtà.md` → `realt#U00e0.md`) sia nella
+    build statica sia nei sorgenti — negli asset la cosa avrebbe rotto il
+    link interno di 2 pagine del Regolamento (404, path storpiato). Corretto
+    ri-estraendo entrambi gli zip con `zipfile` di Python (rispetta
+    correttamente l'encoding UTF-8 dei nomi), verificato nessun altro nome
+    corrotto residuo.
+  - **Solution Explorer**: nessuna voce manuale nel `.slnx` necessaria —
+    stando dentro `DAMIHeadlessCMS.TestHost/`, i glob impliciti dei progetti
+    SDK-style lo rendono visibile in automatico. Aggiunta però
+    `DefaultItemExcludes` nel `.csproj` per `docusaurusV3/node_modules`,
+    `/.docusaurus`, `/build` (creati solo da `yarn install`/`yarn build`,
+    mai committati) — senza, il giorno in cui Alessio installerà le
+    dipendenze in locale, MSBuild proverebbe a scansionare decine di
+    migliaia di file ad ogni build.
+
 ## Prossime fasi
 
 - [ ] **10. Localizzazione multi-lingua nel backoffice**: attualmente il CMS

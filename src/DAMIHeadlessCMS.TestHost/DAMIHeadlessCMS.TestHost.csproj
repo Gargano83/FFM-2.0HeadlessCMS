@@ -5,6 +5,15 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DAMIHeadlessCMS.TestHost</RootNamespace>
+    <!-- docusaurusV3/ è il progetto sorgente (Node/TypeScript) del sito statico
+         Regolamento — non è codice .NET, vive qui solo per comodità (visibile in
+         Solution Explorer tramite i glob impliciti dell'SDK, nessuna voce manuale
+         nel .slnx necessaria) e per poter rigenerare la build in futuro. Le cartelle
+         qui escluse (create solo da 'yarn install'/'yarn build', mai committate,
+         vedi docusaurusV3/.gitignore) possono contenere decine di migliaia di file:
+         escluderle dai glob impliciti evita che MSBuild le scansioni ad ogni build.
+    -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);docusaurusV3/node_modules/**;docusaurusV3/.docusaurus/**;docusaurusV3/build/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,7 +24,7 @@
     <ProjectReference Include="..\DAMIHeadlessCMS.Data\DAMIHeadlessCMS.Data.csproj" />
     <ProjectReference Include="..\DAMIHeadlessCMS.Admin\DAMIHeadlessCMS.Admin.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <Folder Include="Controllers\" />
     <Folder Include="Models\PublicSite\" />
@@ -26,5 +35,5 @@
     <Folder Include="Views\Pages\" />
     <Folder Include="Views\Shared\Components\MainMenu\" />
   </ItemGroup>
-
+  
 </Project>

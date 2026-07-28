@@ -41,6 +41,11 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// UseDefaultFiles deve precedere UseStaticFiles: serve a risolvere richieste di
+// directory (es. /regolamento/) sul relativo index.html — necessario per il sito
+// statico Docusaurus (Regolamento), che vive come semplice contenuto in wwwroot,
+// nessuna route MVC coinvolta.
+app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRouting();
 
