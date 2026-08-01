@@ -1,0 +1,33 @@
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.ComunicazioneArticoloViewModel
+@{
+    ViewData["Title"] = Model.Titolo;
+}
+
+<div class="container py-4 py-lg-5">
+    <nav class="mb-3">
+        <a href="/comunicazioni" class="small">&larr; Comunicazioni</a>
+        @if (!string.IsNullOrWhiteSpace(Model.CategoriaSlug))
+        {
+            <text> / <a href="/comunicazioni/@Model.CategoriaSlug" class="small">@Model.NomeCategoria</a></text>
+        }
+    </nav>
+
+    @if (!string.IsNullOrWhiteSpace(Model.NomeCategoria))
+    {
+        <span class="badge text-bg-secondary mb-2">@Model.NomeCategoria</span>
+    }
+
+    <h1 class="mb-2">@Model.Titolo</h1>
+
+    @if (Model.Data is not null)
+    {
+        <div class="text-body-secondary small mb-4">@Model.Data.Value.ToString("d MMMM yyyy")</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.Corpo))
+    {
+        <div class="col-lg-8">
+            @Html.Raw(Model.Corpo)
+        </div>
+    }
+</div>

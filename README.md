@@ -331,6 +331,21 @@ intera verso la `LocalizationSource`, non il testo tradotto — filtrarci/
 ordinarci sopra richiederebbe una semantica diversa, non supportata: viene
 sollevata `InvalidOperationException` se referenziata).
 
+Per liste pubbliche con **paginazione reale** (non solo un `TOP N`),
+`QueryPageAsync(entity, filters, sort, page, pageSize)` applica lo stesso
+filtro/ordinamento di `QueryAsync` ma con `OFFSET`/`FETCH` e conteggio totale
+delle righe (via `COUNT(*) OVER()`, un'unica query) — restituisce lo stesso
+`GenericEntityPage` di `GetListAsync`.
+
+Per risolvere uno slug/url leggibile (es. `"regole"`) nella chiave primaria
+della riga corrispondente, quando quella colonna è essa stessa localizzata
+(quindi non filtrabile con `QueryAsync`/`QueryPageAsync`, che sulle colonne
+localizzate sollevano eccezione di proposito),
+`FindIdByLocalizedValueAsync(entity, columnName, value)` fa il percorso
+inverso di `GetLookupOptionsAsync`/`GetLookupLabelAsync`: cerca per **testo
+tradotto** (join sulla `LocalizationSource`) e ritorna l'id, non il
+contrario.
+
 ### 3. Identity e ruoli
 
 ASP.NET Core Identity **dedicato al backoffice**, separato da un eventuale

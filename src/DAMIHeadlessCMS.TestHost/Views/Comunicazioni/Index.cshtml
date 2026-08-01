@@ -1,0 +1,81 @@
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.ComunicazioniListViewModel
+@{
+    ViewData["Title"] = Model.CategoriaNomeCorrente ?? "Comunicazioni";
+}
+
+<div class="container py-4 py-lg-5">
+    <h1 class="mb-4">Comunicazioni</h1>
+
+    @if (Model.Categorie.Count > 0)
+    {
+        <ul class="nav nav-pills mb-4 flex-wrap">
+            <li class="nav-item">
+                <a class="nav-link @(Model.CategoriaSlugCorrente is null ? "active" : "")" href="/comunicazioni">
+                    Tutti
+                </a>
+            </li>
+            @foreach (var categoria in Model.Categorie)
+            {
+                <li class="nav-item">
+                    <a class="nav-link @(string.Equals(categoria.Slug, Model.CategoriaSlugCorrente, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                       href="/comunicazioni/@categoria.Slug">
+                        @categoria.Nome <span class="badge text-bg-light">@categoria.NumeroDocumenti</span>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+
+    @if (Model.Articoli.Count == 0)
+    {
+        <p class="text-body-secondary">Nessuna comunicazione disponibile.</p>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var articolo in Model.Articoli)
+            {
+                <div class="col-12 col-md-6">
+                    <a class="text-decoration-none text-body" href="/comunicazioni/@articolo.Slug">
+                        <div class="h-100 p-3 border rounded">
+                            @if (!string.IsNullOrWhiteSpace(articolo.NomeCategoria))
+                            {
+                                <span class="badge text-bg-secondary mb-2">@articolo.NomeCategoria</span>
+                            }
+                            <h2 class="h5">@articolo.Titolo</h2>
+                            @if (!string.IsNullOrWhiteSpace(articolo.Abstract))
+                            {
+                                <p class="small text-body-secondary mb-1">@articolo.Abstract</p>
+                            }
+                            @if (articolo.Data is not null)
+                            {
+                                <div class="small text-body-secondary">@articolo.Data.Value.ToString("d MMMM yyyy")</div>
+                            }
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+
+        @if (Model.TotalePagine > 1)
+        {
+            var basePath = Model.CategoriaSlugCorrente is null ? "/comunicazioni" : $"/comunicazioni/{Model.CategoriaSlugCorrente}";
+            <nav class="mt-4" aria-label="Paginazione comunicazioni">
+                <ul class="pagination">
+                    <li class="page-item @(Model.Pagina <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@basePath?pagina=@(Model.Pagina - 1)">Precedente</a>
+                    </li>
+                    @for (var p = 1; p <= Model.TotalePagine; p++)
+                    {
+                        <li class="page-item @(p == Model.Pagina ? "active" : "")">
+                            <a class="page-link" href="@basePath?pagina=@p">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Pagina >= Model.TotalePagine ? "disabled" : "")">
+                        <a class="page-link" href="@basePath?pagina=@(Model.Pagina + 1)">Successiva</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+</div>

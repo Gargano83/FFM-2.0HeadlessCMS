@@ -29,6 +29,7 @@ builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 // pubbliche simulate da questo host: codice del TestHost, non della libreria.
 builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.LegacyContentReader>();
 builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.StatisticheDataService>();
+builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.ComunicazioniDataService>();
 
 builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 

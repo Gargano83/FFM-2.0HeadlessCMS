@@ -78,4 +78,37 @@ public class LegacyContentReader
             .Select(row => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase))
             .ToList();
     }
+
+    /// <summary>
+    /// Lettura filtrata/ordinata **paginata** (es. elenco articoli di una categoria, con
+    /// paginazione reale) — a differenza di <see cref="GetFilteredRowsAsync"/> che limita
+    /// con un TOP N fisso. Wrapper su <see cref="IGenericEntityRepository.QueryPageAsync"/>.
+    /// </summary>
+    public async Task<LegacyContentPage> GetFilteredPageAsync(
+        EntityDefinition entity,
+        IReadOnlyList<QueryFilter>? filters,
+        IReadOnlyList<QuerySort>? sort,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var result = await _repository.QueryPageAsync(entity, filters, sort, page, pageSize, ct);
+        var rows = result.Rows
+            .Select(row => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+        return new LegacyContentPage(rows, result.TotalCount, result.Page, result.PageSize);
+    }
+
+    /// <summary>
+    /// Risolve uno slug/url leggibile (colonna localizzata, es. WN_Contenuti.co_url) nella
+    /// chiave primaria della riga corrispondente. Wrapper su
+    /// <see cref="IGenericEntityRepository.FindIdByLocalizedValueAsync"/>.
+    /// </summary>
+    public Task<object?> FindIdBySlugAsync(EntityDefinition entity, string columnName, string slug, CancellationToken ct = default) =>
+        _repository.FindIdByLocalizedValueAsync(entity, columnName, slug, ct);
 }
+
+/// <summary>Risultato paginato per il TestHost, equivalente "case-insensitive" di <see cref="GenericEntityPage"/>.</summary>
+public sealed record LegacyContentPage(
+    IReadOnlyList<IReadOnlyDictionary<string, object?>> Rows, int TotalCount, int Page, int PageSize);

@@ -92,6 +92,32 @@ public interface IGenericEntityRepository
         IReadOnlyList<QuerySort>? sort = null,
         int top = 100,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Variante paginata di <see cref="QueryAsync"/> (filtro/ordinamento identici), con
+    /// conteggio totale delle righe che soddisfano il filtro — pensata per liste
+    /// pubbliche con paginazione reale (es. elenco articoli di una categoria), a
+    /// differenza di <see cref="QueryAsync"/> che limita con un semplice TOP N.
+    /// </summary>
+    Task<GenericEntityPage> QueryPageAsync(
+        EntityDefinition entity,
+        IReadOnlyList<QueryFilter>? filters,
+        IReadOnlyList<QuerySort>? sort,
+        int page,
+        int pageSize,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Risolve la chiave primaria della (prima) riga il cui campo LOCALIZZATO
+    /// <paramref name="columnName"/> corrisponde esattamente al testo indicato — pensato
+    /// per risolvere uno slug/url leggibile (es. "regole") nell'id della riga, quando lo
+    /// slug stesso è una colonna localizzata (il valore fisico è una chiave intera verso
+    /// la LocalizationSource, non il testo: non filtrabile con <see cref="QueryAsync"/>,
+    /// che sui campi localizzati lancia eccezione di proposito). Richiede che il campo sia
+    /// effettivamente localizzato: altrimenti <see cref="InvalidOperationException"/>.
+    /// </summary>
+    Task<object?> FindIdByLocalizedValueAsync(
+        EntityDefinition entity, string columnName, string value, CancellationToken ct = default);
 }
 
 /// <summary>Risultato paginato per la vista Index del CRUD generico.</summary>

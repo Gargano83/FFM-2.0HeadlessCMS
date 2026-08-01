@@ -336,42 +336,19 @@ public class GenericEntityRepository : IGenericEntityRepository
         CancellationToken ct = default)
     {
         top = Math.Clamp(top, 1, 500);
-        filters ??= [];
-        sort ??= [];
 
         var selectFields = entity.Fields.OrderBy(f => f.SortOrder).ToList();
         var qualifiedTable = QualifiedTable(entity);
         const string alias = "t";
         var selectColumns = string.Join(", ", selectFields.Select(f => BuildSelectExpression(f, alias)));
 
-        var whereClauses = new List<string>();
-        var parameters = new List<SqlParameter>();
-        for (var i = 0; i < filters.Count; i++)
-        {
-            var filter = filters[i];
-            var field = FindFilterableField(entity, filter.ColumnName);
-            var paramName = $"@f{i}";
-            whereClauses.Add($"{alias}.{QuoteIdentifier(field.ColumnName)} {SqlOperator(filter.Operator)} {paramName}");
-            parameters.Add(BuildParameter(paramName, field, filter.Value));
-        }
-
-        var orderByClauses = sort
-            .Select(s => $"{alias}.{QuoteIdentifier(FindFilterableField(entity, s.ColumnName).ColumnName)}{(s.Descending ? " DESC" : "")}")
-            .ToList();
-        // Se non viene richiesto un ordinamento esplicito, ordina comunque per PK per un
-        // risultato deterministico (stesso criterio "minimo" usato da GetListAsync).
-        if (orderByClauses.Count == 0)
-        {
-            orderByClauses.Add($"{alias}.{QuoteIdentifier(GetPrimaryKeyField(entity).ColumnName)}");
-        }
-
-        var whereClause = whereClauses.Count == 0 ? "" : $"WHERE {string.Join(" AND ", whereClauses)}";
+        var (whereClause, orderByClause, parameters) = BuildWhereAndOrderBy(entity, filters, sort, alias);
 
         var sql = $"""
             SELECT TOP (@Top) {selectColumns}
             FROM {qualifiedTable} {alias}
             {whereClause}
-            ORDER BY {string.Join(", ", orderByClauses)};
+            ORDER BY {orderByClause};
             """;
 
         await using var connection = new SqlConnection(_connectionString);
@@ -392,6 +369,125 @@ public class GenericEntityRepository : IGenericEntityRepository
         }
 
         return rows;
+    }
+
+    public async Task<GenericEntityPage> QueryPageAsync(
+        EntityDefinition entity,
+        IReadOnlyList<QueryFilter>? filters,
+        IReadOnlyList<QuerySort>? sort,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 200);
+
+        var selectFields = entity.Fields.OrderBy(f => f.SortOrder).ToList();
+        var qualifiedTable = QualifiedTable(entity);
+        const string alias = "t";
+        // COUNT(*) OVER() in coda al SELECT: stesso approccio della query legacy
+        // (Blog_Articles), un'unica query invece di una separata per il totale.
+        // Va DOPO le colonne mappate, cosi la posizione delle colonne attese da
+        // ReadRow (per indice, non per nome) resta invariata.
+        var selectColumns = string.Join(", ", selectFields.Select(f => BuildSelectExpression(f, alias)));
+
+        var (whereClause, orderByClause, parameters) = BuildWhereAndOrderBy(entity, filters, sort, alias);
+
+        var sql = $"""
+            SELECT {selectColumns}, COUNT(*) OVER() AS __TotalCount
+            FROM {qualifiedTable} {alias}
+            {whereClause}
+            ORDER BY {orderByClause}
+            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add(new SqlParameter("@Offset", SqlDbType.Int) { Value = (page - 1) * pageSize });
+        command.Parameters.Add(new SqlParameter("@PageSize", SqlDbType.Int) { Value = pageSize });
+        foreach (var parameter in parameters)
+        {
+            command.Parameters.Add(parameter);
+        }
+
+        var rows = new List<IReadOnlyDictionary<string, object?>>();
+        var totalCount = 0;
+        var columnNames = selectFields.Select(f => f.ColumnName).ToList();
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            rows.Add(ReadRow(reader, columnNames));
+            totalCount = reader.GetInt32(columnNames.Count);
+        }
+
+        return new GenericEntityPage(rows, totalCount, page, pageSize);
+    }
+
+    /// <summary>Costruisce WHERE (filtri in AND) e ORDER BY, condivisi da QueryAsync/QueryPageAsync.</summary>
+    private static (string WhereClause, string OrderByClause, List<SqlParameter> Parameters) BuildWhereAndOrderBy(
+        EntityDefinition entity, IReadOnlyList<QueryFilter>? filters, IReadOnlyList<QuerySort>? sort, string alias)
+    {
+        filters ??= [];
+        sort ??= [];
+
+        var whereClauses = new List<string>();
+        var parameters = new List<SqlParameter>();
+        for (var i = 0; i < filters.Count; i++)
+        {
+            var filter = filters[i];
+            var field = FindFilterableField(entity, filter.ColumnName);
+            var paramName = $"@f{i}";
+            whereClauses.Add($"{alias}.{QuoteIdentifier(field.ColumnName)} {SqlOperator(filter.Operator)} {paramName}");
+            parameters.Add(BuildParameter(paramName, field, filter.Value));
+        }
+
+        var orderByClauses = sort
+            .Select(s => $"{alias}.{QuoteIdentifier(FindFilterableField(entity, s.ColumnName).ColumnName)}{(s.Descending ? " DESC" : "")}")
+            .ToList();
+        // Se non viene richiesto un ordinamento esplicito, ordina comunque per PK per un
+        // risultato deterministico (stesso criterio "minimo" usato da GetListAsync).
+        // Per QueryPageAsync è anche un requisito T-SQL: OFFSET/FETCH richiede ORDER BY.
+        if (orderByClauses.Count == 0)
+        {
+            orderByClauses.Add($"{alias}.{QuoteIdentifier(GetPrimaryKeyField(entity).ColumnName)}");
+        }
+
+        var whereClause = whereClauses.Count == 0 ? "" : $"WHERE {string.Join(" AND ", whereClauses)}";
+        return (whereClause, string.Join(", ", orderByClauses), parameters);
+    }
+
+    public async Task<object?> FindIdByLocalizedValueAsync(
+        EntityDefinition entity, string columnName, string value, CancellationToken ct = default)
+    {
+        var field = entity.Fields.FirstOrDefault(f =>
+            string.Equals(f.ColumnName, columnName, StringComparison.OrdinalIgnoreCase));
+
+        if (field is not { IsLocalized: true, LocalizationSource: not null })
+        {
+            throw new InvalidOperationException(
+                $"'{columnName}' non è un campo localizzato di '{entity.QualifiedTableName}': " +
+                "FindIdByLocalizedValueAsync richiede un campo localizzato.");
+        }
+
+        var pkField = GetPrimaryKeyField(entity);
+        var (fromClause, labelExpression) = BuildForeignKeyLabelSource(entity, columnName, "t");
+
+        var sql = $"""
+            SELECT TOP (1) t.{QuoteIdentifier(pkField.ColumnName)}
+            FROM {fromClause}
+            WHERE {labelExpression} = @Value;
+            """;
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add(new SqlParameter("@Value", SqlDbType.NVarChar) { Value = value });
+
+        var result = await command.ExecuteScalarAsync(ct);
+        return result is null or DBNull ? null : result;
     }
 
     /// <summary>

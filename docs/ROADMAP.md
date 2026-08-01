@@ -618,6 +618,55 @@ gli altri endpoint statistiche non ancora affrontati.
     mai committati) — senza, il giorno in cui Alessio installerà le
     dipendenze in locale, MSBuild proverebbe a scansionare decine di
     migliaia di file ad ogni build.
+  - **Secondo bug di encoding, scoperto dopo** (sempre mio): il fix sopra
+    correggeva la *lettura* degli zip ricevuti, ma il comando `zip` usato
+    per **creare** lo zip di consegna corrompeva di nuovo gli stessi nomi
+    file in *scrittura* (locale di sistema del sandbox non UTF-8) — quindi
+    il pacchetto che Alessio aveva effettivamente applicato era di nuovo
+    rotto. Corretto creando lo zip con `zipfile` di Python anziché il
+    comando `zip` da shell; adottato come pratica permanente per ogni
+    consegna con nomi file non-ASCII.
+
+- [x] **20. Migrazione pagina pubblica Comunicazioni → `DAMIHeadlessCMS.TestHost`**.
+      Indice categorie (Regole/Reminder/Files/News + "Tutti") con articoli
+      paginati, e pagina di dettaglio articolo — stesso namespace di url del
+      legacy: `/comunicazioni/{slug}` prova prima come categoria, poi come
+      articolo (replica la logica di risoluzione di `Blog.cs`, senza il
+      `ContRouteHandler` generico del legacy). Solo testo nel dettaglio
+      articolo in questo giro (titolo/categoria/data/corpo) — immagine di
+      copertina e allegato scaricabile deferiti, scelta esplicita di
+      Alessio.
+  - **Estesa la libreria** (`DAMIHeadlessCMS.Admin`), due aggiunte:
+    - `IGenericEntityRepository.QueryPageAsync`: come `QueryAsync` ma con
+      paginazione reale (`OFFSET`/`FETCH`) e conteggio totale via
+      `COUNT(*) OVER()` (unica query, stesso approccio della query legacy
+      `Blog_Articles`) — restituisce lo stesso `GenericEntityPage` di
+      `GetListAsync`. Refactoring: `QueryAsync`/`QueryPageAsync` condividono
+      ora `BuildWhereAndOrderBy` (era duplicato).
+    - `IGenericEntityRepository.FindIdByLocalizedValueAsync`: risolve uno
+      slug/url leggibile (es. `"regole"`) nella PK della riga, quando quella
+      colonna è essa stessa localizzata (`co_url`/`ca_url` seguono lo stesso
+      pattern `udf_Localize` di tutto il resto — scoperto qui, non filtrabile
+      con `QueryAsync`/`QueryPageAsync` che sulle colonne localizzate
+      sollevano eccezione di proposito). Percorso inverso di
+      `GetLookupOptionsAsync`/`GetLookupLabelAsync` (quelli risolvono id→testo,
+      questo testo→id), riusa lo stesso `BuildForeignKeyLabelSource`.
+  - **`ComunicazioniDataService`** (TestHost): categorie con conteggio
+    articoli attivi (N+1 accettabile, poche righe — stesso criterio già
+    usato altrove), elenco paginato (filtrabile per categoria), risoluzione
+    articolo per slug.
+  - **Richiede estensione dello scaffold** di `WN_Contenuti` (`co_url`,
+    **Localizzato**) e `WN_Categorie` (`ca_url`, **Localizzato**) — non
+    ancora presenti dai checkpoint precedenti (Homepage li aveva omessi,
+    non essendo ancora necessari).
+  - **Bug scoperto in fase di test**: `WN_Categorie` contiene l'intero
+    albero di categorie del sito (anche di sezioni diverse da Comunicazioni,
+    es. Homepage/Statistiche/Area Utente), non solo le 4 sottosezioni —
+    comparivano tutte come tab. Nel legacy il filtro era sulla gerarchia di
+    `ca_ordine` (stringa gerarchica, fragile e specifica
+    dell'installazione); qui invece `PublicSite:ComunicazioniCategorieSlugs`,
+    lista esplicita e configurabile degli slug ammessi
+    (`["regole","reminder","files","news"]`).
 
 ## Prossime fasi
 
