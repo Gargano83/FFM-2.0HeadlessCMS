@@ -668,6 +668,40 @@ gli altri endpoint statistiche non ancora affrontati.
     lista esplicita e configurabile degli slug ammessi
     (`["regole","reminder","files","news"]`).
 
+- [~] **21. Migrazione Login/Logout + Area Riservata → `DAMIHeadlessCMS.TestHost`**
+      (in corso, per checkpoint). **Decisione chiave**: gli utenti pubblici
+      (`WN_Utenti`) sono una popolazione **separata** dagli utenti del
+      backoffice (ASP.NET Core Identity, `CmsUser`) — indicazione esplicita
+      di Alessio, non un riuso di Identity.
+  - **Checkpoint 1/? — Login/Logout + pagina segnaposto** ✅:
+    - **Secondo schema di autenticazione cookie** (`PublicAuthSchemes.Cookie`
+      = `"PublicUser"`), registrato nel `Program.cs` del TestHost (non nella
+      libreria: `IdentityServiceCollectionExtensions` aveva già un commento
+      che anticipava questo scenario, "un futuro host avrà un proprio
+      Identity separato" — resta comunque specifico dell'host, un futuro
+      host potrebbe avere un modello utenti diverso). Lo schema di Identity
+      resta quello di **default** dell'app (usato da `/dami`): ogni
+      `[Authorize]`/`SignInAsync`/`SignOutAsync` lato pubblico specifica
+      sempre esplicitamente lo schema, altrimenti userebbe quello sbagliato.
+    - **`PublicUserRepository`**: verifica credenziali con query dedicata
+      (non passa dallo scaffolding/`IGenericEntityRepository` — la verifica
+      richiede di chiamare `dbo.udf_Encrypt(@Password)` nel confronto SQL,
+      stessa funzione del legacy, `HASHBYTES('SHA2_512', ...)`). Nessuna
+      reimplementazione dell'hashing in .NET, per evitare rischi di
+      mismatch di encoding/collation con il cast a `varchar(255)` fatto
+      dalla funzione — la password viaggia parametrizzata, la verifica la
+      fa sempre e solo SQL Server, esattamente come nel legacy.
+    - **"Ricordami"**: cookie persistente (`AuthenticationProperties.IsPersistent`
+      + `ExpiresUtc`), sostituisce il meccanismo di cookie cifrato a mano
+      del legacy (`userAuth`/`sharedAuth`) — gestito nativamente da ASP.NET
+      Core Cookie Authentication.
+    - Pagina Area Riservata per ora solo segnaposto ("Benvenuto {nome}" +
+      logout) — la gestione rosa/giocatori arriva in un checkpoint
+      successivo: nel legacy **non** usa Syncfusion (a differenza del
+      backoffice, fase 7), è scritta a mano nel client (`client/src/js/...`,
+      già disponibile da `client.zip`) — andrà quindi ridisegnata da zero
+      lato TestHost, non riusata da fase 7.
+
 ## Prossime fasi
 
 - [ ] **10. Localizzazione multi-lingua nel backoffice**: attualmente il CMS

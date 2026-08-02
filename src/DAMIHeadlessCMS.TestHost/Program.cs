@@ -17,6 +17,21 @@ builder.Services.AddDAMIHeadlessCMSAdmin(connectionString);
 builder.Services.AddDAMIHeadlessCMSScaffolding(connectionString);
 builder.Services.AddDAMIHeadlessCMSIdentity();
 
+// Secondo schema di autenticazione, separato da quello di Identity sopra (che resta lo
+// schema di default, usato dal backoffice /dami): utenti pubblici (WN_Utenti, Area
+// Riservata) sono una popolazione distinta dagli utenti CMS, per esplicita indicazione
+// di Alessio. Specifico, non nella libreria: un futuro host potrebbe avere un modello
+// utenti completamente diverso — vedi commento in IdentityServiceCollectionExtensions.
+builder.Services.AddAuthentication()
+    .AddCookie(DAMIHeadlessCMS.TestHost.PublicSite.PublicAuthSchemes.Cookie, options =>
+    {
+        options.Cookie.Name = "ffm_public_auth";
+        options.LoginPath = "/area-riservata/login";
+        options.AccessDeniedPath = "/area-riservata/login";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+    });
+
 // Modulo opzionale: pagine dedicate per tabelle FFM specifiche (Giocatori, e in
 // futuro SquadreRelGiocatori) tramite componenti Angular/Syncfusion, riservate
 // a CmsAdmin. Non fa parte del core del CMS: va abilitato solo se l'host
@@ -28,6 +43,7 @@ builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
 // Lettura dei contenuti (WN_Contenuti, FFM.Squadre, ecc.) per le pagine
 // pubbliche simulate da questo host: codice del TestHost, non della libreria.
 builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.LegacyContentReader>();
+builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.PublicUserRepository>();
 builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.StatisticheDataService>();
 builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.ComunicazioniDataService>();
 
