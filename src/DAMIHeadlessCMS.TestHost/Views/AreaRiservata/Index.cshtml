@@ -1,16 +1,99 @@
+@model DAMIHeadlessCMS.TestHost.Models.PublicSite.SquadraViewModel
 @{
-    ViewData["Title"] = "Area Riservata";
+    ViewData["Title"] = Model.Info.NomeSquadra;
 }
 
-<div class="container py-5">
-    <h1 class="mb-3">Area Riservata</h1>
-    <p class="lead">Benvenuto, @(User.Identity?.Name).</p>
+<div class="container py-4 py-lg-5">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+        <h1 class="mb-0">@Model.Info.NomeSquadra</h1>
+        <div class="d-flex gap-2">
+            <a href="/area-riservata/altre-squadre" class="btn btn-sm btn-outline-secondary">Altre squadre</a>
+            <form asp-controller="AreaRiservata" asp-action="Logout" method="post" class="d-inline">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Esci</button>
+            </form>
+        </div>
+    </div>
 
-    <p class="text-body-secondary">
-        La gestione rosa/giocatori arriva in un checkpoint successivo.
-    </p>
+    @if (!Model.Info.AbilitaModifica)
+    {
+        <div class="alert alert-warning">Le modifiche alla rosa non sono al momento consentite (mercato chiuso).</div>
+    }
 
-    <form asp-action="Logout" method="post">
-        <button type="submit" class="btn btn-outline-secondary">Esci</button>
-    </form>
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="border rounded p-3 h-100">
+                <h2 class="h5 mb-3">Squadra</h2>
+                <dl class="row mb-0 small">
+                    <dt class="col-6">Presidente</dt><dd class="col-6">@Model.Info.Presidente</dd>
+                    <dt class="col-6">Vice presidente</dt><dd class="col-6">@Model.Info.VicePresidente</dd>
+                    <dt class="col-6">Allenatore</dt><dd class="col-6">@Model.Info.Allenatore</dd>
+                    <dt class="col-6">Contratto allenatore</dt>
+                    <dd class="col-6">@Model.Info.DurataContrattoAllenatore mesi &mdash; @Model.Info.StipendioAllenatore.ToString("N0") &euro;</dd>
+                </dl>
+                <hr />
+                <div class="row text-center small g-2">
+                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.Tesserati</div>Tesserati</div>
+                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.InPrestito</div>In prestito</div>
+                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.InRosa</div>In rosa</div>
+                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.APrestito</div>A prestito</div>
+                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.ListaA</div>Lista A</div>
+                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.Under22InRosa</div>Under 22 in rosa</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="border rounded p-3 h-100">
+                <h2 class="h5 mb-3">Finanze</h2>
+                <dl class="row mb-0 small">
+                    <dt class="col-8">Rimanenza stagione precedente</dt><dd class="col-4 text-end">@Model.Info.RimanenzaStagionePrecedente.ToString("N0") &euro;</dd>
+                    <dt class="col-8">Refill ranking</dt><dd class="col-4 text-end">@Model.Info.RefillRanking.ToString("N0") &euro;</dd>
+                    <dt class="col-8">Refill valore società</dt><dd class="col-4 text-end">@Model.Info.RefillValoreSocieta.ToString("N0") &euro;</dd>
+                    <dt class="col-8">Refill stadio</dt><dd class="col-4 text-end">@Model.Info.RefillStadio.ToString("N0") &euro;</dd>
+                    <dt class="col-8">Refill stipendi</dt><dd class="col-4 text-end">@Model.Info.RefillStipendi.ToString("N0") &euro;</dd>
+                    <dt class="col-8">Monte stipendi andata</dt><dd class="col-4 text-end">@Model.Info.MonteStipendiAndata.ToString("N0") &euro;</dd>
+                    <dt class="col-8">Monte stipendi ritorno</dt><dd class="col-4 text-end">@Model.Info.MonteStipendiRitorno.ToString("N0") &euro;</dd>
+                    <dt class="col-8">Bilancio mercato</dt><dd class="col-4 text-end">@Model.Info.BilancioMercato.ToString("N0") &euro;</dd>
+                    <dt class="col-8 fw-bold">Fair play finanziario</dt><dd class="col-4 text-end fw-bold">@Model.Info.FairPlayFinanziario.ToString("N0") &euro;</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="h5 mb-3">Rosa</h2>
+    @if (Model.Rosa.Count == 0)
+    {
+        <p class="text-body-secondary">Nessun giocatore in rosa.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Nome</th>
+                        <th scope="col">Ruolo</th>
+                        <th scope="col">Età</th>
+                        <th scope="col">Stato</th>
+                        <th scope="col">U22</th>
+                        <th scope="col">Valore</th>
+                        <th scope="col">Stipendio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var giocatore in Model.Rosa)
+                    {
+                        <tr>
+                            <td>@giocatore.NomeCompleto</td>
+                            <td>@giocatore.Ruolo</td>
+                            <td>@giocatore.Eta</td>
+                            <td>@giocatore.Stato</td>
+                            <td>@(giocatore.U22 ? "U22" : "")</td>
+                            <td>@giocatore.ValoreDiMercato?.ToString("N1")</td>
+                            <td>@giocatore.Stipendio?.ToString("N1")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 </div>

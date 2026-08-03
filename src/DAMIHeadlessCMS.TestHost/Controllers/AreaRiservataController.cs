@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using DAMIHeadlessCMS.Admin.Ffm.Data;
+using DAMIHeadlessCMS.Admin.Ffm.Models;
 using DAMIHeadlessCMS.TestHost.Models.PublicSite;
 using DAMIHeadlessCMS.TestHost.PublicSite;
 using Microsoft.AspNetCore.Authentication;
@@ -8,21 +10,23 @@ using Microsoft.AspNetCore.Mvc;
 namespace DAMIHeadlessCMS.TestHost.Controllers;
 
 /// <summary>
-/// Area Riservata (vedi docs/ROADMAP.md, migrazione pagine legacy). Checkpoint 1: solo
-/// login/logout + pagina segnaposto post-login — la gestione rosa/giocatori (nel legacy
-/// scritta a mano in client/, non con Syncfusion come nel backoffice) arriva in un
-/// checkpoint successivo. Autenticazione su WN_Utenti, schema cookie separato da Identity
-/// (vedi <see cref="PublicAuthSchemes"/>) — utenti pubblici e utenti backoffice sono due
-/// popolazioni distinte, per esplicita indicazione di Alessio.
+/// Area Riservata (vedi docs/ROADMAP.md, migrazione pagine legacy). Checkpoint 2a: vista
+/// squadra propria (info + rosa, sola lettura) e Altre Squadre — le azioni di modifica
+/// (stato/mesi giocatore, rimozione, aggiunta svincolato) arrivano nel checkpoint 2b.
+/// Riusa <see cref="IFfmSquadraRepository"/> (fase 7, già registrato in DI per il
+/// backoffice): stessa fonte dati, nessuna nuova query. Autenticazione su WN_Utenti,
+/// schema cookie separato da Identity (vedi <see cref="PublicAuthSchemes"/>).
 /// </summary>
 [Route("area-riservata")]
 public class AreaRiservataController : Controller
 {
     private readonly PublicUserRepository _users;
+    private readonly IFfmSquadraRepository _squadre;
 
-    public AreaRiservataController(PublicUserRepository users)
+    public AreaRiservataController(PublicUserRepository users, IFfmSquadraRepository squadre)
     {
         _users = users;
+        _squadre = squadre;
     }
 
     [HttpGet("login")]
@@ -88,5 +92,68 @@ public class AreaRiservataController : Controller
 
     [HttpGet("")]
     [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
-    public IActionResult Index() => View();
+    public async Task<IActionResult> Index(CancellationToken ct)
+    {
+        var idSquadra = GetCurrentIdSquadra();
+        if (idSquadra is null)
+        {
+            // Utente valido ma senza squadra associata (UT_Squadra nullo) — nessun
+            // dato da mostrare, non un errore: pagina dedicata invece di un 404/500.
+            return View("NessunaSquadra");
+        }
+
+        var model = await BuildTeamViewModelAsync(idSquadra.Value, isOwnTeam: true, ct);
+        if (model is null)
+        {
+            return View("NessunaSquadra");
+        }
+
+        return View(model);
+    }
+
+    [HttpGet("altre-squadre")]
+    [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
+    public async Task<IActionResult> AltreSquadre(CancellationToken ct)
+    {
+        var squadre = await _squadre.GetSquadreListAsync(ct);
+        return View(squadre);
+    }
+
+    [HttpGet("altre-squadre/{idSquadra:int}")]
+    [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
+    public async Task<IActionResult> AltraSquadra(int idSquadra, CancellationToken ct)
+    {
+        var model = await BuildTeamViewModelAsync(idSquadra, isOwnTeam: false, ct);
+        if (model is null)
+        {
+            return NotFound();
+        }
+
+        // Stessa view della squadra propria: PuoModificare è già false (isOwnTeam: false),
+        // quindi i link di modifica (checkpoint 2b) non compariranno.
+        return View("Index", model);
+    }
+
+    private async Task<SquadraViewModel?> BuildTeamViewModelAsync(int idSquadra, bool isOwnTeam, CancellationToken ct)
+    {
+        var info = await _squadre.GetInfoSquadraAsync(idSquadra, ct);
+        if (info is null)
+        {
+            return null;
+        }
+
+        var rosa = await _squadre.GetRosaAsync(idSquadra, ct);
+        return new SquadraViewModel
+        {
+            Info = info,
+            Rosa = rosa,
+            PuoModificare = isOwnTeam && info.AbilitaModifica
+        };
+    }
+
+    private int? GetCurrentIdSquadra()
+    {
+        var claim = User.FindFirst("IdSquadra")?.Value;
+        return int.TryParse(claim, out var id) ? id : null;
+    }
 }

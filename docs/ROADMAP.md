@@ -696,11 +696,27 @@ gli altri endpoint statistiche non ancora affrontati.
       del legacy (`userAuth`/`sharedAuth`) — gestito nativamente da ASP.NET
       Core Cookie Authentication.
     - Pagina Area Riservata per ora solo segnaposto ("Benvenuto {nome}" +
-      logout) — la gestione rosa/giocatori arriva in un checkpoint
-      successivo: nel legacy **non** usa Syncfusion (a differenza del
-      backoffice, fase 7), è scritta a mano nel client (`client/src/js/...`,
-      già disponibile da `client.zip`) — andrà quindi ridisegnata da zero
-      lato TestHost, non riusata da fase 7.
+      logout) — la gestione rosa/giocatori arriva nel checkpoint successivo.
+  - **Checkpoint 2a — Vista squadra propria e Altre Squadre (sola lettura)** ✅:
+    **scoperta chiave**: la fase 7 aveva già costruito tutto il necessario
+    lato dati (`IFfmSquadraRepository`, `InfoSquadraDto`/`GiocatoreSquadraDto`/
+    `SquadraListItemDto`, già registrati in DI nel TestHost via
+    `AddDAMIHeadlessCMSFfm`) — nessuna nuova query, solo collegamento UI.
+    `AreaRiservataController` riusa questi DTO direttamente come ViewModel
+    (nessun duplicato lato TestHost). `/area-riservata` mostra la propria
+    squadra (risolta dal claim `IdSquadra` impostato al login, non da
+    `IFfmUserResolver` — quello mappa un CmsUser di backoffice, gli utenti
+    pubblici hanno già l'id squadra dal proprio login); `/area-riservata/
+    altre-squadre` elenca tutte le squadre, `/area-riservata/altre-squadre/
+    {id}` mostra la stessa view in sola lettura (`PuoModificare` sempre
+    `false` per squadre altrui, indipendentemente da `AbilitaModifica`).
+  - **Checkpoint 2b — Azioni di modifica** (stato/mesi giocatore, rimozione
+    dalla rosa, aggiunta giocatore svincolato): da fare. Userà
+    `AggiornaDettaglioGiocatorePerSquadraAsync`/`EliminaGiocatorePerSquadraAsync`/
+    `AggiungiGiocatorePerSquadraAsync` (già pronti in `IFfmSquadraRepository`)
+    — il controller dovrà validare **sempre** che l'id squadra della
+    richiesta corrisponda al claim `IdSquadra` dell'utente autenticato,
+    non fidandosi mai del parametro di route per le scritture.
 
 ## Prossime fasi
 
