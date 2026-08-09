@@ -14,6 +14,15 @@
         </div>
     </div>
 
+    @if (TempData["Messaggio"] is string messaggio)
+    {
+        <div class="alert alert-success">@messaggio</div>
+    }
+    @if (TempData["Errore"] is string errore)
+    {
+        <div class="alert alert-danger">@errore</div>
+    }
+
     @if (!Model.Info.AbilitaModifica)
     {
         <div class="alert alert-warning">Le modifiche alla rosa non sono al momento consentite (mercato chiuso).</div>
@@ -59,7 +68,13 @@
         </div>
     </div>
 
-    <h2 class="h5 mb-3">Rosa</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">Rosa</h2>
+        @if (Model.PuoModificare)
+        {
+            <a href="/area-riservata/giocatori/aggiungi" class="btn btn-sm btn-primary">+ Aggiungi giocatore</a>
+        }
+    </div>
     @if (Model.Rosa.Count == 0)
     {
         <p class="text-body-secondary">Nessun giocatore in rosa.</p>
@@ -77,6 +92,10 @@
                         <th scope="col">U22</th>
                         <th scope="col">Valore</th>
                         <th scope="col">Stipendio</th>
+                        @if (Model.PuoModificare)
+                        {
+                            <th scope="col">Azioni</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
@@ -90,6 +109,16 @@
                             <td>@(giocatore.U22 ? "U22" : "")</td>
                             <td>@giocatore.ValoreDiMercato?.ToString("N1")</td>
                             <td>@giocatore.Stipendio?.ToString("N1")</td>
+                            @if (Model.PuoModificare)
+                            {
+                                <td class="text-nowrap">
+                                    <a href="/area-riservata/giocatori/@giocatore.Id/modifica" class="btn btn-sm btn-outline-secondary">Modifica</a>
+                                    <form asp-action="RimuoviGiocatore" asp-route-idGiocatore="@giocatore.Id" method="post" class="d-inline"
+                                          onsubmit="return confirm('Rimuovere @giocatore.NomeCompleto dalla rosa?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Rimuovi</button>
+                                    </form>
+                                </td>
+                            }
                         </tr>
                     }
                 </tbody>

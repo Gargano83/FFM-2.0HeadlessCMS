@@ -710,13 +710,20 @@ gli altri endpoint statistiche non ancora affrontati.
     altre-squadre` elenca tutte le squadre, `/area-riservata/altre-squadre/
     {id}` mostra la stessa view in sola lettura (`PuoModificare` sempre
     `false` per squadre altrui, indipendentemente da `AbilitaModifica`).
-  - **Checkpoint 2b — Azioni di modifica** (stato/mesi giocatore, rimozione
-    dalla rosa, aggiunta giocatore svincolato): da fare. Userà
+  - **Checkpoint 2b — Azioni di modifica** ✅: modifica stato/mesi giocatore,
+    rimozione dalla rosa, aggiunta giocatore svincolato — tramite
     `AggiornaDettaglioGiocatorePerSquadraAsync`/`EliminaGiocatorePerSquadraAsync`/
-    `AggiungiGiocatorePerSquadraAsync` (già pronti in `IFfmSquadraRepository`)
-    — il controller dovrà validare **sempre** che l'id squadra della
-    richiesta corrisponda al claim `IdSquadra` dell'utente autenticato,
-    non fidandosi mai del parametro di route per le scritture.
+    `AggiungiGiocatorePerSquadraAsync` (già pronti in `IFfmSquadraRepository`,
+    nessuna nuova query). Ogni azione ricava l'id squadra **sempre** dal
+    claim `IdSquadra` dell'utente autenticato (mai da un parametro di
+    route/form) e verifica che il giocatore appartenga davvero a quella
+    rosa (`GetDettaglioGiocatorePerSquadraAsync`) prima di modificare o
+    rimuovere — oltre al controllo `AbilitaModifica` (mercato aperto).
+    Stati giocatore replicati fedelmente dal client legacy (`playerStato`
+    in `utils.js`: Lista A / Lista A (Pr) / No Serie A / In prestito /
+    Fuori Rosa). Form server-side classici (nessun JS oltre a un
+    `confirm()` nativo per la rimozione), coerenti con il resto del
+    TestHost — non riprodotto l'approccio a fetch/modal del client legacy.
 
 ## Prossime fasi
 
