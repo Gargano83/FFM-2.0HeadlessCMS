@@ -725,14 +725,26 @@ gli altri endpoint statistiche non ancora affrontati.
     `confirm()` nativo per la rimozione), coerenti con il resto del
     TestHost — non riprodotto l'approccio a fetch/modal del client legacy.
 
+**Fase 21 completata.** Controllo incrociato su tutte le route di
+`SyncfusionController.cs` (legacy) rispetto a quanto migrato: `giocatori`
+(GET/POST/PUT/DELETE) + `importgiocatori` → già coperti dal backoffice fase 7
+(`FfmGiocatoriApiController`); tutto il resto (`aggiornainfosquadra`,
+`giocatorisquadra`, `dettagliogiocatorepersquadra`,
+`aggiornadettagliogiocatorepersquadra`, `aggiungigiocatorepersquadra`,
+`aggiornagiocatorepersquadra`) → coperto nei checkpoint 2a/2b. Unico dubbio
+emerso, poi chiarito da Alessio: `listagiocatori` (tutti i giocatori di tutte
+le squadre) nel legacy alimentava una ricerca in `searchAU.js` che permetteva
+di aggiungere alla propria rosa un giocatore già assegnato a un'altra
+squadra — **funzionalità non necessaria** (i trasferimenti tra squadre
+seguono un processo diverso, non ancora migrato): lo scoping del Checkpoint
+2b ai soli svincolati (`GetGiocatoriSvincolatiAsync`) resta corretto così
+com'è, nessuna modifica.
+
+Con questo, la migrazione delle pagine pubbliche elencate nel PDF di
+riferimento è completa.
+
 ## Prossime fasi
 
-- [ ] **10. Localizzazione multi-lingua nel backoffice**: attualmente il CMS
-      legge/scrive sempre e solo nella lingua di default configurata (sia per
-      `LocalizationSource` generiche sia per il modulo FFM, dove l'id lingua è
-      un parametro fisso passato a `AddDAMIHeadlessCMSFfm`). Un selettore
-      lingua nel backoffice (per editor multi-lingua sui campi localizzati)
-      resta fuori dal perimetro attuale, deferita a quando servirà davvero.
 - [ ] Ulteriori espansioni del modulo FFM o altre tabelle applicative, da
       valutare in base alle esigenze che emergeranno.
 
