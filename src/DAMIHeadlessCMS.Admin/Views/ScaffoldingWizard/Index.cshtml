@@ -392,6 +392,13 @@
                                 </div>
                                 <div class="col-12 col-md-6">
                                     <label class="form-label small">
+                                        Gruppo
+                                        <i class="bi bi-question-circle text-muted" title="Raggruppa questa entità nella sidebar e nella dashboard. Di default è lo schema del database, ma puoi rinominarlo liberamente (es. 'Statistiche')."></i>
+                                    </label>
+                                    <input type="text" class="form-control entity-group-name" value="${entity.groupName ?? entity.schemaName}" placeholder="es. Statistiche" />
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small">
                                         Prefisso URL di dettaglio (opzionale)
                                         <i class="bi bi-question-circle text-muted" title="Percorso interno per l'URL dei singoli record (es. /categorie). Il routing runtime resta a carico del progetto host."></i>
                                     </label>
@@ -558,6 +565,7 @@
                         tableName: source.tableName,
                         displayName: card.querySelector('.entity-display-name').value,
                         icon: card.querySelector('.entity-icon').value || null,
+                        groupName: card.querySelector('.entity-group-name').value.trim() || null,
                         detailRoutePrefix: card.querySelector('.entity-detail-route-prefix').value.trim() || null,
                         detailKeyColumnName: card.querySelector('.entity-detail-key-column').value || null,
                         fields

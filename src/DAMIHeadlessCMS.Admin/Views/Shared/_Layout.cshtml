@@ -54,7 +54,7 @@
             margin-bottom: .5rem;
         }
 
-        .cms-nav-link, #cmsEntityNav .nav-link {
+        .cms-nav-link {
             display: flex;
             align-items: center;
             gap: .65rem;
@@ -68,22 +68,63 @@
             margin-bottom: .15rem;
         }
 
-        .cms-nav-link:hover, #cmsEntityNav .nav-link:hover {
+        .cms-nav-link:hover {
             color: #fff;
             background: rgba(255,255,255,.06);
         }
 
-        .cms-nav-link.active, #cmsEntityNav .nav-link.active {
+        .cms-nav-link.active {
             color: #fff;
             background: rgba(13,110,253,.18);
             border-left-color: #0d6efd;
         }
 
-        .cms-nav-link i, #cmsEntityNav .nav-link i {
+        .cms-nav-link i {
             width: 1.1rem;
             text-align: center;
             flex-shrink: 0;
         }
+
+        .cms-sidebar-group-header {
+            justify-content: flex-start;
+            cursor: pointer;
+        }
+
+        .cms-sidebar-group-chevron {
+            width: 0.9rem;
+            font-size: .75rem;
+            transition: transform .15s ease;
+            flex-shrink: 0;
+        }
+
+        .cms-sidebar-group-header[aria-expanded="true"] .cms-sidebar-group-chevron {
+            transform: rotate(90deg);
+        }
+
+        .cms-sidebar-entity-link { font-size: .85rem; }
+
+        .cms-sidebar-search .input-group-text {
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.08);
+            color: #6b7280;
+        }
+
+        .cms-sidebar-search .form-control {
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.08);
+            border-left: none;
+            color: #e5e7eb;
+            font-size: .85rem;
+        }
+
+        .cms-sidebar-search .form-control:focus {
+            background: rgba(255,255,255,.09);
+            color: #fff;
+            box-shadow: none;
+            border-color: rgba(255,255,255,.15);
+        }
+
+        .cms-sidebar-search .form-control::placeholder { color: #6b7280; }
 
         .cms-sidebar-footer {
             padding: .9rem .25rem 1rem;
@@ -180,28 +221,60 @@
 
                 <div class="cms-nav-section">
                     <div class="cms-nav-section-title">Dati</div>
-                    <ul class="nav nav-pills flex-column list-unstyled mb-0" id="cmsEntityNav">
-                        @{
-                            var sidebarEntities = await Db.EntityDefinitions
-                                .Where(e => e.IsEnabled)
-                                .OrderBy(e => e.SortOrder)
-                                .ThenBy(e => e.DisplayName)
-                                .ToListAsync();
-                        }
-                        @foreach (var sidebarEntity in sidebarEntities)
-                        {
-                            var entityPath = $"/dami/{sidebarEntity.Id}";
-                            <li>
-                                <a href="@entityPath" class="cms-nav-link @(IsActive(entityPath) ? "active" : "")">
-                                    <i class="bi bi-@(sidebarEntity.Icon ?? "table")"></i> <span>@sidebarEntity.DisplayName</span>
-                                </a>
-                            </li>
-                        }
-                        @if (sidebarEntities.Count == 0)
-                        {
-                            <li class="px-3 py-2 text-white-50 small">Nessuna tabella scaffoldata</li>
-                        }
-                    </ul>
+                    @{
+                        var sidebarEntities = await Db.EntityDefinitions
+                            .Where(e => e.IsEnabled)
+                            .OrderBy(e => e.SortOrder)
+                            .ThenBy(e => e.DisplayName)
+                            .ToListAsync();
+
+                        var sidebarGroups = sidebarEntities
+                            .GroupBy(e => string.IsNullOrWhiteSpace(e.GroupName) ? (string.IsNullOrWhiteSpace(e.SchemaName) ? "Generale" : e.SchemaName) : e.GroupName)
+                            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                            .ToList();
+                    }
+                    @if (sidebarEntities.Count == 0)
+                    {
+                        <div class="px-3 py-2 text-white-50 small">Nessuna tabella scaffoldata</div>
+                    }
+                    else
+                    {
+                        <div class="px-1 mb-2">
+                            <div class="input-group input-group-sm cms-sidebar-search">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="search" id="cmsSidebarEntitySearch" class="form-control" placeholder="Cerca...">
+                            </div>
+                        </div>
+                        <div id="cmsSidebarEntityGroups">
+                            @for (var groupIndex = 0; groupIndex < sidebarGroups.Count; groupIndex++)
+                            {
+                                var sidebarGroup = sidebarGroups[groupIndex];
+                                var sidebarCollapseId = $"cmsSidebarGroup{groupIndex}";
+                                <div class="cms-sidebar-group" data-group-index="@groupIndex">
+                                    <button type="button"
+                                            class="cms-nav-link cms-sidebar-group-header w-100 border-0 bg-transparent"
+                                            data-bs-toggle="collapse" data-bs-target="#@sidebarCollapseId"
+                                            aria-expanded="false" aria-controls="@sidebarCollapseId">
+                                        <i class="bi bi-chevron-right cms-sidebar-group-chevron"></i>
+                                        <span class="flex-fill text-truncate">@sidebarGroup.Key</span>
+                                        <span class="badge bg-white bg-opacity-10 text-white-50">@sidebarGroup.Count()</span>
+                                    </button>
+                                    <ul class="nav nav-pills flex-column list-unstyled mb-1 collapse" id="@sidebarCollapseId">
+                                        @foreach (var sidebarEntity in sidebarGroup)
+                                        {
+                                            var entityPath = $"/dami/{sidebarEntity.Id}";
+                                            <li data-entity-name="@sidebarEntity.DisplayName.ToLowerInvariant()">
+                                                <a href="@entityPath" class="cms-nav-link cms-sidebar-entity-link ps-4 @(IsActive(entityPath) ? "active" : "")">
+                                                    <i class="bi bi-@(sidebarEntity.Icon ?? "table")"></i> <span>@sidebarEntity.DisplayName</span>
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                        <p class="px-3 py-1 text-white-50 small mb-0 d-none" id="cmsSidebarEntityNoResults">Nessun risultato.</p>
+                    }
                 </div>
             </div>
 
@@ -266,6 +339,52 @@
             });
             sidebar.addEventListener('click', (e) => {
                 if (e.target.closest('a')) closeSidebar();
+            });
+        })();
+
+        // Filtro rapido per la sezione "Dati": nasconde le voci non
+        // corrispondenti ed espande automaticamente i gruppi con risultati,
+        // ripristinando l'accordion allo stato originale a campo vuoto.
+        (function () {
+            const searchInput = document.getElementById('cmsSidebarEntitySearch');
+            const groupsContainer = document.getElementById('cmsSidebarEntityGroups');
+            if (!searchInput || !groupsContainer) return;
+
+            const groups = Array.from(groupsContainer.querySelectorAll('.cms-sidebar-group'));
+            const noResults = document.getElementById('cmsSidebarEntityNoResults');
+            const originalExpanded = groups.map(g => g.querySelector('.collapse').classList.contains('show'));
+
+            function collapseInstance(el) {
+                return bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+            }
+
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.trim().toLowerCase();
+                let anyVisible = false;
+
+                groups.forEach((group, index) => {
+                    const collapseEl = group.querySelector('.collapse');
+                    const items = Array.from(collapseEl.querySelectorAll('li'));
+                    let groupHasMatch = false;
+
+                    items.forEach(item => {
+                        const matches = query === '' || item.dataset.entityName.includes(query);
+                        item.classList.toggle('d-none', !matches);
+                        if (matches) groupHasMatch = true;
+                    });
+
+                    group.classList.toggle('d-none', !groupHasMatch);
+                    if (groupHasMatch) anyVisible = true;
+
+                    const instance = collapseInstance(collapseEl);
+                    if (query !== '') {
+                        groupHasMatch ? instance.show() : instance.hide();
+                    } else {
+                        originalExpanded[index] ? instance.show() : instance.hide();
+                    }
+                });
+
+                noResults?.classList.toggle('d-none', anyVisible || query === '');
             });
         })();
     </script>

@@ -27,6 +27,17 @@ public class EntityDefinition
     /// <summary>Nome icona (es. da un icon set usato nella UI) mostrata nel menu.</summary>
     public string? Icon { get; set; }
 
+    /// <summary>
+    /// Etichetta di raggruppamento per la sezione "Dati" della sidebar e per
+    /// i riquadri "Entità gestite" della dashboard (es. "FFM", "Statistiche").
+    /// Popolata di default dallo ScaffoldingService con lo SchemaName della
+    /// tabella al primo scaffolding, ma liberamente rinominabile nel wizard
+    /// per ottenere raggruppamenti più mirati di quelli forniti dallo schema
+    /// fisico del database. Se nulla o vuota, l'entità ricade in un gruppo
+    /// "Generale" mostrato per ultimo.
+    /// </summary>
+    public string? GroupName { get; set; }
+
     /// <summary>Ordine di visualizzazione nel menu del backoffice.</summary>
     public int SortOrder { get; set; }
 

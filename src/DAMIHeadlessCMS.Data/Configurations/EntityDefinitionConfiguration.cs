@@ -32,6 +32,9 @@ public class EntityDefinitionConfiguration : IEntityTypeConfiguration<EntityDefi
         builder.Property(e => e.Icon)
             .HasMaxLength(50);
 
+        builder.Property(e => e.GroupName)
+            .HasMaxLength(100);
+
         builder.Property(e => e.DetailRoutePrefix)
             .HasMaxLength(200);
 

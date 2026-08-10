@@ -239,6 +239,17 @@ Ogni entità scaffoldata ha anche una vista **Struttura** di sola lettura
 (`/dami/{entityId}/structure`) che mostra colonne, tipi, PK/identity/FK e
 configurazione corrente, utile per verificare cosa è stato mappato.
 
+**Raggruppamento** (`EntityDefinition.GroupName`): oltre a `DisplayName` e
+`Icon`, ogni entità ha un'etichetta di gruppo usata per organizzare sia la
+sezione "Dati" della sidebar sia i riquadri "Entità gestite" della dashboard
+(vedi [§9](#9-dashboard-post-login-e-log-di-audit)). Al primo scaffolding di
+una tabella il gruppo di default è lo **schema** del database (`FFM`, `dbo`,
+...), ma è liberamente rinominabile nello step 2 del wizard — utile per
+ottenere raggruppamenti più mirati di quelli forniti dallo schema fisico
+(es. "Statistiche" per l'insieme delle tabelle `FFM.*Statistiche`). Come per
+`DisplayName`, una rinomina manuale viene sempre preservata dai successivi
+ri-scaffolding idempotenti.
+
 #### 1.1 Routing di dettaglio per i record (opzionale)
 
 Per qualunque entità scaffoldata, nel wizard è possibile configurare
@@ -645,7 +656,10 @@ login. Oltre all'elenco "Entità gestite" (già presente dalla fase 3), mostra:
 
 - **Contatori riepilogativi**: entità scaffoldate, pagine (totali e
   pubblicate), voci di menu, utenti per ruolo.
-- **Attività recente**: le ultime righe del log di audit (vedi sotto).
+- **Attività recente**: le ultime righe del log di audit (vedi sotto), in un
+  pannello con altezza massima fissa e scroll interno (mini-timeline
+  compatta): la card non si allunga più all'infinito al crescere del numero
+  di voci.
 - **Pagine recenti**: le ultime `CmsPage` create o modificate, con link
   diretto alla modifica.
 
@@ -653,6 +667,29 @@ I contatori sugli utenti per ruolo e le voci relative a `CmsUser` nel log di
 audit sono visibili solo a `CmsAdmin`/`CmsOperator`, coerentemente con
 `UsersViewPolicy` (fase 9): un `CmsEditor`, che non ha accesso alla pagina
 Utenti, non vede di riflesso quelle informazioni nemmeno qui.
+
+#### Raggruppamento delle entità (sidebar e dashboard)
+
+Con molte tabelle scaffoldate, sia la sezione "Dati" della sidebar sia i
+riquadri "Entità gestite" della dashboard raggrupperebbero rapidamente troppe
+voci in un'unica lista verticale. Entrambe le viste usano quindi lo stesso
+`EntityDefinition.GroupName` (vedi [§1](#1-scaffolding--mappare-le-tabelle-del-database))
+per organizzare le entità in **sezioni collassabili** (accordion Bootstrap,
+puramente client-side, nessuna preferenza persistita):
+
+- **Sidebar**: un gruppo per ogni `GroupName`, con contatore. Resta aperto di
+  default solo il gruppo che contiene la voce attualmente attiva (o il primo,
+  se nessuna lo è); gli altri sono chiusi.
+- **Dashboard**: stessa logica, cards leggermente più compatte, con un
+  pulsante "Espandi tutti/Comprimi tutti" per chi preferisce vedere tutto in
+  una volta.
+- **Ricerca rapida**: entrambe le viste hanno una casella di filtro per nome
+  entità, che nasconde le voci non corrispondenti ed espande automaticamente
+  i soli gruppi con risultati.
+
+Nessuna di queste modifiche altera i permessi di accesso alle singole
+entità (`IsEnabled`, ordinamento `SortOrder`): il raggruppamento è solo
+presentazionale.
 
 #### Log di audit
 

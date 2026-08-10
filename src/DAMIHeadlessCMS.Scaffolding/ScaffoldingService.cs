@@ -70,6 +70,7 @@ public class ScaffoldingService
             entity.TableName = table.TableName;
             entity.SchemaName = table.SchemaName;
             entity.DisplayName = existing?.DisplayName ?? Humanize(table.TableName);
+            entity.GroupName = existing?.GroupName ?? table.SchemaName;
             entity.PrimaryKeyColumn = primaryKeyColumn;
             entity.IsEnabled = existing?.IsEnabled ?? true;
 
@@ -234,6 +235,7 @@ public class ScaffoldingService
                 EntityId: existingEntity?.Id,
                 DisplayName: existingEntity?.DisplayName ?? Humanize(table.TableName),
                 Icon: existingEntity?.Icon,
+                GroupName: existingEntity?.GroupName ?? table.SchemaName,
                 IsNew: existingEntity is null,
                 DetailRoutePrefix: existingEntity?.DetailRoutePrefix,
                 DetailKeyColumnName: existingDetailKeyColumnName,

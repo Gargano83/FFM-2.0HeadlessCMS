@@ -151,6 +151,9 @@ public class ScaffoldingWizardController : Controller
 
             entity.DisplayName = entityRequest.DisplayName;
             entity.Icon = entityRequest.Icon;
+            entity.GroupName = string.IsNullOrWhiteSpace(entityRequest.GroupName)
+                ? entity.SchemaName
+                : entityRequest.GroupName.Trim();
 
             var normalizedPrefix = string.IsNullOrWhiteSpace(entityRequest.DetailRoutePrefix)
                 ? null

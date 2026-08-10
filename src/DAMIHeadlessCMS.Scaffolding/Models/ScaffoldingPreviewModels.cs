@@ -38,6 +38,7 @@ public sealed record ScaffoldingPreviewEntity(
     Guid? EntityId,
     string DisplayName,
     string? Icon,
+    string? GroupName,
     bool IsNew,
     string? DetailRoutePrefix,
     string? DetailKeyColumnName,

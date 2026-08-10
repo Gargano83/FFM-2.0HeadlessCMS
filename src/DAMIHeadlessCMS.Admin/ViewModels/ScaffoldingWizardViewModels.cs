@@ -28,6 +28,12 @@ public sealed class ScaffoldingSaveEntity
     public string DisplayName { get; init; } = string.Empty;
     public string? Icon { get; init; }
 
+    /// <summary>
+    /// Etichetta di raggruppamento per sidebar/dashboard (es. "FFM",
+    /// "Statistiche"). Se vuota, il controller ricade sullo SchemaName.
+    /// </summary>
+    public string? GroupName { get; init; }
+
     /// <summary>Percorso interno per l'URL di dettaglio dei record (es. "/categorie"), opzionale.</summary>
     public string? DetailRoutePrefix { get; init; }
 
