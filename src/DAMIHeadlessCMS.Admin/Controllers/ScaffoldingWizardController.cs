@@ -191,6 +191,13 @@ public class ScaffoldingWizardController : Controller
                 field.IsRequired = fieldRequest.IsRequired;
                 field.LocalizationSourceId = fieldRequest.LocalizationSourceId;
 
+                // Rilevante solo per EditorType.Password: se il campo non è (più)
+                // configurato come Password, azzeriamo per evitare che resti una
+                // configurazione "orfana" incoerente con l'editor effettivo.
+                field.PasswordHashFunction = field.EditorType == EditorType.Password
+                    ? (string.IsNullOrWhiteSpace(fieldRequest.PasswordHashFunction) ? null : fieldRequest.PasswordHashFunction.Trim())
+                    : null;
+
                 // Riferimento manuale: applicato solo se esplicitamente specificato in
                 // questa richiesta, per non toccare mai un'eventuale FK fisica già
                 // rilevata automaticamente da ScaffoldTablesAsync su un campo che qui

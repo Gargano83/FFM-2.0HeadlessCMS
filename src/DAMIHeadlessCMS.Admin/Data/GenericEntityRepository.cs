@@ -174,9 +174,13 @@ public class GenericEntityRepository : IGenericEntityRepository
 
         // La PK non si aggiorna mai via update generico. Un campo File senza un
         // nuovo file caricato viene escluso dal SET: preserva il valore esistente.
+        // Stessa logica per un campo Password lasciato vuoto: non è "cancella la
+        // password", è "non toccarla" (l'hash esistente non viene mai rimandato
+        // al browser, quindi vuoto è l'unico stato possibile per "nessuna modifica").
         var updateFields = entity.Fields
             .Where(f => f.ShowInForm && !f.IsPrimaryKey)
             .Where(f => f.EditorType != EditorType.File || files.GetValueOrDefault(f.ColumnName) is { Length: > 0 })
+            .Where(f => f.EditorType != EditorType.Password || !string.IsNullOrEmpty(formValues.GetValueOrDefault(f.ColumnName)))
             .OrderBy(f => f.SortOrder)
             .ToList();
 
@@ -676,6 +680,11 @@ public class GenericEntityRepository : IGenericEntityRepository
             return await ResolveLocalizedValueAsync(connection, transaction, field, text, existingContentId, ct);
         }
 
+        if (field.EditorType == EditorType.Password)
+        {
+            return await ResolvePasswordValueAsync(connection, transaction, field, formValues.GetValueOrDefault(field.ColumnName), ct);
+        }
+
         if (field.EditorType != EditorType.File)
         {
             return ConvertFormValue(field, formValues.GetValueOrDefault(field.ColumnName));
@@ -700,6 +709,49 @@ public class GenericEntityRepository : IGenericEntityRepository
         }
 
         return await _fileStorage.SaveAsync(file, entity.TableName, ct);
+    }
+
+    /// <summary>
+    /// Trasforma il testo in chiaro inserito nel form nel valore effettivo da
+    /// scrivere sulla colonna password, MAI in chiaro. In arrivo qui il valore
+    /// è sempre non vuoto: un campo Password lasciato vuoto in modifica viene
+    /// già escluso a monte dal SET (vedi UpdateAsync); in creazione, vuoto
+    /// significa "nessun valore fornito" e va comunque tramite questo metodo
+    /// per applicare correttamente il vincolo di obbligatorietà.
+    /// </summary>
+    private static async Task<object?> ResolvePasswordValueAsync(
+        SqlConnection connection, SqlTransaction transaction, FieldDefinition field, string? raw, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(raw))
+        {
+            if (field.IsNullable)
+            {
+                return DBNull.Value;
+            }
+            throw new InvalidOperationException($"Il campo '{field.DisplayName}' è obbligatorio.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(field.PasswordHashFunction))
+        {
+            // Funzione SQL scalare configurata dall'amministratore nel wizard di
+            // scaffolding (metadato fidato, non input utente): l'hashing avviene
+            // lato database per riprodurre esattamente il valore che produrrebbe
+            // una funzione legacy già in uso altrove (es. in fase di login),
+            // evitando qualunque scostamento tra un'implementazione .NET e quella
+            // T-SQL originale.
+            var sql = $"SELECT {field.PasswordHashFunction}(@PlainValue);";
+            await using var command = new SqlCommand(sql, connection, transaction);
+            command.Parameters.Add(new SqlParameter("@PlainValue", SqlDbType.NVarChar, 255) { Value = raw });
+            var result = await command.ExecuteScalarAsync(ct);
+            return result is null or DBNull ? DBNull.Value : result;
+        }
+
+        // Nessuna funzione legacy configurata: hashing SHA-512 calcolato in .NET,
+        // stesso formato testuale "0x" + esadecimale maiuscolo prodotto da
+        // CONVERT(varchar, HASHBYTES('SHA2_512', ...), 1) — ma senza dipendere dal
+        // database, adatto a colonne password create ex novo dal CMS.
+        var hashBytes = System.Security.Cryptography.SHA512.HashData(System.Text.Encoding.UTF8.GetBytes(raw));
+        return "0x" + Convert.ToHexString(hashBytes);
     }
 
     /// <summary>

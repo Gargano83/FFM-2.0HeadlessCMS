@@ -61,6 +61,12 @@ public sealed class ScaffoldingSaveField
     public Guid? LocalizationSourceId { get; init; }
 
     /// <summary>
+    /// Rilevante solo se EditorType è Password. Vedi
+    /// FieldDefinition.PasswordHashFunction per la semantica completa.
+    /// </summary>
+    public string? PasswordHashFunction { get; init; }
+
+    /// <summary>
     /// Riferimento manuale (nessun vincolo FK fisico richiesto) verso un'altra tabella,
     /// configurato nel wizard. Se ForeignKeyTargetTable è valorizzato, la tabella
     /// target viene scaffoldata automaticamente insieme a questa se non lo è già.

@@ -27,6 +27,9 @@ public class FieldDefinitionConfiguration : IEntityTypeConfiguration<FieldDefini
         builder.Property(f => f.ForeignKeyDisplayColumn)
             .HasMaxLength(128);
 
+        builder.Property(f => f.PasswordHashFunction)
+            .HasMaxLength(256);
+
         builder.Property(f => f.EditorType)
             .HasConversion<string>()
             .HasMaxLength(30)

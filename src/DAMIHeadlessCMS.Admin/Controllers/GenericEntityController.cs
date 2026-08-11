@@ -184,6 +184,18 @@ public class GenericEntityController : Controller
             return NotFound();
         }
 
+        // L'hash esistente di un campo Password non viene mai rimandato al
+        // browser: il form si presenta vuoto, e vuoto in fase di salvataggio
+        // significa "non modificare" (vedi GenericEntityRepository.UpdateAsync).
+        var passwordColumns = entity.Fields
+            .Where(f => f.EditorType == EditorType.Password)
+            .Select(f => f.ColumnName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (passwordColumns.Count > 0)
+        {
+            values = values.ToDictionary(kv => kv.Key, kv => passwordColumns.Contains(kv.Key) ? null : kv.Value);
+        }
+
         return View(new GenericEntityFormViewModel { Entity = entity, Values = values, RecordId = recordId });
     }
 

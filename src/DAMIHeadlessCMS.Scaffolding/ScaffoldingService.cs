@@ -219,6 +219,7 @@ public class ScaffoldingService
                     ShowInForm: existingField?.ShowInForm ?? !(column.IsPrimaryKey && column.IsIdentity),
                     IsRequired: existingField?.IsRequired ?? (!column.IsNullable && !column.IsIdentity && !column.IsPrimaryKey),
                     LocalizationSourceId: existingField?.LocalizationSourceId,
+                    PasswordHashFunction: existingField?.PasswordHashFunction,
                     ManualForeignKeyTargetSchema: manualTargetSchema,
                     ManualForeignKeyTargetTable: manualTargetTable,
                     ManualForeignKeyDisplayColumn: existingField?.ForeignKeyDisplayColumn,

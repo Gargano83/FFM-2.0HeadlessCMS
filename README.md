@@ -495,6 +495,48 @@ confronto è centralizzata in `InternalUrlPath`
   pre-popolare il campo in modifica). La colonna usata come etichetta è letta
   da `FieldDefinition.ForeignKeyDisplayColumn`, già risolta in fase di
   scaffolding — non ricalcolata a runtime.
+- **Password** (`EditorType.Password`): pensato per colonne come
+  `WN_UTENTI.UT_Password` (in chiaro sarebbero altrimenti mostrate/modificabili
+  come testo semplice nel CRUD generico). Da assegnare manualmente a un campo
+  nel wizard (nessuna inferenza automatica: non è deducibile dal solo tipo SQL).
+  Comportamento:
+  - Nel form si presenta come `<input type="password">` **mai precompilato**:
+    l'hash esistente non viene mai rimandato al browser, nemmeno nell'HTML
+    sorgente della pagina di modifica.
+  - In **modifica**, campo lasciato vuoto = "non cambiare la password" (la
+    colonna viene esclusa dallo `UPDATE`, non svuotata). Non è quindi mai
+    obbligatorio in modifica, anche se `IsRequired` è true (lo è solo in
+    creazione).
+  - Il testo in chiaro inserito non viene **mai** scritto così com'è: prima
+    della `INSERT`/`UPDATE` viene trasformato tramite
+    `FieldDefinition.PasswordHashFunction`, anch'esso configurabile per campo
+    nel wizard (voce di testo libero accanto al selettore dell'editor,
+    visibile solo quando l'editor è "Password"):
+    - **Valorizzato** (es. `dbo.udf_Encrypt`): la trasformazione avviene
+      **lato database**, chiamando quella funzione scalare SQL esistente
+      (`SELECT {funzione}(@PlainValue)`) — utile per riprodurre esattamente
+      l'hashing di una funzione legacy già usata altrove (tipicamente in fase
+      di login) e garantire che i valori combacino bit per bit. È un
+      metadato impostabile solo da chi ha accesso al wizard (`CmsAdmin`),
+      mai da input utente a runtime.
+    - **Vuoto** (default): hashing SHA-512 calcolato in .NET, stesso formato
+      testuale `"0x" + esadecimale maiuscolo` prodotto da
+      `CONVERT(varchar, HASHBYTES('SHA2_512', ...), 1)`, ma senza dipendere
+      da nessuna funzione SQL — comodo per colonne password create ex novo
+      dal CMS su un progetto che non ha (ancora) una funzione di hashing
+      legacy da riusare.
+  - Nella vista elenco e ovunque il valore compaia fuori dal proprio form, è
+    sempre mascherato (`••••••••`), anche se la colonna è marcata
+    `ShowInList` (comunque sconsigliato per un campo password: meglio
+    lasciarla visibile solo nel form).
+
+  > Esempio concreto — `WN_UTENTI.UT_Password`, che il login del TestHost
+  > verifica con una chiamata SQL diretta a `dbo.udf_Encrypt(@Password)` (vedi
+  > [§9](#9-dashboard-post-login-e-log-di-audit) → Area Riservata): impostando
+  > `EditorType = Password` e `PasswordHashFunction = dbo.udf_Encrypt` su
+  > quel campo, una modifica della password dal backoffice produce lo stesso
+  > hash che il login si aspetta di trovare, senza reimplementare
+  > l'algoritmo in .NET.
 
 ### 7. Localizzazione legacy "a chiave condivisa"
 
@@ -739,6 +781,15 @@ costruisce SQL dinamico. Le regole seguite ovunque nel codice sono:
   del modulo FFM) — gli unici "numeri" mai incorporati direttamente nel testo
   SQL anziché come parametro — sono metadati/configurazione impostati solo da
   `CmsAdmin`/in fase di avvio, non input utente a runtime.
+- `FieldDefinition.PasswordHashFunction` (vedi [§6](#6-editor-avanzati-file-rich-text-autocomplete-fk))
+  è l'unico punto del CRUD generico dove un **nome di funzione SQL** (non un
+  identificatore di tabella/colonna quotabile) viene incorporato direttamente
+  nel testo della query (`SELECT {funzione}(@PlainValue)`), sempre come testo
+  libero configurato da `CmsAdmin` nel wizard — mai da input utente a runtime.
+  Il valore effettivo digitato dall'utente finale (la password in chiaro)
+  resta comunque sempre un `SqlParameter`, non viene mai concatenato: solo il
+  *nome della funzione* è testo di configurazione fidato, esattamente come già
+  avviene per nomi di tabella/colonna letti dallo schema del database.
 
 ## Roadmap
 

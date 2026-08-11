@@ -65,6 +65,20 @@ public class FieldDefinition
     /// <summary>Editor Razor da usare per questo campo (inferito automaticamente, sovrascrivibile).</summary>
     public EditorType EditorType { get; set; }
 
+    /// <summary>
+    /// Rilevante solo se EditorType è Password. Nome (eventualmente
+    /// schema-qualificato, es. "dbo.udf_Encrypt") di una funzione scalare SQL
+    /// esistente sul database usata per trasformare il testo in chiaro inserito
+    /// nel form prima di scriverlo sulla colonna — tipicamente per riprodurre
+    /// esattamente l'hashing di una funzione legacy già usata altrove (es. in
+    /// fase di login) e garantire che i valori combacino. Se lasciato vuoto,
+    /// viene usato un hashing SHA-512 calcolato lato .NET (nessuna dipendenza
+    /// da funzioni SQL esistenti, adatto a colonne password create ex novo).
+    /// Configurato dal wizard di scaffolding: valore fidato, impostabile solo
+    /// da un amministratore, mai da input utente a runtime.
+    /// </summary>
+    public string? PasswordHashFunction { get; set; }
+
     /// <summary>Se true, il campo compare nella vista elenco (Index).</summary>
     public bool ShowInList { get; set; } = true;
 

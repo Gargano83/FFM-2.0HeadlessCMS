@@ -148,10 +148,11 @@
             const EDITOR_TYPES = [
                 [0, "Testo"], [1, "Area di testo"], [2, "Rich text"], [3, "Numero"],
                 [4, "Checkbox"], [5, "Data"], [6, "Data e ora"], [7, "Select (FK)"],
-                [8, "File"], [9, "Nascosto"]
+                [8, "File"], [9, "Nascosto"], [10, "Password"]
             ];
 
             const TEXT_EDITOR_TYPES = [0, 1, 2]; // Text, TextArea, RichText: unici editor validi per un campo localizzato
+            const PASSWORD_EDITOR_TYPE = 10;
 
             function buildEditorOptionsHtml(selectedValue, restrictToText) {
                 const options = restrictToText ? EDITOR_TYPES.filter(([val]) => TEXT_EDITOR_TYPES.includes(val)) : EDITOR_TYPES;
@@ -444,6 +445,7 @@
                         const isLocalized = !!field.localizationSourceId;
                         const initialEditorValue = isLocalized && !TEXT_EDITOR_TYPES.includes(field.editorType) ? 0 : field.editorType;
                         const editorOptions = buildEditorOptionsHtml(initialEditorValue, isLocalized);
+                        const isPasswordField = initialEditorValue === PASSWORD_EDITOR_TYPE;
 
                         const localizationOptions = LOCALIZATION_SOURCES.map(s =>
                             `<option value="${s.Id}" ${s.Id === field.localizationSourceId ? 'selected' : ''}>${s.DisplayName}</option>`
@@ -462,7 +464,11 @@
                         tr.innerHTML = `
                             <td><code>${field.columnName}</code><div class="text-muted small">${field.sqlDataType}</div></td>
                             <td><input type="text" class="form-control form-control-sm field-display-name" value="${field.displayName}" /></td>
-                            <td><select class="form-select form-select-sm field-editor-type">${editorOptions}</select></td>
+                            <td>
+                                <select class="form-select form-select-sm field-editor-type">${editorOptions}</select>
+                                <input type="text" class="form-control form-control-sm mt-1 field-password-hash-function ${isPasswordField ? '' : 'd-none'}"
+                                       value="${field.passwordHashFunction ?? ''}" placeholder="es. dbo.udf_Encrypt (vuoto = hash automatico)" />
+                            </td>
                             <td class="text-center"><input type="checkbox" class="form-check-input field-show-in-list" ${field.showInList ? 'checked' : ''} /></td>
                             <td class="text-center"><input type="checkbox" class="form-check-input field-show-in-form" ${field.showInForm ? 'checked' : ''} /></td>
                             <td class="text-center"><input type="checkbox" class="form-check-input field-is-required" ${field.isRequired ? 'checked' : ''} /></td>
@@ -506,6 +512,10 @@
 
                         const localizationSelect = tr.querySelector('.field-localization-source');
                         const editorSelect = tr.querySelector('.field-editor-type');
+                        const passwordHashInput = tr.querySelector('.field-password-hash-function');
+                        editorSelect.addEventListener('change', () => {
+                            passwordHashInput.classList.toggle('d-none', Number(editorSelect.value) !== PASSWORD_EDITOR_TYPE);
+                        });
                         localizationSelect.addEventListener('change', () => {
                             const isNowLocalized = !!localizationSelect.value;
                             const currentValue = Number(editorSelect.value);
@@ -523,6 +533,7 @@
                                 editorSelect.innerHTML = buildEditorOptionsHtml(restoreValue, false);
                                 delete editorSelect.dataset.preLocalizationValue;
                             }
+                            passwordHashInput.classList.toggle('d-none', Number(editorSelect.value) !== PASSWORD_EDITOR_TYPE);
                         });
                     });
 
@@ -553,6 +564,9 @@
                             showInForm: row.querySelector('.field-show-in-form').checked,
                             isRequired: row.querySelector('.field-is-required').checked,
                             localizationSourceId: row.querySelector('.field-localization-source').value || null,
+                            passwordHashFunction: Number(row.querySelector('.field-editor-type').value) === PASSWORD_EDITOR_TYPE
+                                ? (row.querySelector('.field-password-hash-function').value.trim() || null)
+                                : null,
                             foreignKeyTargetSchema: fkSchema,
                             foreignKeyTargetTable: fkTable,
                             foreignKeyDisplayColumn: targetValue ? (configRow.querySelector('.fk-display-column').value || null) : null,

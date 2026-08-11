@@ -23,6 +23,8 @@ public sealed record ScaffoldingPreviewField(
     bool ShowInForm,
     bool IsRequired,
     Guid? LocalizationSourceId,
+    // Rilevante solo se EditorType è Password: vedi FieldDefinition.PasswordHashFunction.
+    string? PasswordHashFunction,
     // Riferimento manuale (nessun vincolo FK fisico nel DB), configurato nel wizard.
     // ManualForeignKeyTarget è valorizzato sia per FK fisiche già risolte sia per
     // riferimenti manuali già salvati in precedenza, per precompilare il wizard.

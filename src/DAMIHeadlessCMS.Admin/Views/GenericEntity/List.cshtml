@@ -56,6 +56,10 @@
                                         <span class="text-muted">—</span>
                                     }
                                 }
+                                else if (field.EditorType == EditorType.Password)
+                                {
+                                    <span class="text-muted" title="Valore protetto, non mostrato">••••••••</span>
+                                }
                                 else
                                 {
                                     @row[field.ColumnName]

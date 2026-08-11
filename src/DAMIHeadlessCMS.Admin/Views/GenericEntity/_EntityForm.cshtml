@@ -18,7 +18,7 @@
         <div class="col-12 col-md-6">
             <label class="form-label fw-medium" for="field_@field.ColumnName">
                 @field.DisplayName
-                @if (field.IsRequired)
+                @if (field.IsRequired && !(field.EditorType == EditorType.Password && Model.RecordId is not null))
                 {
                     <span class="text-danger">*</span>
                 }
@@ -101,6 +101,23 @@
                     <input type="hidden" id="field_@field.ColumnName" name="@field.ColumnName" value="@value" />
                     break;
 
+                case EditorType.Password:
+                    var isEditMode = Model.RecordId is not null;
+                    <div class="cms-password-field position-relative">
+                        <input type="password" class="form-control pe-5" id="field_@field.ColumnName" name="@field.ColumnName"
+                               autocomplete="new-password" placeholder="@(isEditMode ? "••••••••" : "")"
+                               required="@(field.IsRequired && !isEditMode)" />
+                        <button type="button" class="btn btn-sm btn-link position-absolute top-0 end-0 cms-password-toggle" tabindex="-1"
+                                title="Mostra/nascondi">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    @if (isEditMode)
+                    {
+                        <div class="form-text">Lascia vuoto per non modificare la password.</div>
+                    }
+                    break;
+
                 default: // Text
                             <input type="text" class="form-control" id="field_@field.ColumnName" name="@field.ColumnName"
                                 value="@value" maxlength="@(field.IsLocalized ? (int?)null : field.MaxLength)" required="@field.IsRequired" />
@@ -144,6 +161,14 @@
         flex-wrap: wrap;
         row-gap: .35rem;
     }
+
+    .cms-password-toggle {
+        color: #6c757d;
+        padding: 0 .5rem;
+        height: 100%;
+    }
+
+    .cms-password-toggle:hover { color: #212529; }
 </style>
 <script>
     const cmsQuillToolbarOptions = [
@@ -241,6 +266,17 @@
         input.addEventListener('change', () => {
             const label = input.closest('.col-12')?.querySelector('.cms-file-current-name');
             if (label) label.textContent = input.files[0] ? `Nuovo file: ${input.files[0].name}` : '';
+        });
+    });
+
+    // --- Password: toggle mostra/nascondi ---
+    document.querySelectorAll('.cms-password-toggle').forEach((btn) => {
+        const input = btn.closest('.cms-password-field').querySelector('input[type="password"], input[type="text"]');
+        const icon = btn.querySelector('i');
+        btn.addEventListener('click', () => {
+            const showing = input.type === 'text';
+            input.type = showing ? 'password' : 'text';
+            icon.className = showing ? 'bi bi-eye' : 'bi bi-eye-slash';
         });
     });
 </script>

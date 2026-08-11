@@ -15,5 +15,14 @@ public enum EditorType
     DateTime = 6,
     Select = 7,
     File = 8,
-    Hidden = 9
+    Hidden = 9,
+
+    /// <summary>
+    /// Campo password: nel form si presenta come &lt;input type="password"&gt;
+    /// mai precompilato (l'hash esistente non viene mai rimandato al browser).
+    /// Lasciato vuoto in modifica, il valore esistente non viene toccato. Se
+    /// valorizzato, il testo in chiaro viene trasformato prima della scrittura
+    /// su database — vedi <see cref="Entities.FieldDefinition.PasswordHashFunction"/>.
+    /// </summary>
+    Password = 10
 }
