@@ -25,14 +25,35 @@ public class LegacyContentReader
     }
 
     /// <summary>
+    /// Legge il ContentJson di una CmsPage pubblicata per slug — usato da controller
+    /// ad-hoc (es. StatisticheController) che vogliono riusare solo il blocco "html"
+    /// curato da backoffice di una CmsPage esistente, senza passare dal routing
+    /// generico di PagesController.Show. Null se la pagina non esiste o non è
+    /// pubblicata: chi chiama deve saper funzionare comunque anche senza.
+    /// </summary>
+    public Task<string?> GetPageContentJsonAsync(string slug, CancellationToken ct = default) =>
+        _db.Pages
+            .Where(p => p.Slug == slug && p.IsPublished)
+            .Select(p => p.ContentJson)
+            .FirstOrDefaultAsync(ct);
+
+    /// <summary>
     /// Recupera l'<see cref="EntityDefinition"/> (con i suoi Fields) per una
     /// tabella già scaffoldata da backoffice. Restituisce null se la tabella non è
-    /// (ancora) stata scaffoldata in /dami/scaffolding.
+    /// (ancora) stata scaffoldata in /dami/scaffolding. Include anche
+    /// ForeignKeyTargetEntity (e i relativi Fields/LocalizationSource): serve a
+    /// GetRowsForDisplayAsync per risolvere le FK in etichetta leggibile
+    /// (resolveForeignKeys: true) — stesso pattern di caricamento già usato dal
+    /// backoffice, vedi GenericEntityController.
     /// </summary>
     public Task<EntityDefinition?> GetEntityAsync(string schemaName, string tableName, CancellationToken ct = default) =>
         _db.EntityDefinitions
             .Include(e => e.Fields)
-            .ThenInclude(f => f.LocalizationSource)
+                .ThenInclude(f => f.LocalizationSource)
+            .Include(e => e.Fields)
+                .ThenInclude(f => f.ForeignKeyTargetEntity)
+                    .ThenInclude(te => te!.Fields)
+                        .ThenInclude(tf => tf.LocalizationSource)
             .FirstOrDefaultAsync(e => e.SchemaName == schemaName && e.TableName == tableName, ct);
 
     /// <summary>
@@ -98,6 +119,22 @@ public class LegacyContentReader
             .ToList();
 
         return new LegacyContentPage(rows, result.TotalCount, result.Page, result.PageSize);
+    }
+
+    /// <summary>
+    /// Legge fino a <paramref name="maxRows"/> righe con le eventuali FK già risolte in
+    /// etichetta leggibile (resolveForeignKeys: true) — pensato per contenuto di sola
+    /// lettura mostrato così com'è (es. blocco "Lista entità" di una CmsPage), a
+    /// differenza di <see cref="GetAllRowsAsync"/> che restituisce il valore FK grezzo
+    /// per i casi in cui l'host vuole gestirlo/risolverlo a modo proprio.
+    /// </summary>
+    public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> GetRowsForDisplayAsync(
+        EntityDefinition entity, int maxRows = 50, CancellationToken ct = default)
+    {
+        var page = await _repository.GetListAsync(entity, page: 1, pageSize: maxRows, resolveForeignKeys: true, ct: ct);
+        return page.Rows
+            .Select(row => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase))
+            .ToList();
     }
 
     /// <summary>

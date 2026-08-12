@@ -88,10 +88,46 @@
             [{ list: 'ordered' }, { list: 'bullet' }],
             [{ indent: '-1' }, { indent: '+1' }],
             [{ align: [] }],
-            ['blockquote', 'code-block'],
-            ['link'],
+            ['blockquote'],
+            ['link', 'image'],
             ['clean']
         ];
+
+        // Upload reale dell'immagine selezionata dal pulsante Quill: niente
+        // base64 incorporato nell'HTML (gonfierebbe ContentJson e le
+        // performance della pagina pubblica), il file va sul filesystem
+        // dell'host tramite IFileStorageProvider e nell'HTML resta solo l'URL.
+        function quillImageHandler() {
+            const quill = this.quill;
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.addEventListener('change', async () => {
+                const file = input.files[0];
+                if (!file) return;
+
+                const range = quill.getSelection(true);
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                const formData = new FormData();
+                formData.append('file', file);
+                if (token) formData.append('__RequestVerificationToken', token);
+
+                try {
+                    const res = await fetch('/dami/pages/upload-image', { method: 'POST', body: formData });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => null);
+                        alert(err?.error || 'Caricamento immagine non riuscito.');
+                        return;
+                    }
+                    const data = await res.json();
+                    quill.insertEmbed(range.index, 'image', data.url, 'user');
+                    quill.setSelection(range.index + 1);
+                } catch {
+                    alert('Caricamento immagine non riuscito.');
+                }
+            });
+            input.click();
+        }
 
         let blocks = [];
         try {
@@ -99,6 +135,20 @@
         } catch {
             blocks = [];
         }
+
+        // Un blocco html con contenuto ma senza sourceMode esplicito (pagine salvate
+        // prima dell'introduzione di questo flag, o mai toccate col toggle da allora)
+        // NON deve mai finire dentro Quill in automatico al caricamento: se il markup
+        // contiene tag che Quill non riconosce (es. <section>), verrebbe scartato in
+        // silenzio, e un salvataggio successivo — anche senza toccare nulla — lo
+        // sovrascriverebbe con la versione vuota. Di default: contenuto esistente →
+        // sorgente (sicuro, mai processato da Quill senza un'azione esplicita
+        // dell'utente); blocco nuovo/vuoto → editor visuale (nulla da perdere).
+        blocks.forEach((block) => {
+            if (block.type === 'html' && block.sourceMode === undefined) {
+                block.sourceMode = !!(block.html && block.html.trim());
+            }
+        });
 
         const quillInstances = new Map();
         let blockSeq = 0;
@@ -123,17 +173,44 @@
 
                 let bodyHtml = '';
                 if (block.type === 'html') {
-                    bodyHtml = `<div class="cms-quill-editor" style="min-height:160px;"></div>`;
+                    bodyHtml = `
+                        <div class="cms-quill-editor" style="min-height:160px; ${block.sourceMode ? 'display:none;' : ''}"></div>
+                        <textarea class="form-control font-monospace cms-html-source" rows="10"
+                                  style="${block.sourceMode ? '' : 'display:none;'}"
+                                  placeholder="&lt;section class=&quot;...&quot;&gt;...&lt;/section&gt;"></textarea>
+                        <div class="form-text mt-1">
+                        "HTML sorgente" per incollare markup personalizzato (es. classi Bootstrap
+                        di un template esistente): l'editor visuale è pensato per la formattazione
+                        tramite i pulsanti della toolbar, non per markup incollato a mano — se il
+                        markup usa tag/classi che Quill non riconosce (es. &lt;section&gt;), passare
+                        a "Editor visuale" può semplificarlo o perderlo: resta in sorgente e salva
+                        da lì se ti serve il controllo esatto sul markup.
+                        </div>`;
                 } else if (block.type === 'entityList') {
                     const options = availableEntities.map(e =>
                         `<option value="${e.qualifiedName}" ${e.qualifiedName === block.entity ? 'selected' : ''}>${e.displayName}</option>`
                     ).join('');
                     bodyHtml = `
+                        <div class="row g-2">
+                        <div class="col-12 col-md-6">
                         <label class="form-label small">Entità da elencare</label>
                         <select class="form-select block-entity-select">
                         <option value="">— Seleziona —</option>
                         ${options}
-                        </select>`;
+                        </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                        <label class="form-label small">Titolo sopra l'elenco (opzionale)</label>
+                        <input type="text" class="form-control block-entity-title" value="${block.title ?? ''}" placeholder="es. Ultime notizie" />
+                        </div>
+                        <div class="col-12 col-md-2">
+                        <label class="form-label small">Righe massime</label>
+                        <input type="number" min="1" max="200" class="form-control block-entity-max-rows" value="${block.maxRows ?? 50}" />
+                        </div>
+                        </div>
+                        <div class="form-text mt-2">
+                        Mostra le colonne marcate "in elenco" per l'entità scelta (configurabile nel wizard di scaffolding → Struttura), risolvendo automaticamente anche le eventuali FK in etichetta leggibile.
+                        </div>`;
                 } else if (block.type === 'component') {
                     bodyHtml = `
                         <div class="row g-2">
@@ -151,7 +228,10 @@
                 card.innerHTML = `
                     <div class="card-header bg-white d-flex justify-content-between align-items-center cms-block-handle" style="cursor:grab;">
                     <span><i class="bi bi-grip-vertical text-muted me-2"></i><i class="bi bi-${blockIcon(block.type)} me-2"></i>${blockLabel(block.type)}</span>
+                    <span>
+                    ${block.type === 'html' ? `<button type="button" class="btn btn-sm btn-outline-secondary me-2 cms-toggle-html-source"><i class="bi bi-code-slash"></i> ${block.sourceMode ? 'Editor visuale' : 'HTML sorgente'}</button>` : ''}
                     <button type="button" class="btn btn-sm btn-outline-danger cms-remove-block"><i class="bi bi-trash"></i></button>
+                    </span>
                     </div>
                     <div class="card-body">${bodyHtml}</div>
                     `;
@@ -159,15 +239,50 @@
                 container.appendChild(card);
 
                 if (block.type === 'html') {
-                    const quill = new Quill(card.querySelector('.cms-quill-editor'), {
+                    const quillContainer = card.querySelector('.cms-quill-editor');
+                    const sourceTextarea = card.querySelector('.cms-html-source');
+                    sourceTextarea.value = block.html ?? '';
+
+                    const quill = new Quill(quillContainer, {
                         theme: 'snow',
-                        modules: { toolbar: cmsQuillToolbarOptions }
+                        modules: {
+                            toolbar: {
+                                container: cmsQuillToolbarOptions,
+                                handlers: { image: quillImageHandler }
+                            }
+                        }
                     });
-                    quill.root.innerHTML = block.html ?? '';
+                    // Un blocco in modalità sorgente NON viene mai versato in Quill in
+                    // automatico al caricamento: Quill riconcilia il DOM secondo i tag
+                    // che conosce e scarterebbe silenziosamente markup non riconosciuto
+                    // (es. <section>), svuotando l'editor a ogni riapertura della pagina
+                    // pur restando il valore salvato corretto. Viene versato in Quill solo
+                    // se e quando l'utente sceglie esplicitamente "Editor visuale".
+                    if (!block.sourceMode) {
+                        quill.root.innerHTML = block.html ?? '';
+                    }
                     quillInstances.set(clientId, quill);
+
+                    card.querySelector('.cms-toggle-html-source').addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        if (block.sourceMode) {
+                            quill.root.innerHTML = sourceTextarea.value;
+                            block.html = sourceTextarea.value;
+                            block.sourceMode = false;
+                        } else {
+                            sourceTextarea.value = quill.root.innerHTML;
+                            block.html = quill.root.innerHTML;
+                            block.sourceMode = true;
+                        }
+                        quillContainer.style.display = block.sourceMode ? 'none' : '';
+                        sourceTextarea.style.display = block.sourceMode ? '' : 'none';
+                        card.querySelector('.cms-toggle-html-source').innerHTML =
+                            `<i class="bi bi-code-slash"></i> ${block.sourceMode ? 'Editor visuale' : 'HTML sorgente'}`;
+                    });
                 }
 
                 card.querySelector('.cms-remove-block').addEventListener('click', () => {
+                    commitAllBlocksFromDom();
                     blocks = blocks.filter(b => b.__clientId !== clientId);
                     quillInstances.delete(clientId);
                     render();
@@ -186,11 +301,55 @@
             blocks.sort((a, b) => orderedIds.indexOf(a.__clientId) - orderedIds.indexOf(b.__clientId));
         }
 
+        // Riporta nel modello `blocks` quanto digitato/impostato nella card DOM di un
+        // singolo blocco. Va richiamata prima di QUALSIASI re-render (aggiungi/rimuovi
+        // blocco ricostruiscono tutte le card da `blocks`: senza questo commit, le
+        // modifiche non ancora "salvate" negli altri blocchi andrebbero perse).
+        // Ritorna un messaggio d'errore (o null) invece di allertare direttamente: solo
+        // il salvataggio finale deve bloccare l'utente per un JSON non valido.
+        function commitBlockFromCard(card, block) {
+            if (block.type === 'html') {
+                if (block.sourceMode) {
+                    const textarea = card.querySelector('.cms-html-source');
+                    if (textarea) block.html = textarea.value;
+                } else {
+                    const quill = quillInstances.get(block.__clientId);
+                    if (quill) block.html = quill.root.innerHTML;
+                }
+            } else if (block.type === 'entityList') {
+                block.entity = card.querySelector('.block-entity-select').value;
+                block.title = card.querySelector('.block-entity-title').value.trim();
+                const maxRows = parseInt(card.querySelector('.block-entity-max-rows').value, 10);
+                block.maxRows = Number.isFinite(maxRows) && maxRows > 0 ? maxRows : 50;
+            } else if (block.type === 'component') {
+                block.tag = card.querySelector('.block-component-tag').value;
+                const raw = card.querySelector('.block-component-config').value;
+                try {
+                    block.config = raw.trim() ? JSON.parse(raw) : {};
+                } catch {
+                    return `La configurazione del blocco "${block.tag || 'componente'}" non è un JSON valido.`;
+                }
+            }
+            return null;
+        }
+
+        function commitAllBlocksFromDom({ strict = false } = {}) {
+            let error = null;
+            container.querySelectorAll('.cms-block-card').forEach(card => {
+                const block = blocks.find(b => b.__clientId === card.dataset.clientId);
+                if (!block) return;
+                const blockError = commitBlockFromCard(card, block);
+                if (blockError && strict && !error) error = blockError;
+            });
+            return error;
+        }
+
         document.querySelectorAll('.cms-add-block').forEach(btn => {
             btn.addEventListener('click', () => {
+                commitAllBlocksFromDom();
                 const type = btn.dataset.type;
                 const newBlock = { type, __clientId: uid() };
-                if (type === 'entityList') newBlock.entity = '';
+                if (type === 'entityList') { newBlock.entity = ''; newBlock.title = ''; newBlock.maxRows = 50; }
                 if (type === 'component') { newBlock.tag = ''; newBlock.config = {}; }
                 if (type === 'html') newBlock.html = '';
                 blocks.push(newBlock);
@@ -200,33 +359,11 @@
 
         document.getElementById('cmsPageSubmit').addEventListener('click', (e) => {
             syncOrderFromDom();
-            let hasError = false;
+            const error = commitAllBlocksFromDom({ strict: true });
 
-            container.querySelectorAll('.cms-block-card').forEach(card => {
-                if (hasError) return;
-                const clientId = card.dataset.clientId;
-                const block = blocks.find(b => b.__clientId === clientId);
-                if (!block) return;
-
-                if (block.type === 'html') {
-                    const quill = quillInstances.get(clientId);
-                    if (quill) block.html = quill.root.innerHTML;
-                } else if (block.type === 'entityList') {
-                    block.entity = card.querySelector('.block-entity-select').value;
-                } else if (block.type === 'component') {
-                    block.tag = card.querySelector('.block-component-tag').value;
-                    const raw = card.querySelector('.block-component-config').value;
-                    try {
-                        block.config = raw.trim() ? JSON.parse(raw) : {};
-                    } catch {
-                        hasError = true;
-                        alert('La configurazione del blocco "' + (block.tag || 'componente') + '" non è un JSON valido.');
-                    }
-                }
-            });
-
-            if (hasError) {
+            if (error) {
                 e.preventDefault();
+                alert(error);
                 return;
             }
 

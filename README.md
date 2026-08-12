@@ -407,15 +407,42 @@ applicativa (es. "Chi siamo"), con:
   sotto-pagina), stato pubblicato/bozza, ordinamento.
 - Contenuto strutturato come **JSON a blocchi** (`ContentJson`), editabile con
   drag&drop (SortableJS) tra tre tipi di blocco:
-  - `html`: testo/HTML libero, con editor rich text Quill.
-  - `entityList`: riferimento a un'entità già scaffoldata, il cui elenco
-    viene interpretato/renderizzato dall'app host.
+  - `html`: testo/HTML libero, con editor rich text Quill — **incluse
+    immagini**: il pulsante immagine carica il file tramite lo stesso
+    `IFileStorageProvider` dei campi `EditorType.File` (endpoint dedicato
+    `POST /dami/pages/upload-image`, sottocartella `wwwroot/uploads/pages`
+    dell'host), inserendo nell'HTML solo l'URL — mai un'immagine incorporata
+    come base64.
+  - `entityList`: riferimento a un'entità già scaffoldata (più titolo
+    opzionale sopra l'elenco e un numero massimo di righe, di default 50,
+    fino a un tetto di 200 — stesso limite applicato da
+    `IGenericEntityRepository.GetListAsync`). Le colonne mostrate sono quelle
+    marcate "in elenco" nello scaffolding (stesso criterio già usato dalla
+    griglia dati del backoffice), con le eventuali FK già risolte in
+    etichetta leggibile.
   - `component`: riferimento generico a un componente esterno (tag + config
     JSON libera), pensato per essere risolto dall'app host (es. un componente
-    Angular montato dinamicamente).
+    Angular montato dinamicamente — vedi [§8](#8-modulo-ffm--componenti-angularsyncfusion-dedicati)).
 
-Il rendering front-end dei blocchi è sempre a carico dell'app host: il CMS si
-limita a comporre ed editare la struttura JSON.
+Il rendering front-end dei blocchi è a carico dell'app host: il TestHost
+incluso in questo repository lo implementa già per `html` ed `entityList`
+(`PagesController.Show` risolve i blocchi lato server — per `entityList`
+significa una query al database tramite `IGenericEntityRepository` — prima
+di passarli, già pronti, alla view `Show.cshtml`; vedi anche
+`LegacyContentReader.GetRowsForDisplayAsync`). Il tipo `component` resta
+intenzionalmente non gestito lì: non è mai servito un caso d'uso concreto su
+una `CmsPage` nativa (il modulo FFM monta i suoi componenti Angular tramite
+le proprie view dedicate, non attraverso pagine CMS).
+
+Una `CmsPage` è quindi il modo più rapido per comporre, **senza scrivere
+codice**, una pagina che mescola testo/immagini libere e contenuto già
+scaffoldato — utile per arricchire pagine che altrimenti richiederebbero un
+template ad-hoc solo per una sezione editoriale accessoria. Per pagine con
+logica di presentazione molto specifica (es. la pagina Statistiche, con le
+sue sezioni per competizione — vedi
+[§8](#8-modulo-ffm--componenti-angularsyncfusion-dedicati)) resta preferibile
+un template ad-hoc lato TestHost, come già fatto: `CmsPage`/`entityList` non
+sostituisce quel pattern, lo completa per i casi più semplici.
 
 ### 5. Menu di navigazione
 
@@ -537,6 +564,59 @@ confronto è centralizzata in `InternalUrlPath`
   > quel campo, una modifica della password dal backoffice produce lo stesso
   > hash che il login si aspetta di trovare, senza reimplementare
   > l'algoritmo in .NET.
+
+#### 6.1 Arricchire un template ad-hoc con un blocco curato da backoffice
+
+Alcune pagine pubbliche (Statistiche, Squadre — vedi
+[§8](#8-modulo-ffm--componenti-angularsyncfusion-dedicati)) hanno logica di
+presentazione troppo specifica per il blocco `entityList` generico (sezioni
+multiple, pivot, formattazioni ad hoc su più tabelle): restano — a ragione —
+controller e view dedicati lato host, non `CmsPage`. Ma capita comunque che
+serva un'introduzione testuale/immagini sopra quel contenuto codificato,
+editabile senza toccare il codice: il pattern usato per la pagina Statistiche
+(che replica l'"Albi d'oro" del sito legacy) è riusabile per qualunque altro
+template ad-hoc.
+
+**Idea**: il controller ad-hoc non prova a "diventare" una CmsPage — resta
+esattamente com'era — ma legge il blocco `html` di una `CmsPage` di supporto
+(creata da backoffice, slug dedicato, **mai linkata nel menu**: è un
+contenitore di contenuto, non una pagina da visitare) e lo inserisce sopra il
+proprio contenuto codificato.
+
+1. **Crea la CmsPage di supporto** da `/dami/pages/create`: solo un blocco
+   `html` con testo/immagini (nessun blocco `entityList`/`component`, qui non
+   servono — quel contenuto lo fornisce già il template ad-hoc). Slug
+   dedicato e riconoscibile, es. `statistiche-intro` — **non** `statistiche`
+   (collisione impossibile comunque: `/statistiche` è già intercettata dalla
+   rotta convenzionale di `StatisticheController`, registrata prima della
+   rotta generica delle CmsPage — vedi `Program.cs` — quindi una CmsPage con
+   quello slug non sarebbe mai raggiungibile).
+2. **Nel controller ad-hoc**, inietta `LegacyContentReader` e leggi il
+   ContentJson per slug:
+   ```csharp
+   var introContentJson = await _content.GetPageContentJsonAsync("statistiche-intro", ct);
+   model.IntroHtml = CmsPageContentParser.GetHtmlBlocksConcatenated(introContentJson);
+   ```
+   `CmsPageContentParser` (usato anche da `PagesController.Show` per le
+   CmsPage native) fa il parsing di basso livello del ContentJson — qui si
+   usa solo `GetHtmlBlocksConcatenated`, che concatena i blocchi `html`
+   ignorando gli altri tipi. Se la pagina di supporto non esiste o non è
+   pubblicata, restituisce `null`: il template ad-hoc resta perfettamente
+   funzionante anche senza introduzione.
+3. **Nella view**, stesso markup del blocco `html` di una CmsPage nativa:
+   ```cshtml
+   @if (!string.IsNullOrWhiteSpace(Model.IntroHtml))
+   {
+       <div class="cms-block cms-block-html mb-4">
+           @Html.Raw(Model.IntroHtml)
+       </div>
+   }
+   ```
+
+Zero rischio per il template esistente (nessuna riga della logica dati
+originale viene toccata), editing dell'introduzione interamente da
+backoffice, stesso identico editor rich text (con immagini) delle CmsPage
+native.
 
 ### 7. Localizzazione legacy "a chiave condivisa"
 

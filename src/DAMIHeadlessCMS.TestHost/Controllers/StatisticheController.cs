@@ -9,14 +9,29 @@ namespace DAMIHeadlessCMS.TestHost.Controllers;
 /// 18, sviluppata per checkpoint data la dimensione: ~20 sezioni nel legacy). Tutti e 4
 /// i checkpoint completati: Titoli condiviso + Campionato, famiglia standard, famiglia
 /// speciale, partecipazioni Campionato + pivot Allenatori/Presidenti.
+///
+/// L'introduzione testuale/immagini sopra l'accordion (es. "Albi d'oro" nel legacy) NON
+/// è codificata qui: viene letta da una CmsPage di supporto creata da backoffice
+/// (/dami/pages), slug <see cref="IntroPageSlug"/> — editabile da chi gestisce i
+/// contenuti senza toccare codice, coerentemente con lo scopo del CMS. Quella CmsPage
+/// non va linkata nel menu di navigazione (non è un URL pubblico da visitare
+/// direttamente, anche se resta tecnicamente raggiungibile su /statistiche-intro
+/// tramite il routing generico delle CmsPage: mostrerebbe solo il blocco introduttivo,
+/// senza accordion) — è solo un contenitore di contenuto riusato qui. Se la pagina non
+/// esiste o non è pubblicata, questa pagina funziona comunque, semplicemente senza
+/// introduzione: vedi StatistichePageViewModel.IntroHtml.
 /// </summary>
 public class StatisticheController : Controller
 {
-    private readonly StatisticheDataService _data;
+    private const string IntroPageSlug = "statistiche-intro";
 
-    public StatisticheController(StatisticheDataService data)
+    private readonly StatisticheDataService _data;
+    private readonly LegacyContentReader _content;
+
+    public StatisticheController(StatisticheDataService data, LegacyContentReader content)
     {
         _data = data;
+        _content = content;
     }
 
     // Nome tabella FFM.*, etichetta in pagina, chiave in PublicSite:Competizioni: stessa
@@ -42,9 +57,11 @@ public class StatisticheController : Controller
     {
         var campionatoId = _data.GetCompetitionId("Campionato");
         var popaLibertadoresId = _data.GetCompetitionId("PopaLibertadores");
+        var introContentJson = await _content.GetPageContentJsonAsync(IntroPageSlug, ct);
 
         var model = new StatistichePageViewModel
         {
+            IntroHtml = CmsPageContentParser.GetHtmlBlocksConcatenated(introContentJson),
             CampionatoRisultati = await _data.GetCampionatoResultsAsync(ct),
             CampionatoTitoli = campionatoId is int id
                 ? await _data.BuildTitlesTableAsync(id, "Campionato", ct)

@@ -7,6 +7,15 @@ namespace DAMIHeadlessCMS.TestHost.Models.PublicSite;
 /// </summary>
 public class StatistichePageViewModel
 {
+    /// <summary>
+    /// HTML del/dei blocco/i "html" di una CmsPage di supporto creata da backoffice
+    /// (vedi StatisticheController), pensato per un'introduzione testuale/immagini
+    /// sopra l'accordion — es. "Albi d'oro" nel legacy. Null se quella CmsPage non
+    /// esiste o non è pubblicata: la pagina resta comunque perfettamente funzionante
+    /// senza, semplicemente senza introduzione.
+    /// </summary>
+    public string? IntroHtml { get; init; }
+
     public IReadOnlyList<CampionatoResultRowViewModel> CampionatoRisultati { get; init; } = [];
 
     public TitleTableViewModel? CampionatoTitoli { get; init; }

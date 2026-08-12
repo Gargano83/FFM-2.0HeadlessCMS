@@ -1,0 +1,93 @@
+@using DAMIHeadlessCMS.Core.Enums
+@using DAMIHeadlessCMS.TestHost.Models.PublicSite
+@model CmsEntityListBlockViewModel
+@{
+    var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp" };
+    bool LooksLikeImage(string? path) =>
+        !string.IsNullOrWhiteSpace(path) && imageExtensions.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant());
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.Title))
+{
+    <h3 class="h5 mb-3">@Model.Title</h3>
+}
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="text-muted">Nessun contenuto disponibile al momento.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    @foreach (var column in Model.Columns)
+                    {
+                        <th>@column.DisplayName</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        @foreach (var column in Model.Columns)
+                        {
+                            var value = row.GetValueOrDefault(column.ColumnName);
+                            <td>
+                                @if (column.EditorType == EditorType.Password)
+                                {
+                                    <span class="text-muted">••••••••</span>
+                                }
+                                else if (column.EditorType == EditorType.Checkbox)
+                                {
+                                    var isTrue = value is true;
+                                    <span class="badge bg-@(isTrue ? "success" : "secondary")">@(isTrue ? "Sì" : "No")</span>
+                                }
+                                else if (column.EditorType == EditorType.File)
+                                {
+                                    var path = value as string;
+                                    if (value is byte[])
+                                    {
+                                        <span class="text-muted small">File</span>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(path) && LooksLikeImage(path))
+                                    {
+                                        <a href="/@path" target="_blank">
+                                            <img src="/@path" alt="@column.DisplayName" class="rounded" style="max-height:60px;max-width:100px;object-fit:cover;" />
+                                        </a>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(path))
+                                    {
+                                        <a href="/@path" target="_blank"><i class="bi bi-paperclip"></i> Apri</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                }
+                                else if (column.EditorType == EditorType.RichText)
+                                {
+                                    @Html.Raw(value as string)
+                                }
+                                else if (column.EditorType == EditorType.DateTime && value is DateTime dt)
+                                {
+                                    @dt.ToString("dd/MM/yyyy HH:mm")
+                                }
+                                else if (column.EditorType == EditorType.Date && value is DateTime d)
+                                {
+                                    @d.ToString("dd/MM/yyyy")
+                                }
+                                else
+                                {
+                                    @value
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

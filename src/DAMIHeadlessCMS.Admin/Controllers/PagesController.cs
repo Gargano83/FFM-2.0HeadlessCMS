@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DAMIHeadlessCMS.Admin.Utilities;
+using DAMIHeadlessCMS.Admin.Data;
 using DAMIHeadlessCMS.Admin.ViewModels;
 using DAMIHeadlessCMS.Core.Entities;
 using DAMIHeadlessCMS.Core.Enums;
@@ -20,10 +22,39 @@ namespace DAMIHeadlessCMS.Admin.Controllers;
 public class PagesController : Controller
 {
     private readonly CmsDbContext _db;
+    private readonly IFileStorageProvider _fileStorage;
 
-    public PagesController(CmsDbContext db)
+    public PagesController(CmsDbContext db, IFileStorageProvider fileStorage)
     {
         _db = db;
+        _fileStorage = fileStorage;
+    }
+
+    /// <summary>
+    /// Upload di un'immagine incorporata nel blocco "html" (rich text) di una pagina,
+    /// usato dal pulsante immagine di Quill in <c>_PageForm.cshtml</c>. Riusa lo stesso
+    /// <see cref="IFileStorageProvider"/> dei campi EditorType.File, in una sottocartella
+    /// dedicata ("pages"), per non mischiarli con i file caricati dal CRUD generico.
+    /// Ritorna l'URL relativo da inserire come src dell'immagine (mai il base64: Quill
+    /// di default incorporerebbe l'immagine direttamente nell'HTML, gonfiando
+    /// ContentJson e le performance della pagina pubblica).
+    /// </summary>
+    [HttpPost("upload-image")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadImage(IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { error = "Nessun file caricato." });
+        }
+
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { error = "Il file caricato non è un'immagine." });
+        }
+
+        var relativePath = await _fileStorage.SaveAsync(file, "pages", ct);
+        return Json(new { url = "/" + relativePath });
     }
 
     [HttpGet("")]
