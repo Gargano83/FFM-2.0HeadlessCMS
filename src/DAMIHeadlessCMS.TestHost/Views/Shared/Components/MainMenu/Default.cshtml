@@ -1,4 +1,5 @@
-@model List<DAMIHeadlessCMS.TestHost.PublicSite.MenuNode>
+@using DAMIHeadlessCMS.TestHost.Models.PublicSite
+@model MainMenuViewModel
 
 <nav class="navbar navbar-expand-lg public-navbar sticky-top">
     <div class="container">
@@ -8,21 +9,37 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNavCollapse">
-            @if (Model.Count == 0)
-            {
-                <span class="navbar-text text-body-secondary small">
-                    Nessun menu "@DAMIHeadlessCMS.TestHost.ViewComponents.MainMenuViewComponent.MainMenuName" configurato — crealo da <a href="/dami/menus">/dami/menus</a>.
-                </span>
-            }
-            else
-            {
-                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    @foreach (var node in Model)
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center">
+                @if (Model.Items.Count == 0)
+                {
+                    <li class="nav-item">
+                        <span class="navbar-text text-body-secondary small">
+                            Nessun menu "@DAMIHeadlessCMS.TestHost.ViewComponents.MainMenuViewComponent.MainMenuName" configurato — crealo da <a href="/dami/menus">/dami/menus</a>.
+                        </span>
+                    </li>
+                }
+                else
+                {
+                    foreach (var node in Model.Items)
                     {
                         @await Html.PartialAsync("_MenuNode", node)
                     }
-                </ul>
-            }
+                }
+                <li class="nav-item ms-lg-2">
+                    @if (Model.IsPublicUserAuthenticated)
+                    {
+                        <a class="nav-link" href="/area-riservata" title="La mia area riservata">
+                            <i class="bi bi-person-check-fill fs-5"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="nav-link" href="/area-riservata/login" title="Accedi all'area riservata">
+                            <i class="bi bi-person-circle fs-5"></i>
+                        </a>
+                    }
+                </li>
+            </ul>
         </div>
     </div>
 </nav>

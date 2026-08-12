@@ -32,9 +32,18 @@ public class AreaRiservataController : Controller
     }
 
     [HttpGet("login")]
-    public IActionResult Login(string? returnUrl = null)
+    public async Task<IActionResult> Login(string? returnUrl = null)
     {
-        if (User.Identity?.IsAuthenticated == true)
+        // Va interrogato esplicitamente lo schema PublicUser: User.Identity.IsAuthenticated
+        // rifletterebbe invece lo schema di autenticazione di DEFAULT dell'applicazione
+        // (Identity/backoffice, popolato da app.UseAuthentication() indipendentemente da
+        // questo schema secondario) — con l'effetto che un amministratore loggato su
+        // /dami nello stesso browser verrebbe considerato "già loggato" anche qui, pur
+        // non avendo mai fatto login nell'area riservata: redirect a Index(), che a sua
+        // volta richiede lo schema PublicUser e fallisce, tornando su questa stessa
+        // azione — un loop di redirect infinito (ERR_TOO_MANY_REDIRECTS).
+        var publicAuth = await HttpContext.AuthenticateAsync(PublicAuthSchemes.Cookie);
+        if (publicAuth.Succeeded)
         {
             return RedirectToAction(nameof(Index));
         }

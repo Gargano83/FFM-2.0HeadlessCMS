@@ -1,5 +1,7 @@
 using DAMIHeadlessCMS.Data;
+using DAMIHeadlessCMS.TestHost.Models.PublicSite;
 using DAMIHeadlessCMS.TestHost.PublicSite;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +13,12 @@ namespace DAMIHeadlessCMS.TestHost.ViewComponents;
 /// logica ad albero per stringa "ca_ordine" non serve più: qui l'albero è
 /// vero, via ParentId). Il nome del menu da leggere è una convenzione fissa
 /// del progetto host (non configurabile), come deciso in fase di analisi.
+/// Include anche l'icona di accesso/area riservata (vedi
+/// <see cref="MainMenuViewModel.IsPublicUserAuthenticated"/>): lo stato va
+/// letto interrogando esplicitamente lo schema PublicUser — mai
+/// User.Identity.IsAuthenticated "nudo", che rifletterebbe lo schema di
+/// default dell'app (Identity/backoffice), non quello dell'area riservata
+/// (stesso bug già corretto in AreaRiservataController.Login).
 /// </summary>
 public class MainMenuViewComponent : ViewComponent
 {
@@ -34,6 +42,12 @@ public class MainMenuViewComponent : ViewComponent
             ? []
             : MenuUrlResolver.BuildTree(menu.Items.ToList());
 
-        return View(tree);
+        var publicAuth = await HttpContext.AuthenticateAsync(PublicAuthSchemes.Cookie);
+
+        return View(new MainMenuViewModel
+        {
+            Items = tree,
+            IsPublicUserAuthenticated = publicAuth.Succeeded
+        });
     }
 }
