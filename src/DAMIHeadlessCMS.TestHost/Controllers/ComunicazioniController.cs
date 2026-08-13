@@ -9,21 +9,32 @@ namespace DAMIHeadlessCMS.TestHost.Controllers;
 /// del legacy: "/comunicazioni/{slug}" prova prima come categoria, poi come articolo —
 /// stessa logica di risoluzione di Blog.cs (categoria trovata per url, altrimenti
 /// fallback a documento), qui senza il generico ContRouteHandler del legacy.
+///
+/// L'introduzione testuale/immagini sopra l'elenco NON è codificata qui: viene letta
+/// da una CmsPage di supporto creata da backoffice (/dami/pages), slug
+/// <see cref="IntroPageSlug"/> — stesso pattern già usato per Statistiche (README §6.1).
+/// Mostrata solo nell'elenco non filtrato (nessuna categoria selezionata): filtrando per
+/// categoria non avrebbe senso mostrare un'introduzione pensata per la sezione intera.
 /// </summary>
 [Route("comunicazioni")]
 public class ComunicazioniController : Controller
 {
-    private readonly ComunicazioniDataService _data;
+    private const string IntroPageSlug = "comunicazioni-intro";
 
-    public ComunicazioniController(ComunicazioniDataService data)
+    private readonly ComunicazioniDataService _data;
+    private readonly LegacyContentReader _content;
+
+    public ComunicazioniController(ComunicazioniDataService data, LegacyContentReader content)
     {
         _data = data;
+        _content = content;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(int pagina, CancellationToken ct)
     {
         var model = await _data.GetArticlesPageAsync(category: null, page: NormalizePage(pagina), ct);
+        model.IntroHtml = await GetIntroHtmlAsync(ct);
         return View(model);
     }
 
@@ -45,6 +56,12 @@ public class ComunicazioniController : Controller
         }
 
         return NotFound();
+    }
+
+    private async Task<string?> GetIntroHtmlAsync(CancellationToken ct)
+    {
+        var introContentJson = await _content.GetPageContentJsonAsync(IntroPageSlug, ct);
+        return CmsPageContentParser.GetHtmlBlocksConcatenated(introContentJson);
     }
 
     private static int NormalizePage(int page) => page < 1 ? 1 : page;

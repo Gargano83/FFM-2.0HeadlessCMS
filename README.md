@@ -575,7 +575,9 @@ controller e view dedicati lato host, non `CmsPage`. Ma capita comunque che
 serva un'introduzione testuale/immagini sopra quel contenuto codificato,
 editabile senza toccare il codice: il pattern usato per la pagina Statistiche
 (che replica l'"Albi d'oro" del sito legacy) è riusabile per qualunque altro
-template ad-hoc.
+template ad-hoc — applicato anche a Comunicazioni (slug di supporto
+`comunicazioni-intro`, mostrato solo nell'elenco non filtrato: filtrando per
+categoria non avrebbe senso un'introduzione pensata per l'intera sezione).
 
 **Idea**: il controller ad-hoc non prova a "diventare" una CmsPage — resta
 esattamente com'era — ma legge il blocco `html` di una `CmsPage` di supporto
@@ -586,11 +588,14 @@ proprio contenuto codificato.
 1. **Crea la CmsPage di supporto** da `/dami/pages/create`: solo un blocco
    `html` con testo/immagini (nessun blocco `entityList`/`component`, qui non
    servono — quel contenuto lo fornisce già il template ad-hoc). Slug
-   dedicato e riconoscibile, es. `statistiche-intro` — **non** `statistiche`
-   (collisione impossibile comunque: `/statistiche` è già intercettata dalla
-   rotta convenzionale di `StatisticheController`, registrata prima della
-   rotta generica delle CmsPage — vedi `Program.cs` — quindi una CmsPage con
-   quello slug non sarebbe mai raggiungibile).
+   dedicato e riconoscibile, es. `statistiche-intro`/`comunicazioni-intro` —
+   **non** lo slug della pagina stessa (`statistiche`, `comunicazioni`):
+   collisione impossibile comunque, dato che quelle rotte sono già
+   intercettate dalla rotta convenzionale del controller dedicato,
+   registrata prima della rotta generica delle CmsPage — vedi `Program.cs` —
+   quindi una CmsPage con quello slug non sarebbe mai raggiungibile, ma è
+   comunque buona norma tenerli distinguibili a colpo d'occhio in
+   `/dami/pages`.
 2. **Nel controller ad-hoc**, inietta `LegacyContentReader` e leggi il
    ContentJson per slug:
    ```csharp

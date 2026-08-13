@@ -41,6 +41,15 @@ public class ComunicazioniListViewModel
     public string? CategoriaSlugCorrente { get; init; }
 
     public string? CategoriaNomeCorrente { get; init; }
+
+    /// <summary>
+    /// HTML del/dei blocco/i "html" di una CmsPage di supporto creata da backoffice
+    /// (vedi ComunicazioniController, stesso pattern già usato per Statistiche —
+    /// README §6.1), mostrato solo nell'elenco non filtrato (nessuna categoria
+    /// selezionata): null quando si sta filtrando per categoria, o quando quella
+    /// CmsPage non esiste/non è pubblicata.
+    /// </summary>
+    public string? IntroHtml { get; set; }
 }
 
 /// <summary>Pagina di dettaglio di un singolo articolo.</summary>

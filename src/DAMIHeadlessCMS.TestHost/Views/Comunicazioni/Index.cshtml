@@ -4,7 +4,17 @@
 }
 
 <div class="container py-4 py-lg-5">
-    <h1 class="mb-4">Comunicazioni</h1>
+    @if (string.IsNullOrWhiteSpace(Model.IntroHtml))
+    {
+        <h1 class="mb-4">Comunicazioni</h1>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.IntroHtml))
+    {
+        <div class="cms-block cms-block-html mb-4">
+            @Html.Raw(Model.IntroHtml)
+        </div>
+    }
 
     @if (Model.Categorie.Count > 0)
     {
