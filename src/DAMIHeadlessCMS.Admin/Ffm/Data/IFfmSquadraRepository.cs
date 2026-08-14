@@ -24,6 +24,14 @@ public interface IFfmSquadraRepository
     /// <summary>Giocatori non presenti in nessuna FFM.SquadreRelGiocatori (per il selettore "aggiungi giocatore").</summary>
     Task<IReadOnlyList<GiocatoreSvincolatoDto>> GetGiocatoriSvincolatiAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Come <see cref="GetGiocatoriSvincolatiAsync"/> ma filtrato per nome/cognome
+    /// (LIKE, parametrizzato) e limitato a <paramref name="limit"/> righe — pensato
+    /// per un campo di ricerca con autocompletamento (Area Riservata) dove l'elenco
+    /// completo di tutti gli svincolati sarebbe troppo lungo da mostrare.
+    /// </summary>
+    Task<IReadOnlyList<GiocatoreSvincolatoDto>> CercaGiocatoriSvincolatiAsync(string query, int limit = 15, CancellationToken ct = default);
+
     /// <summary>Aggiunge un giocatore svincolato alla rosa, per la stagione attualmente attiva. Nessun effetto se non c'è una stagione attiva.</summary>
     Task AggiungiGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, decimal? valoreDiMercato, decimal? stipendio, int? idUtente, CancellationToken ct = default);
 

@@ -668,8 +668,8 @@ gli altri endpoint statistiche non ancora affrontati.
     lista esplicita e configurabile degli slug ammessi
     (`["regole","reminder","files","news"]`).
 
-- [~] **21. Migrazione Login/Logout + Area Riservata → `DAMIHeadlessCMS.TestHost`**
-      (in corso, per checkpoint). **Decisione chiave**: gli utenti pubblici
+- [x] **21. Migrazione Login/Logout + Area Riservata → `DAMIHeadlessCMS.TestHost`**
+      (completata, per checkpoint). **Decisione chiave**: gli utenti pubblici
       (`WN_Utenti`) sono una popolazione **separata** dagli utenti del
       backoffice (ASP.NET Core Identity, `CmsUser`) — indicazione esplicita
       di Alessio, non un riuso di Identity.
@@ -725,7 +725,7 @@ gli altri endpoint statistiche non ancora affrontati.
     `confirm()` nativo per la rimozione), coerenti con il resto del
     TestHost — non riprodotto l'approccio a fetch/modal del client legacy.
 
-**Fase 21 completata.** Controllo incrociato su tutte le route di
+**Fase 21 completata (checkpoint 1/2a/2b).** Controllo incrociato su tutte le route di
 `SyncfusionController.cs` (legacy) rispetto a quanto migrato: `giocatori`
 (GET/POST/PUT/DELETE) + `importgiocatori` → già coperti dal backoffice fase 7
 (`FfmGiocatoriApiController`); tutto il resto (`aggiornainfosquadra`,
@@ -739,6 +739,56 @@ squadra — **funzionalità non necessaria** (i trasferimenti tra squadre
 seguono un processo diverso, non ancora migrato): lo scoping del Checkpoint
 2b ai soli svincolati (`GetGiocatoriSvincolatiAsync`) resta corretto così
 com'è, nessuna modifica.
+
+  - **Checkpoint 3 — Riavvicinamento alla UX legacy** ✅: dopo revisione degli
+    screenshot dell'applicazione legacy originale, l'esperienza dei
+    checkpoint 2a/2b (pagine server-side classiche, "Altre squadre" come
+    elenco a sé) si è rivelata più distante dal comportamento reale atteso
+    di quanto inizialmente valutato. Cambio di rotta esplicito rispetto alla
+    nota del checkpoint 2b ("non riprodotto l'approccio a fetch/modal del
+    client legacy"): qui invece sì, con alcuni miglioramenti rispetto
+    all'originale.
+    - **Permesso "super-admin"**: utenti il cui `WN_UTENTI.UT_ID` è in
+      `PublicSite:AreaRiservataSuperAdminUserIds` (configurabile, non
+      hardcoded — nel legacy erano gli id 93/94/95) possono modificare
+      **qualunque** squadra, non solo la propria — sempre soggetti allo
+      stesso `AbilitaModifica` (mercato aperto) della squadra bersaglio.
+      Centralizzato in `AreaRiservataAuthorizationService.CanEdit`, l'unico
+      punto che decide se una scrittura è permessa — usato sia dal
+      controller di rendering iniziale sia dalla nuova API, mai duplicato.
+    - **Cambio squadra dal selettore**: non più una pagina a sé (`/altre-
+      squadre` come elenco è stata **rimossa**, ridondante col selettore
+      sempre disponibile) — fetch verso la nuova `AreaRiservataApiController`
+      (`/area-riservata/api/*`), nessun reload di pagina. Miglioria
+      rispetto al legacy (che non cambiava mai URL): `history.pushState`
+      aggiorna comunque l'URL (`/area-riservata` o `/area-riservata/altre-
+      squadre/{id}`), quindi resta bookmarkabile/condivisibile; gestito
+      anche `popstate` per i pulsanti avanti/indietro del browser.
+    - **Modifica giocatore**: da pagina dedicata a modale (solo "Stato"
+      editabile, gli altri campi read-only) — fedele allo screenshot
+      legacy. "Mesi" non è più mostrato/editabile nella modale (il legacy
+      non lo espone), ma viene comunque preservato invariato nella
+      chiamata di aggiornamento (letto dalla riga già caricata, non chiesto
+      di nuovo).
+    - **Aggiungi giocatore**: da pagina con dropdown a barra di ricerca con
+      autocompletamento (debounce 300ms, nuovo endpoint
+      `IFfmSquadraRepository.CercaGiocatoriSvincolatiAsync`, `LIKE`
+      parametrizzato, max 15 risultati). Il giocatore selezionato viene
+      aggiunto sempre con il suo Valore di mercato/Stipendio "di base"
+      (`FFM.Giocatori`, letto e applicato **lato server**, mai un valore
+      proposto dal client) — nessun campo da compilare in fase di
+      aggiunta, come nel legacy. Il giocatore appena aggiunto resta
+      evidenziato (badge "Nuovo" + riga colorata) finché la pagina non
+      viene ricaricata da capo (stato solo client-side, non persistito).
+    - **Pulsante "Trasferimenti"**: presente nell'header (fedele allo
+      screenshot) ma volutamente **senza puntamento** (`disabled`) — modulo
+      legacy separato, mai migrato, la rotta verrà decisa quando si
+      affronterà quel modulo.
+    - **CSRF su API JSON**: `[ValidateAntiForgeryToken]` sulle azioni di
+      scrittura, token letto dal client via header `X-CSRF-TOKEN` (stessa
+      configurazione già in uso per l'upload immagini del blocco pagine),
+      non come campo di un form — coerente con un'API consumata da
+      `fetch()`, non da un `<form>` classico.
 
 Con questo, la migrazione delle pagine pubbliche elencate nel PDF di
 riferimento è completa.

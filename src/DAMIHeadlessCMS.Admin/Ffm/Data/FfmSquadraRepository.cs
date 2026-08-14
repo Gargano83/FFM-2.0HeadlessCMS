@@ -263,11 +263,50 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         return results;
     }
 
+    private const string CercaGiocatoriSvincolatiSql = """
+        SELECT TOP (@Limit) Id, Nome, Cognome, DataDiNascita, Ruolo, ValoreDiMercato, Stipendio
+        FROM FFM.Giocatori
+        WHERE Id NOT IN (SELECT IdGiocatore FROM FFM.SquadreRelGiocatori)
+          AND (Nome LIKE @Query OR Cognome LIKE @Query OR (Nome + ' ' + Cognome) LIKE @Query)
+        ORDER BY Cognome, Nome;
+        """;
+
+    public async Task<IReadOnlyList<GiocatoreSvincolatoDto>> CercaGiocatoriSvincolatiAsync(string query, int limit = 15, CancellationToken ct = default)
+    {
+        var results = new List<GiocatoreSvincolatoDto>();
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(CercaGiocatoriSvincolatiSql, connection);
+        command.Parameters.AddWithValue("@Limit", limit);
+        // Il pattern LIKE è costruito qui, non nella query: mai concatenare l'input
+        // dell'utente nel testo SQL, resta comunque un parametro tipizzato.
+        command.Parameters.AddWithValue("@Query", $"%{query}%");
+
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add(new GiocatoreSvincolatoDto
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                Nome = reader["Nome"] as string ?? string.Empty,
+                Cognome = reader["Cognome"] as string ?? string.Empty,
+                Ruolo = reader["Ruolo"] as string,
+                DataDiNascita = reader["DataDiNascita"] as DateTime?,
+                ValoreDiMercato = reader["ValoreDiMercato"] is DBNull ? null : Convert.ToDecimal(reader["ValoreDiMercato"]),
+                Stipendio = reader["Stipendio"] is DBNull ? null : Convert.ToDecimal(reader["Stipendio"])
+            });
+        }
+
+        return results;
+    }
+
     // Stessa logica della query legacy: l'inserimento avviene solo se esiste
     // una stagione attiva in FFM.Lega, altrimenti l'operazione non ha effetto
     // (nessuna eccezione, comportamento legacy preservato).
     private const string AggiungiGiocatoreSql = """
-        DECLARE @Stagione INT = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
+        DECLARE @Stagione VARCHAR(50) = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
         IF @Stagione IS NOT NULL
         BEGIN
             INSERT INTO FFM.SquadreRelGiocatori (IdSquadra, IdGiocatore, ValoreDiMercato, Stipendio, Stagione, IdUtente)

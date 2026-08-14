@@ -1,128 +1,399 @@
-@model DAMIHeadlessCMS.TestHost.Models.PublicSite.SquadraViewModel
+@using DAMIHeadlessCMS.TestHost.Models.PublicSite
+@model SquadraViewModel
 @{
     ViewData["Title"] = Model.Info.NomeSquadra;
+    var statiGiocatore = new[] { "", "Lista A", "Lista A (Pr)", "No Serie A", "In prestito", "Fuori Rosa" };
 }
 
 <div class="container py-4 py-lg-5">
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
-        <h1 class="mb-0">@Model.Info.NomeSquadra</h1>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+        <h1 class="mb-0" id="squadraTitolo">@Model.Info.NomeSquadra</h1>
         <div class="d-flex gap-2">
-            <a href="/area-riservata/altre-squadre" class="btn btn-sm btn-outline-secondary">Altre squadre</a>
+            <button type="button" class="btn btn-sm btn-dark" disabled title="In arrivo">
+                <i class="bi bi-arrow-left-right me-1"></i>Trasferimenti
+            </button>
             <form asp-controller="AreaRiservata" asp-action="Logout" method="post" class="d-inline">
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Esci</button>
             </form>
         </div>
     </div>
 
-    @if (TempData["Messaggio"] is string messaggio)
-    {
-        <div class="alert alert-success">@messaggio</div>
-    }
-    @if (TempData["Errore"] is string errore)
-    {
-        <div class="alert alert-danger">@errore</div>
-    }
-
-    @if (!Model.Info.AbilitaModifica)
-    {
-        <div class="alert alert-warning">Le modifiche alla rosa non sono al momento consentite (mercato chiuso).</div>
-    }
-
-    <div class="row g-4 mb-4">
-        <div class="col-12 col-lg-6">
-            <div class="border rounded p-3 h-100">
-                <h2 class="h5 mb-3">Squadra</h2>
-                <dl class="row mb-0 small">
-                    <dt class="col-6">Presidente</dt><dd class="col-6">@Model.Info.Presidente</dd>
-                    <dt class="col-6">Vice presidente</dt><dd class="col-6">@Model.Info.VicePresidente</dd>
-                    <dt class="col-6">Allenatore</dt><dd class="col-6">@Model.Info.Allenatore</dd>
-                    <dt class="col-6">Contratto allenatore</dt>
-                    <dd class="col-6">@Model.Info.DurataContrattoAllenatore mesi &mdash; @Model.Info.StipendioAllenatore.ToString("N0") &euro;</dd>
-                </dl>
-                <hr />
-                <div class="row text-center small g-2">
-                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.Tesserati</div>Tesserati</div>
-                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.InPrestito</div>In prestito</div>
-                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.InRosa</div>In rosa</div>
-                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.APrestito</div>A prestito</div>
-                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.ListaA</div>Lista A</div>
-                    <div class="col-4"><div class="fw-bold fs-5">@Model.Info.Under22InRosa</div>Under 22 in rosa</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-lg-6">
-            <div class="border rounded p-3 h-100">
-                <h2 class="h5 mb-3">Finanze</h2>
-                <dl class="row mb-0 small">
-                    <dt class="col-8">Rimanenza stagione precedente</dt><dd class="col-4 text-end">@Model.Info.RimanenzaStagionePrecedente.ToString("N0") &euro;</dd>
-                    <dt class="col-8">Refill ranking</dt><dd class="col-4 text-end">@Model.Info.RefillRanking.ToString("N0") &euro;</dd>
-                    <dt class="col-8">Refill valore società</dt><dd class="col-4 text-end">@Model.Info.RefillValoreSocieta.ToString("N0") &euro;</dd>
-                    <dt class="col-8">Refill stadio</dt><dd class="col-4 text-end">@Model.Info.RefillStadio.ToString("N0") &euro;</dd>
-                    <dt class="col-8">Refill stipendi</dt><dd class="col-4 text-end">@Model.Info.RefillStipendi.ToString("N0") &euro;</dd>
-                    <dt class="col-8">Monte stipendi andata</dt><dd class="col-4 text-end">@Model.Info.MonteStipendiAndata.ToString("N0") &euro;</dd>
-                    <dt class="col-8">Monte stipendi ritorno</dt><dd class="col-4 text-end">@Model.Info.MonteStipendiRitorno.ToString("N0") &euro;</dd>
-                    <dt class="col-8">Bilancio mercato</dt><dd class="col-4 text-end">@Model.Info.BilancioMercato.ToString("N0") &euro;</dd>
-                    <dt class="col-8 fw-bold">Fair play finanziario</dt><dd class="col-4 text-end fw-bold">@Model.Info.FairPlayFinanziario.ToString("N0") &euro;</dd>
-                </dl>
-            </div>
-        </div>
+    <div class="mb-4" style="max-width:360px;">
+        <label for="squadraSelect" class="form-label text-body-secondary small mb-1">Vuoi consultare un'altra squadra?</label>
+        <select id="squadraSelect" class="form-select">
+            @foreach (var s in Model.TutteLeSquadre)
+            {
+                <option value="@s.Id" selected="@(s.Id == Model.Info.IdSquadra ? "selected" : null)">@s.Nome</option>
+            }
+        </select>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h5 mb-0">Rosa</h2>
-        @if (Model.PuoModificare)
-        {
-            <a href="/area-riservata/giocatori/aggiungi" class="btn btn-sm btn-primary">+ Aggiungi giocatore</a>
-        }
+    <div id="superAdminBanner" class="alert alert-warning d-flex align-items-center gap-2 @(Model.IsSuperAdminOverride ? "" : "d-none")">
+        <i class="bi bi-shield-exclamation fs-5"></i>
+        <div>Stai modificando questa squadra come amministratore: non è la tua squadra.</div>
     </div>
-    @if (Model.Rosa.Count == 0)
-    {
-        <p class="text-body-secondary">Nessun giocatore in rosa.</p>
-    }
-    else
-    {
-        <div class="table-responsive">
-            <table class="table table-striped table-sm align-middle">
-                <thead>
-                    <tr>
-                        <th scope="col">Nome</th>
-                        <th scope="col">Ruolo</th>
-                        <th scope="col">Età</th>
-                        <th scope="col">Stato</th>
-                        <th scope="col">U22</th>
-                        <th scope="col">Valore</th>
-                        <th scope="col">Stipendio</th>
-                        @if (Model.PuoModificare)
-                        {
-                            <th scope="col">Azioni</th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var giocatore in Model.Rosa)
-                    {
-                        <tr>
-                            <td>@giocatore.NomeCompleto</td>
-                            <td>@giocatore.Ruolo</td>
-                            <td>@giocatore.Eta</td>
-                            <td>@giocatore.Stato</td>
-                            <td>@(giocatore.U22 ? "U22" : "")</td>
-                            <td>@giocatore.ValoreDiMercato?.ToString("N1")</td>
-                            <td>@giocatore.Stipendio?.ToString("N1")</td>
-                            @if (Model.PuoModificare)
-                            {
-                                <td class="text-nowrap">
-                                    <a href="/area-riservata/giocatori/@giocatore.Id/modifica" class="btn btn-sm btn-outline-secondary">Modifica</a>
-                                    <form asp-action="RimuoviGiocatore" asp-route-idGiocatore="@giocatore.Id" method="post" class="d-inline"
-                                          onsubmit="return confirm('Rimuovere @giocatore.NomeCompleto dalla rosa?');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Rimuovi</button>
-                                    </form>
-                                </td>
-                            }
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
+
+    <div id="squadraLoadError" class="alert alert-danger d-none"></div>
+
+    <div id="squadraContent"></div>
 </div>
+
+<div class="modal fade" id="modificaGiocatoreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dettaglio giocatore</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row mb-3">
+                    <dt class="col-5">Nome</dt><dd class="col-7" id="modNome"></dd>
+                    <dt class="col-5">Cognome</dt><dd class="col-7" id="modCognome"></dd>
+                    <dt class="col-5">Ruolo</dt><dd class="col-7" id="modRuolo"></dd>
+                    <dt class="col-5">Data di nascita</dt><dd class="col-7" id="modDataNascita"></dd>
+                    <dt class="col-5">Valore (VDM) &euro;</dt><dd class="col-7" id="modValore"></dd>
+                    <dt class="col-5">Stipendio &euro;</dt><dd class="col-7" id="modStipendio"></dd>
+                </dl>
+                <label for="modStato" class="form-label fw-bold">Stato</label>
+                <select class="form-select" id="modStato">
+                    @foreach (var stato in statiGiocatore)
+                    {
+                        <option value="@stato">@(string.IsNullOrEmpty(stato) ? "—" : stato)</option>
+                    }
+                </select>
+                <div class="text-danger small mt-2 d-none" id="modErrore"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="modSalva"><i class="bi bi-check-lg me-1"></i>Salva</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@{
+    var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+}
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        (function () {
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            const ownIdSquadra = @(Html.Raw(System.Text.Json.JsonSerializer.Serialize((int?)ViewBag.IdSquadraUtenteCorrente, jsonOptions)));
+            const contentEl = document.getElementById('squadraContent');
+            const titoloEl = document.getElementById('squadraTitolo');
+            const selectEl = document.getElementById('squadraSelect');
+            const bannerEl = document.getElementById('superAdminBanner');
+            const errorEl = document.getElementById('squadraLoadError');
+            const modalEl = document.getElementById('modificaGiocatoreModal');
+            const modal = new bootstrap.Modal(modalEl);
+
+            let currentData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, jsonOptions));
+            const nuoviGiocatoriIds = new Set();
+
+            function euro(v) {
+                return v === null || v === undefined ? '—' : Number(v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+            }
+
+            function formatData(iso) {
+                if (!iso) return '—';
+                const d = new Date(iso);
+                return d.toLocaleDateString('it-IT');
+            }
+
+            async function apiFetch(url, options = {}) {
+                const res = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                        ...(options.headers || {})
+                    }
+                });
+                if (!res.ok) {
+                    let message = `Operazione non riuscita (HTTP ${res.status}).`;
+                    try {
+                        const body = await res.json();
+                        if (body?.error) message = body.error;
+                    } catch { /* risposta senza corpo JSON, va bene il messaggio generico */ }
+                    throw new Error(message);
+                }
+                return res.status === 204 ? null : res.json();
+            }
+
+            function renderInfo(info) {
+                return `
+                    <div class="col-12 col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <h2 class="h5 mb-3">Squadra</h2>
+                            <dl class="row mb-0 small">
+                                <dt class="col-6">Presidente</dt><dd class="col-6">${info.presidente ?? ''}</dd>
+                                <dt class="col-6">Vice presidente</dt><dd class="col-6">${info.vicePresidente ?? ''}</dd>
+                                <dt class="col-6">Allenatore</dt><dd class="col-6">${info.allenatore ?? ''}</dd>
+                                <dt class="col-6">Contratto allenatore</dt>
+                                <dd class="col-6">${info.durataContrattoAllenatore} mesi &mdash; ${euro(info.stipendioAllenatore)}</dd>
+                            </dl>
+                            <hr />
+                            <div class="row text-center small g-2">
+                                <div class="col-4"><div class="fw-bold fs-5">${info.tesserati}</div>Tesserati</div>
+                                <div class="col-4"><div class="fw-bold fs-5">${info.inPrestito}</div>In prestito</div>
+                                <div class="col-4"><div class="fw-bold fs-5">${info.inRosa}</div>In rosa</div>
+                                <div class="col-4"><div class="fw-bold fs-5">${info.aPrestito}</div>A prestito</div>
+                                <div class="col-4"><div class="fw-bold fs-5">${info.listaA}</div>Lista A</div>
+                                <div class="col-4"><div class="fw-bold fs-5">${info.under22InRosa}</div>Under 22 in rosa</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <h2 class="h5 mb-3">Finanze</h2>
+                            <dl class="row mb-0 small">
+                                <dt class="col-8">Rimanenza stagione precedente</dt><dd class="col-4 text-end">${euro(info.rimanenzaStagionePrecedente)}</dd>
+                                <dt class="col-8">Refill ranking</dt><dd class="col-4 text-end">${euro(info.refillRanking)}</dd>
+                                <dt class="col-8">Refill valore società</dt><dd class="col-4 text-end">${euro(info.refillValoreSocieta)}</dd>
+                                <dt class="col-8">Refill stadio</dt><dd class="col-4 text-end">${euro(info.refillStadio)}</dd>
+                                <dt class="col-8">Refill stipendi</dt><dd class="col-4 text-end">${euro(info.refillStipendi)}</dd>
+                                <dt class="col-8">Monte stipendi andata</dt><dd class="col-4 text-end">${euro(info.monteStipendiAndata)}</dd>
+                                <dt class="col-8">Monte stipendi ritorno</dt><dd class="col-4 text-end">${euro(info.monteStipendiRitorno)}</dd>
+                                <dt class="col-8">Bilancio mercato</dt><dd class="col-4 text-end">${euro(info.bilancioMercato)}</dd>
+                                <dt class="col-8 fw-bold">Fair play finanziario</dt><dd class="col-4 text-end fw-bold">${euro(info.fairPlayFinanziario)}</dd>
+                            </dl>
+                        </div>
+                    </div>`;
+            }
+
+            function renderSearchBar() {
+                return `
+                    <div class="position-relative mb-3" style="max-width:420px;">
+                        <label for="giocatoreSearchInput" class="form-label small text-body-secondary mb-1">Aggiungi un giocatore</label>
+                        <input type="search" id="giocatoreSearchInput" class="form-control" placeholder="Cerca un giocatore svincolato per nome..." autocomplete="off">
+                        <div id="giocatoreSearchResults" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index:1000; max-height:280px; overflow-y:auto;"></div>
+                    </div>`;
+            }
+
+            function renderRosaRow(g) {
+                const isNuovo = nuoviGiocatoriIds.has(g.id);
+                const azioni = currentData.puoModificare ? `
+                    <td class="text-nowrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary cms-modifica-giocatore" data-id="${g.id}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger cms-rimuovi-giocatore" data-id="${g.id}" data-nome="${g.nomeCompleto}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>` : '';
+                return `
+                    <tr class="${isNuovo ? 'table-success' : ''}">
+                        <td>${g.id}</td>
+                        <td>${g.stato ?? ''}</td>
+                        <td>${g.u22 ? 'U22' : ''}</td>
+                        <td>${g.ruolo ?? ''}</td>
+                        <td>${g.eta}</td>
+                        <td>${g.nomeCompleto}${isNuovo ? ' <span class="badge bg-success ms-1">Nuovo</span>' : ''}</td>
+                        <td>${g.valoreDiMercato != null ? Number(g.valoreDiMercato).toLocaleString('it-IT', { minimumFractionDigits: 1 }) : '—'}</td>
+                        <td>${g.stipendio != null ? Number(g.stipendio).toLocaleString('it-IT', { minimumFractionDigits: 1 }) : '—'}</td>
+                        ${azioni}
+                    </tr>`;
+            }
+
+            function renderRosa(data) {
+                const azioniHeader = data.puoModificare ? '<th scope="col">Azioni</th>' : '';
+                const rows = data.rosa.length === 0
+                    ? `<tr><td colspan="9" class="text-body-secondary">Nessun giocatore in rosa.</td></tr>`
+                    : data.rosa.map(renderRosaRow).join('');
+
+                return `
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h5 mb-0">Rosa</h2>
+                    </div>
+                    ${data.puoModificare ? renderSearchBar() : ''}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Id</th>
+                                    <th scope="col">Stato</th>
+                                    <th scope="col">U22</th>
+                                    <th scope="col">Ruolo</th>
+                                    <th scope="col">Età</th>
+                                    <th scope="col">Nome</th>
+                                    <th scope="col">VDM</th>
+                                    <th scope="col">Stipendio</th>
+                                    ${azioniHeader}
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>`;
+            }
+
+            function renderSquadra(data) {
+                currentData = data;
+                titoloEl.textContent = data.info.nomeSquadra;
+                document.title = data.info.nomeSquadra;
+                bannerEl.classList.toggle('d-none', !data.isSuperAdminOverride);
+                if (selectEl.value !== String(data.info.idSquadra)) selectEl.value = data.info.idSquadra;
+
+                contentEl.innerHTML = `
+                    ${!data.info.abilitaModifica ? '<div class="alert alert-warning">Le modifiche alla rosa non sono al momento consentite (mercato chiuso).</div>' : ''}
+                    <div class="row g-4 mb-4">${renderInfo(data.info)}</div>
+                    ${renderRosa(data)}`;
+
+                wireRosaEvents();
+                wireSearchBar();
+            }
+
+            // --- Cambio squadra dal selettore: fetch senza reload, URL aggiornata via
+            // pushState (bookmarkabile/condivisibile, a differenza del legacy che non
+            // cambiava mai URL, ma senza il costo di un reload completo di pagina). ---
+            async function switchSquadra(idSquadra, { pushState = true } = {}) {
+                errorEl.classList.add('d-none');
+                selectEl.disabled = true;
+                try {
+                    const data = await apiFetch(`/area-riservata/api/squadre/${idSquadra}`);
+                    renderSquadra(data);
+                    if (pushState) {
+                        const url = idSquadra === ownIdSquadra ? '/area-riservata' : `/area-riservata/altre-squadre/${idSquadra}`;
+                        history.pushState({ idSquadra }, '', url);
+                    }
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.classList.remove('d-none');
+                    selectEl.value = currentData.info.idSquadra;
+                } finally {
+                    selectEl.disabled = false;
+                }
+            }
+
+            selectEl.addEventListener('change', () => switchSquadra(Number(selectEl.value)));
+
+            window.addEventListener('popstate', (e) => {
+                const idSquadra = e.state?.idSquadra ?? ownIdSquadra;
+                switchSquadra(idSquadra, { pushState: false });
+            });
+
+            // --- Ricerca/aggiunta giocatore (autocompletamento) ---
+            function wireSearchBar() {
+                const input = document.getElementById('giocatoreSearchInput');
+                const results = document.getElementById('giocatoreSearchResults');
+                if (!input) return;
+
+                let debounceTimer = null;
+
+                input.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    const q = input.value.trim();
+                    if (q.length < 2) {
+                        results.classList.add('d-none');
+                        results.innerHTML = '';
+                        return;
+                    }
+                    debounceTimer = setTimeout(async () => {
+                        try {
+                            const matches = await apiFetch(`/area-riservata/api/giocatori/cerca?q=${encodeURIComponent(q)}`);
+                            if (matches.length === 0) {
+                                results.innerHTML = '<div class="list-group-item text-body-secondary small">Nessun giocatore trovato.</div>';
+                            } else {
+                                results.innerHTML = matches.map(m => `
+                                    <button type="button" class="list-group-item list-group-item-action cms-aggiungi-giocatore" data-id="${m.id}">
+                                        <strong>${m.nomeCompleto}</strong>
+                                        <span class="text-body-secondary small"> — ${m.ruolo ?? ''}</span>
+                                    </button>`).join('');
+                            }
+                            results.classList.remove('d-none');
+                        } catch (err) {
+                            results.innerHTML = `<div class="list-group-item text-danger small">${err.message}</div>`;
+                            results.classList.remove('d-none');
+                        }
+                    }, 300);
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!results.contains(e.target) && e.target !== input) {
+                        results.classList.add('d-none');
+                    }
+                });
+
+                results.addEventListener('click', async (e) => {
+                    const btn = e.target.closest('.cms-aggiungi-giocatore');
+                    if (!btn) return;
+                    const idGiocatore = Number(btn.dataset.id);
+                    try {
+                        const data = await apiFetch(`/area-riservata/api/squadre/${currentData.info.idSquadra}/giocatori/${idGiocatore}`, { method: 'POST' });
+                        nuoviGiocatoriIds.add(idGiocatore);
+                        input.value = '';
+                        results.classList.add('d-none');
+                        results.innerHTML = '';
+                        renderSquadra(data);
+                    } catch (err) {
+                        results.innerHTML = `<div class="list-group-item text-danger small">${err.message}</div>`;
+                    }
+                });
+            }
+
+            // --- Modifica/rimozione giocatore in rosa ---
+            let giocatoreInModifica = null;
+
+            function wireRosaEvents() {
+                contentEl.querySelectorAll('.cms-modifica-giocatore').forEach(btn => {
+                    btn.addEventListener('click', () => apriModaleModifica(Number(btn.dataset.id)));
+                });
+                contentEl.querySelectorAll('.cms-rimuovi-giocatore').forEach(btn => {
+                    btn.addEventListener('click', () => rimuoviGiocatore(Number(btn.dataset.id), btn.dataset.nome));
+                });
+            }
+
+            function apriModaleModifica(idGiocatore) {
+                giocatoreInModifica = currentData.rosa.find(g => g.id === idGiocatore);
+                if (!giocatoreInModifica) return;
+
+                document.getElementById('modNome').textContent = giocatoreInModifica.nome;
+                document.getElementById('modCognome').textContent = giocatoreInModifica.cognome;
+                document.getElementById('modRuolo').textContent = giocatoreInModifica.ruolo ?? '—';
+                document.getElementById('modDataNascita').textContent = formatData(giocatoreInModifica.dataDiNascita);
+                document.getElementById('modValore').textContent = euro(giocatoreInModifica.valoreDiMercato);
+                document.getElementById('modStipendio').textContent = euro(giocatoreInModifica.stipendio);
+                document.getElementById('modStato').value = giocatoreInModifica.stato ?? '';
+                document.getElementById('modErrore').classList.add('d-none');
+
+                modal.show();
+            }
+
+            document.getElementById('modSalva').addEventListener('click', async () => {
+                if (!giocatoreInModifica) return;
+                const modErrore = document.getElementById('modErrore');
+                modErrore.classList.add('d-none');
+                try {
+                    const data = await apiFetch(
+                        `/area-riservata/api/squadre/${currentData.info.idSquadra}/giocatori/${giocatoreInModifica.id}`,
+                        {
+                            method: 'PUT',
+                            body: JSON.stringify({ mesi: giocatoreInModifica.mesi, stato: document.getElementById('modStato').value || null })
+                        }
+                    );
+                    modal.hide();
+                    renderSquadra(data);
+                } catch (err) {
+                    modErrore.textContent = err.message;
+                    modErrore.classList.remove('d-none');
+                }
+            });
+
+            async function rimuoviGiocatore(idGiocatore, nome) {
+                if (!confirm(`Rimuovere ${nome} dalla rosa?`)) return;
+                try {
+                    const data = await apiFetch(`/area-riservata/api/squadre/${currentData.info.idSquadra}/giocatori/${idGiocatore}`, { method: 'DELETE' });
+                    renderSquadra(data);
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.classList.remove('d-none');
+                }
+            }
+
+            // Primo rendering: dati già presenti dal caricamento server-side iniziale,
+            // nessuna fetch necessaria al caricamento della pagina.
+            renderSquadra(currentData);
+        })();
+    </script>
+}

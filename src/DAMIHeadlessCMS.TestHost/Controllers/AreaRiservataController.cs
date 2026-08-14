@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using DAMIHeadlessCMS.Admin.Ffm.Data;
-using DAMIHeadlessCMS.Admin.Ffm.Models;
 using DAMIHeadlessCMS.TestHost.Models.PublicSite;
 using DAMIHeadlessCMS.TestHost.PublicSite;
 using Microsoft.AspNetCore.Authentication;
@@ -10,25 +9,33 @@ using Microsoft.AspNetCore.Mvc;
 namespace DAMIHeadlessCMS.TestHost.Controllers;
 
 /// <summary>
-/// Area Riservata (vedi docs/ROADMAP.md, migrazione pagine legacy). Checkpoint 2a+2b
-/// completati: vista squadra propria/Altre Squadre (sola lettura) e azioni di modifica
-/// (stato/mesi giocatore, rimozione dalla rosa, aggiunta svincolato). Riusa
-/// <see cref="IFfmSquadraRepository"/> (fase 7, già registrato in DI per il backoffice):
-/// stessa fonte dati, nessuna nuova query. Autenticazione su WN_Utenti, schema cookie
-/// separato da Identity (vedi <see cref="PublicAuthSchemes"/>). Ogni azione di scrittura
-/// verifica sempre che il giocatore appartenga alla squadra del claim IdSquadra
-/// dell'utente autenticato, mai fidandosi del solo id nella route.
+/// Area Riservata (vedi docs/ROADMAP.md, migrazione pagine legacy). Responsabile
+/// solo del rendering iniziale delle pagine (login/logout, propria squadra o
+/// un'altra per url diretto/bookmark) — le azioni di scrittura sulla rosa
+/// (aggiungi/modifica/rimuovi giocatore) e il cambio squadra "in-place" dal
+/// selettore vivono in <see cref="AreaRiservataApiController"/>, consumata via
+/// fetch() da Views/AreaRiservata/Index.cshtml senza reload di pagina — stesso
+/// modello dati (<see cref="SquadraViewModel"/>) sia al primo caricamento
+/// server-side sia negli aggiornamenti successivi via API, per evitare due
+/// formati diversi da tenere allineati.
+///
+/// Riusa <see cref="IFfmSquadraRepository"/> (fase 7, già registrato in DI per
+/// il backoffice): stessa fonte dati, nessuna nuova query. Autenticazione su
+/// WN_Utenti, schema cookie separato da Identity (vedi
+/// <see cref="PublicAuthSchemes"/>).
 /// </summary>
 [Route("area-riservata")]
 public class AreaRiservataController : Controller
 {
     private readonly PublicUserRepository _users;
     private readonly IFfmSquadraRepository _squadre;
+    private readonly AreaRiservataAuthorizationService _authorization;
 
-    public AreaRiservataController(PublicUserRepository users, IFfmSquadraRepository squadre)
+    public AreaRiservataController(PublicUserRepository users, IFfmSquadraRepository squadre, AreaRiservataAuthorizationService authorization)
     {
         _users = users;
         _squadre = squadre;
+        _authorization = authorization;
     }
 
     [HttpGet("login")]
@@ -105,7 +112,7 @@ public class AreaRiservataController : Controller
     [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var idSquadra = GetCurrentIdSquadra();
+        var idSquadra = User.GetIdSquadra();
         if (idSquadra is null)
         {
             // Utente valido ma senza squadra associata (UT_Squadra nullo) — nessun
@@ -113,197 +120,40 @@ public class AreaRiservataController : Controller
             return View("NessunaSquadra");
         }
 
-        var model = await BuildTeamViewModelAsync(idSquadra.Value, isOwnTeam: true, ct);
+        var model = await BuildTeamViewModelAsync(idSquadra.Value, ct);
         if (model is null)
         {
             return View("NessunaSquadra");
         }
 
+        ViewBag.IdSquadraUtenteCorrente = idSquadra;
         return View(model);
     }
 
-    [HttpGet("altre-squadre")]
-    [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
-    public async Task<IActionResult> AltreSquadre(CancellationToken ct)
-    {
-        var squadre = await _squadre.GetSquadreListAsync(ct);
-        return View(squadre);
-    }
-
+    /// <summary>
+    /// Ingresso diretto/bookmark su un'altra squadra (es. link condiviso, o URL
+    /// aggiornata via history.pushState dal selettore lato client — vedi
+    /// Index.cshtml). Stessa view della squadra propria: se l'utente non ha i
+    /// permessi di modifica su questa squadra (non è la propria e non è
+    /// super-admin, o il mercato è chiuso), PuoModificare è semplicemente false
+    /// e i controlli di modifica non compaiono — nessun redirect o errore, dato
+    /// che consultare un'altra squadra in sola lettura è sempre permesso.
+    /// </summary>
     [HttpGet("altre-squadre/{idSquadra:int}")]
     [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
     public async Task<IActionResult> AltraSquadra(int idSquadra, CancellationToken ct)
     {
-        var model = await BuildTeamViewModelAsync(idSquadra, isOwnTeam: false, ct);
+        var model = await BuildTeamViewModelAsync(idSquadra, ct);
         if (model is null)
         {
             return NotFound();
         }
 
-        // Stessa view della squadra propria: PuoModificare è già false (isOwnTeam: false),
-        // quindi i link di modifica (checkpoint 2b) non compariranno.
+        ViewBag.IdSquadraUtenteCorrente = User.GetIdSquadra();
         return View("Index", model);
     }
 
-    [HttpGet("giocatori/{idGiocatore:int}/modifica")]
-    [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
-    public async Task<IActionResult> ModificaGiocatore(int idGiocatore, CancellationToken ct)
-    {
-        var idSquadra = GetCurrentIdSquadra();
-        if (idSquadra is null)
-        {
-            return RedirectToAction(nameof(Index));
-        }
-
-        var info = await _squadre.GetInfoSquadraAsync(idSquadra.Value, ct);
-        if (info is null || !info.AbilitaModifica)
-        {
-            TempData["Errore"] = "Le modifiche alla rosa non sono al momento consentite.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        // Non ci si fida del solo id nella route: il giocatore deve risultare
-        // davvero nella rosa della PROPRIA squadra (claim IdSquadra), mai in
-        // quella indicata da un eventuale parametro esterno.
-        var giocatore = await _squadre.GetDettaglioGiocatorePerSquadraAsync(idSquadra.Value, idGiocatore, ct);
-        if (giocatore is null)
-        {
-            return NotFound();
-        }
-
-        ViewBag.StatiGiocatore = StatiGiocatore;
-        return View(new ModificaGiocatoreViewModel
-        {
-            IdGiocatore = giocatore.Id,
-            NomeCompleto = giocatore.NomeCompleto,
-            Ruolo = giocatore.Ruolo,
-            Mesi = giocatore.Mesi,
-            Stato = giocatore.Stato
-        });
-    }
-
-    [HttpPost("giocatori/{idGiocatore:int}/modifica")]
-    [ValidateAntiForgeryToken]
-    [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
-    public async Task<IActionResult> ModificaGiocatore(int idGiocatore, ModificaGiocatoreViewModel model, CancellationToken ct)
-    {
-        var idSquadra = GetCurrentIdSquadra();
-        if (idSquadra is null)
-        {
-            return RedirectToAction(nameof(Index));
-        }
-
-        var info = await _squadre.GetInfoSquadraAsync(idSquadra.Value, ct);
-        var giocatore = await _squadre.GetDettaglioGiocatorePerSquadraAsync(idSquadra.Value, idGiocatore, ct);
-        if (giocatore is null)
-        {
-            return NotFound();
-        }
-
-        if (info is null || !info.AbilitaModifica)
-        {
-            ModelState.AddModelError(string.Empty, "Le modifiche alla rosa non sono al momento consentite.");
-        }
-
-        if (!ModelState.IsValid)
-        {
-            ViewBag.StatiGiocatore = StatiGiocatore;
-            model.NomeCompleto = giocatore.NomeCompleto;
-            model.Ruolo = giocatore.Ruolo;
-            return View(model);
-        }
-
-        await _squadre.AggiornaDettaglioGiocatorePerSquadraAsync(
-            idSquadra.Value, idGiocatore, model.Mesi, model.Stato, GetCurrentIdUtente(), ct);
-
-        TempData["Messaggio"] = "Giocatore aggiornato.";
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost("giocatori/{idGiocatore:int}/rimuovi")]
-    [ValidateAntiForgeryToken]
-    [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
-    public async Task<IActionResult> RimuoviGiocatore(int idGiocatore, CancellationToken ct)
-    {
-        var idSquadra = GetCurrentIdSquadra();
-        if (idSquadra is null)
-        {
-            return RedirectToAction(nameof(Index));
-        }
-
-        var info = await _squadre.GetInfoSquadraAsync(idSquadra.Value, ct);
-        if (info is null || !info.AbilitaModifica)
-        {
-            TempData["Errore"] = "Le modifiche alla rosa non sono al momento consentite.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        var giocatore = await _squadre.GetDettaglioGiocatorePerSquadraAsync(idSquadra.Value, idGiocatore, ct);
-        if (giocatore is null)
-        {
-            return NotFound();
-        }
-
-        await _squadre.EliminaGiocatorePerSquadraAsync(idSquadra.Value, idGiocatore, ct);
-
-        TempData["Messaggio"] = "Giocatore rimosso dalla rosa.";
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet("giocatori/aggiungi")]
-    [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
-    public async Task<IActionResult> AggiungiGiocatore(CancellationToken ct)
-    {
-        var idSquadra = GetCurrentIdSquadra();
-        if (idSquadra is null)
-        {
-            return RedirectToAction(nameof(Index));
-        }
-
-        var info = await _squadre.GetInfoSquadraAsync(idSquadra.Value, ct);
-        if (info is null || !info.AbilitaModifica)
-        {
-            TempData["Errore"] = "Le modifiche alla rosa non sono al momento consentite.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        var disponibili = await _squadre.GetGiocatoriSvincolatiAsync(ct);
-        return View(new AggiungiGiocatoreViewModel { Disponibili = disponibili });
-    }
-
-    [HttpPost("giocatori/aggiungi")]
-    [ValidateAntiForgeryToken]
-    [Authorize(AuthenticationSchemes = PublicAuthSchemes.Cookie)]
-    public async Task<IActionResult> AggiungiGiocatore(AggiungiGiocatoreViewModel model, CancellationToken ct)
-    {
-        var idSquadra = GetCurrentIdSquadra();
-        if (idSquadra is null)
-        {
-            return RedirectToAction(nameof(Index));
-        }
-
-        var info = await _squadre.GetInfoSquadraAsync(idSquadra.Value, ct);
-        if (info is null || !info.AbilitaModifica)
-        {
-            ModelState.AddModelError(string.Empty, "Le modifiche alla rosa non sono al momento consentite.");
-        }
-
-        if (!ModelState.IsValid)
-        {
-            model.Disponibili = await _squadre.GetGiocatoriSvincolatiAsync(ct);
-            return View(model);
-        }
-
-        await _squadre.AggiungiGiocatorePerSquadraAsync(
-            idSquadra.Value, model.IdGiocatoreSelezionato!.Value, model.ValoreDiMercato, model.Stipendio, GetCurrentIdUtente(), ct);
-
-        TempData["Messaggio"] = "Giocatore aggiunto alla rosa.";
-        return RedirectToAction(nameof(Index));
-    }
-
-    private static readonly string[] StatiGiocatore = ["", "Lista A", "Lista A (Pr)", "No Serie A", "In prestito", "Fuori Rosa"];
-
-    private async Task<SquadraViewModel?> BuildTeamViewModelAsync(int idSquadra, bool isOwnTeam, CancellationToken ct)
+    private async Task<SquadraViewModel?> BuildTeamViewModelAsync(int idSquadra, CancellationToken ct)
     {
         var info = await _squadre.GetInfoSquadraAsync(idSquadra, ct);
         if (info is null)
@@ -311,24 +161,20 @@ public class AreaRiservataController : Controller
             return null;
         }
 
+        var idSquadraUtente = User.GetIdSquadra();
+        var idUtente = User.GetIdUtente();
+        var puoModificare = _authorization.CanEdit(idSquadra, idSquadraUtente, idUtente, info.AbilitaModifica);
+
         var rosa = await _squadre.GetRosaAsync(idSquadra, ct);
+        var tutteLeSquadre = await _squadre.GetSquadreListAsync(ct);
+
         return new SquadraViewModel
         {
             Info = info,
             Rosa = rosa,
-            PuoModificare = isOwnTeam && info.AbilitaModifica
+            PuoModificare = puoModificare,
+            IsSuperAdminOverride = puoModificare && idSquadra != idSquadraUtente,
+            TutteLeSquadre = tutteLeSquadre
         };
-    }
-
-    private int? GetCurrentIdSquadra()
-    {
-        var claim = User.FindFirst("IdSquadra")?.Value;
-        return int.TryParse(claim, out var id) ? id : null;
-    }
-
-    private int? GetCurrentIdUtente()
-    {
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.TryParse(claim, out var id) ? id : null;
     }
 }

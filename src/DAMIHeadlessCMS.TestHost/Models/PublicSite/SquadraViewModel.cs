@@ -13,6 +13,23 @@ public class SquadraViewModel
 
     public required IReadOnlyList<GiocatoreSquadraDto> Rosa { get; init; }
 
-    /// <summary>True solo per la propria squadra, e solo se Info.AbilitaModifica lo consente (es. mercato aperto).</summary>
+    /// <summary>
+    /// True se l'utente corrente può modificare QUESTA squadra: o perché è la
+    /// propria (e Info.AbilitaModifica lo consente), o perché l'utente è uno dei
+    /// super-admin configurati in PublicSite:AreaRiservataSuperAdminUserIds
+    /// (comunque soggetto a Info.AbilitaModifica — un super-admin non forza
+    /// l'edit a mercato chiuso, si limita a poter editare squadre non proprie).
+    /// </summary>
     public bool PuoModificare { get; init; }
+
+    /// <summary>
+    /// True quando PuoModificare è true ma la squadra NON è quella dell'utente
+    /// corrente: sta modificando come super-admin. Usato solo per mostrare un
+    /// avviso esplicito in pagina — non è una condizione di sicurezza (quella è
+    /// già applicata interamente lato server per ogni singola scrittura).
+    /// </summary>
+    public bool IsSuperAdminOverride { get; init; }
+
+    /// <summary>Elenco di tutte le squadre, per il selettore "vuoi consultare un'altra squadra?".</summary>
+    public required IReadOnlyList<SquadraListItemDto> TutteLeSquadre { get; init; }
 }
