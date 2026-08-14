@@ -42,10 +42,16 @@ public class AreaRiservataApiController : ControllerBase
         _authorization = authorization;
     }
 
-    /// <summary>Elenco squadre per il selettore "vuoi consultare un'altra squadra?".</summary>
+    /// <summary>
+    /// Elenco squadre "attive" per il selettore "vuoi consultare un'altra
+    /// squadra?" — stesso filtro dell'endpoint legacy "api/club/squadreattive"
+    /// (solo squadre con un presidente utente attivo associato). Non l'elenco
+    /// completo usato dal backoffice: vedi
+    /// <see cref="IFfmSquadraRepository.GetSquadreAttiveAsync"/>.
+    /// </summary>
     [HttpGet("squadre")]
     public async Task<ActionResult<IReadOnlyList<SquadraListItemDto>>> GetSquadre(CancellationToken ct)
-        => Ok(await _squadre.GetSquadreListAsync(ct));
+        => Ok(await _squadre.GetSquadreAttiveAsync(ct));
 
     /// <summary>
     /// Dati completi di una squadra (info, finanze, rosa, permesso di modifica per
@@ -170,7 +176,7 @@ public class AreaRiservataApiController : ControllerBase
         var puoAggiungereRimuovere = _authorization.CanAddOrRemove(idUtente, info.AbilitaModifica);
 
         var rosa = await _squadre.GetRosaAsync(idSquadra, ct);
-        var tutteLeSquadre = await _squadre.GetSquadreListAsync(ct);
+        var tutteLeSquadre = await _squadre.GetSquadreAttiveAsync(ct);
 
         return new SquadraViewModel
         {

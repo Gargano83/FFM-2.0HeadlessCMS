@@ -56,6 +56,48 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         return results;
     }
 
+    // Stesso filtro della query legacy "Club_GetSquadreAttive": una squadra è
+    // "attiva" se ha un utente presidente (UT_TIPOLOGIA = 4) attivo (UT_attivo = 1)
+    // associato tramite UT_Squadra. A differenza di SquadreListSql, filtra
+    // deliberatamente — è pensata solo per il selettore dell'Area Riservata, mai
+    // per l'elenco squadre del backoffice (che deve restare completo).
+    private const string SquadreAttiveSql = """
+        SELECT S.Id,
+               dbo.udf_Localize(S.Nome, @Lg, @LgDef, '') AS Nome,
+               S.Presidente,
+               S.Allenatore
+        FROM FFM.Squadre S
+        INNER JOIN WN_UTENTI U ON U.UT_Squadra = S.Id
+        WHERE ISNULL(U.UT_TIPOLOGIA, 0) = 4
+          AND ISNULL(U.UT_attivo, 0) = 1
+        ORDER BY Nome;
+        """;
+
+    public async Task<IReadOnlyList<SquadraListItemDto>> GetSquadreAttiveAsync(CancellationToken ct = default)
+    {
+        var results = new List<SquadraListItemDto>();
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(SquadreAttiveSql, connection);
+        AddLanguageParameters(command);
+
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add(new SquadraListItemDto
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                Nome = reader["Nome"] as string ?? string.Empty,
+                Presidente = reader["Presidente"] as string,
+                Allenatore = reader["Allenatore"] as string
+            });
+        }
+
+        return results;
+    }
+
     // Stessa aggregazione della query legacy GetInfoSquadraById: conteggi
     // Tesserati/InPrestito/InRosa/APrestito/ListaA/Under22InRosa filtrati
     // sulla stagione attiva, più il calcolo "over 22 portieri" per ListaA.
@@ -306,7 +348,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
     // una stagione attiva in FFM.Lega, altrimenti l'operazione non ha effetto
     // (nessuna eccezione, comportamento legacy preservato).
     private const string AggiungiGiocatoreSql = """
-        DECLARE @Stagione VARCHAR(50) = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
+        DECLARE @Stagione INT = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
         IF @Stagione IS NOT NULL
         BEGIN
             INSERT INTO FFM.SquadreRelGiocatori (IdSquadra, IdGiocatore, ValoreDiMercato, Stipendio, Stagione, IdUtente)

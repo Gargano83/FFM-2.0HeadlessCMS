@@ -167,7 +167,7 @@ public class AreaRiservataController : Controller
         var puoAggiungereRimuovere = _authorization.CanAddOrRemove(idUtente, info.AbilitaModifica);
 
         var rosa = await _squadre.GetRosaAsync(idSquadra, ct);
-        var tutteLeSquadre = await _squadre.GetSquadreListAsync(ct);
+        var tutteLeSquadre = await _squadre.GetSquadreAttiveAsync(ct);
 
         return new SquadraViewModel
         {

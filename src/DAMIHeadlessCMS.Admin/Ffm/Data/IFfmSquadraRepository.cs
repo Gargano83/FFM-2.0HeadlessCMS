@@ -11,8 +11,17 @@ namespace DAMIHeadlessCMS.Admin.Ffm.Data;
 /// </summary>
 public interface IFfmSquadraRepository
 {
-    /// <summary>Elenco leggero delle squadre (pagina indice /dami/ffm/squadre), con nome già localizzato.</summary>
+    /// <summary>Tutte le squadre — per l'amministrazione (backoffice): nessun filtro, stesso comportamento dell'endpoint legacy "api/club/squadre".</summary>
     Task<IReadOnlyList<SquadraListItemDto>> GetSquadreListAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Solo le squadre "attive" — stesso filtro dell'endpoint legacy
+    /// "api/club/squadreattive": una squadra è attiva se ha un utente
+    /// WN_UTENTI con UT_TIPOLOGIA = 4 (presidente) e UT_attivo = 1 associato
+    /// (UT_Squadra). Pensato per il selettore dell'Area Riservata — non usare
+    /// per l'elenco squadre del backoffice, che deve restare completo.
+    /// </summary>
+    Task<IReadOnlyList<SquadraListItemDto>> GetSquadreAttiveAsync(CancellationToken ct = default);
 
     Task<InfoSquadraDto?> GetInfoSquadraAsync(int idSquadra, CancellationToken ct = default);
 

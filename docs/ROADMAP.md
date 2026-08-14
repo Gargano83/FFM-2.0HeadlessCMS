@@ -805,6 +805,16 @@ com'è, nessuna modifica.
       pertinenti) sia — l'unica cosa che conta davvero — lato server: le
       due azioni POST/DELETE di `AreaRiservataApiController` ora usano
       `CheckCanAddOrRemoveAsync` invece del generico `CheckCanEditAsync`.
+  - **Checkpoint 3.2 — Filtro "squadre attive" nel selettore** ✅: il
+    selettore squadre riusava `GetSquadreListAsync` (elenco completo, senza
+    filtri, usato anche dal backoffice per l'amministrazione) — nel legacy
+    invece il selettore chiama un endpoint diverso, `api/club/squadreattive`,
+    che filtra alle sole squadre con un utente presidente attivo associato
+    (`WN_UTENTI.UT_TIPOLOGIA = 4 AND UT_attivo = 1`, join su `UT_Squadra`).
+    Nuovo metodo dedicato `IFfmSquadraRepository.GetSquadreAttiveAsync`
+    (stessa query del legacy), usato **solo** dall'Area Riservata — il
+    backoffice (`FfmController`/`FfmSquadreApiController`) continua a usare
+    l'elenco completo non filtrato, comportamento invariato lì.
 
 Con questo, la migrazione delle pagine pubbliche elencate nel PDF di
 riferimento è completa.
