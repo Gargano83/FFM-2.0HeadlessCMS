@@ -164,6 +164,7 @@ public class AreaRiservataController : Controller
         var idSquadraUtente = User.GetIdSquadra();
         var idUtente = User.GetIdUtente();
         var puoModificare = _authorization.CanEdit(idSquadra, idSquadraUtente, idUtente, info.AbilitaModifica);
+        var puoAggiungereRimuovere = _authorization.CanAddOrRemove(idUtente, info.AbilitaModifica);
 
         var rosa = await _squadre.GetRosaAsync(idSquadra, ct);
         var tutteLeSquadre = await _squadre.GetSquadreListAsync(ct);
@@ -173,6 +174,7 @@ public class AreaRiservataController : Controller
             Info = info,
             Rosa = rosa,
             PuoModificare = puoModificare,
+            PuoAggiungereRimuovere = puoAggiungereRimuovere,
             IsSuperAdminOverride = puoModificare && idSquadra != idSquadraUtente,
             TutteLeSquadre = tutteLeSquadre
         };

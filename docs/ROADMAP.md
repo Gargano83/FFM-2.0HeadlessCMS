@@ -789,6 +789,22 @@ com'è, nessuna modifica.
       configurazione già in uso per l'upload immagini del blocco pagine),
       non come campo di un form — coerente con un'API consumata da
       `fetch()`, non da un `<form>` classico.
+  - **Checkpoint 3.1 — Permessi granulari: modifica vs aggiungi/rimuovi** ✅:
+    correzione a valle di verifica puntuale di Alessio sul Checkpoint 3, che
+    usava un solo flag (`PuoModificare`) per governare sia la modifica dello
+    Stato sia l'aggiunta/rimozione dal roster. Regola corretta, con due
+    permessi ora distinti in `AreaRiservataAuthorizationService`:
+    - `CanEdit` (modifica Stato, modale): proprietario della squadra
+      **oppure** super-admin, con mercato aperto — invariato.
+    - `CanAddOrRemove` (barra di ricerca/aggiunta, cestino): **solo**
+      super-admin, con mercato aperto — **anche sulla propria squadra**: un
+      proprietario può modificare lo Stato dei propri giocatori ma non
+      alterare la composizione della rosa (aggiunta/rimozione riservata
+      all'amministrazione). Applicata sia lato UI (`PuoAggiungereRimuovere`
+      su `SquadraViewModel`, colonna Azioni e pulsanti mostrati solo se
+      pertinenti) sia — l'unica cosa che conta davvero — lato server: le
+      due azioni POST/DELETE di `AreaRiservataApiController` ora usano
+      `CheckCanAddOrRemoveAsync` invece del generico `CheckCanEditAsync`.
 
 Con questo, la migrazione delle pagine pubbliche elencate nel PDF di
 riferimento è completa.

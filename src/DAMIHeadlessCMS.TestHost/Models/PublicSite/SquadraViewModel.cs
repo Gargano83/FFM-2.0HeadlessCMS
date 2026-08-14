@@ -14,13 +14,25 @@ public class SquadraViewModel
     public required IReadOnlyList<GiocatoreSquadraDto> Rosa { get; init; }
 
     /// <summary>
-    /// True se l'utente corrente può modificare QUESTA squadra: o perché è la
-    /// propria (e Info.AbilitaModifica lo consente), o perché l'utente è uno dei
-    /// super-admin configurati in PublicSite:AreaRiservataSuperAdminUserIds
-    /// (comunque soggetto a Info.AbilitaModifica — un super-admin non forza
-    /// l'edit a mercato chiuso, si limita a poter editare squadre non proprie).
+    /// True se l'utente corrente può modificare lo Stato dei giocatori di
+    /// QUESTA squadra: o perché è la propria (e Info.AbilitaModifica lo
+    /// consente), o perché l'utente è uno dei super-admin configurati in
+    /// PublicSite:AreaRiservataSuperAdminUserIds (comunque soggetto a
+    /// Info.AbilitaModifica — un super-admin non forza l'edit a mercato
+    /// chiuso, si limita a poter editare squadre non proprie). NON governa
+    /// l'aggiunta/rimozione di giocatori: vedi <see cref="PuoAggiungereRimuovere"/>.
     /// </summary>
     public bool PuoModificare { get; init; }
+
+    /// <summary>
+    /// True se l'utente corrente può aggiungere/rimuovere giocatori dalla rosa
+    /// di questa squadra — riservato ai soli super-admin (con Info.AbilitaModifica),
+    /// anche sulla propria squadra: un proprietario può modificare lo Stato dei
+    /// propri giocatori (<see cref="PuoModificare"/>) ma non alterare la
+    /// composizione della rosa. Governa la visibilità della barra di ricerca e
+    /// del pulsante di rimozione.
+    /// </summary>
+    public bool PuoAggiungereRimuovere { get; init; }
 
     /// <summary>
     /// True quando PuoModificare è true ma la squadra NON è quella dell'utente

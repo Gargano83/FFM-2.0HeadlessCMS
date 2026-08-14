@@ -86,7 +86,7 @@ public class AreaRiservataApiController : ControllerBase
     [ValidateAntiForgeryToken]
     public async Task<ActionResult<SquadraViewModel>> AggiungiGiocatore(int idSquadra, int idGiocatore, CancellationToken ct)
     {
-        var authorizationError = await CheckCanEditAsync(idSquadra, ct);
+        var authorizationError = await CheckCanAddOrRemoveAsync(idSquadra, ct);
         if (authorizationError is not null)
         {
             return authorizationError;
@@ -133,7 +133,7 @@ public class AreaRiservataApiController : ControllerBase
     [ValidateAntiForgeryToken]
     public async Task<ActionResult<SquadraViewModel>> RimuoviGiocatore(int idSquadra, int idGiocatore, CancellationToken ct)
     {
-        var authorizationError = await CheckCanEditAsync(idSquadra, ct);
+        var authorizationError = await CheckCanAddOrRemoveAsync(idSquadra, ct);
         if (authorizationError is not null)
         {
             return authorizationError;
@@ -167,6 +167,7 @@ public class AreaRiservataApiController : ControllerBase
         var idSquadraUtente = User.GetIdSquadra();
         var idUtente = User.GetIdUtente();
         var puoModificare = _authorization.CanEdit(idSquadra, idSquadraUtente, idUtente, info.AbilitaModifica);
+        var puoAggiungereRimuovere = _authorization.CanAddOrRemove(idUtente, info.AbilitaModifica);
 
         var rosa = await _squadre.GetRosaAsync(idSquadra, ct);
         var tutteLeSquadre = await _squadre.GetSquadreListAsync(ct);
@@ -176,6 +177,7 @@ public class AreaRiservataApiController : ControllerBase
             Info = info,
             Rosa = rosa,
             PuoModificare = puoModificare,
+            PuoAggiungereRimuovere = puoAggiungereRimuovere,
             IsSuperAdminOverride = puoModificare && idSquadra != idSquadraUtente,
             TutteLeSquadre = tutteLeSquadre
         };
@@ -201,5 +203,29 @@ public class AreaRiservataApiController : ControllerBase
         // login) — comportamento corretto per una pagina HTML, sbagliato per
         // una risposta JSON attesa da fetch(). Qui serve un 403 pulito.
         return StatusCode(StatusCodes.Status403Forbidden, new { error = "Non hai i permessi per modificare questa squadra." });
+    }
+
+    /// <summary>
+    /// Come <see cref="CheckCanEditAsync"/> ma per aggiunta/rimozione giocatori,
+    /// riservata ai soli super-admin (vedi
+    /// <see cref="AreaRiservataAuthorizationService.CanAddOrRemove"/>) — anche
+    /// un proprietario della squadra bersaglio, senza essere super-admin,
+    /// riceve 403: nascondere i pulsanti in UI non è un controllo di sicurezza,
+    /// va sempre ri-applicata qui la stessa regola mostrata al client.
+    /// </summary>
+    private async Task<ActionResult?> CheckCanAddOrRemoveAsync(int idSquadra, CancellationToken ct)
+    {
+        var info = await _squadre.GetInfoSquadraAsync(idSquadra, ct);
+        if (info is null)
+        {
+            return NotFound(new { error = "Squadra non trovata." });
+        }
+
+        if (_authorization.CanAddOrRemove(User.GetIdUtente(), info.AbilitaModifica))
+        {
+            return null;
+        }
+
+        return StatusCode(StatusCodes.Status403Forbidden, new { error = "Solo un amministratore può aggiungere o rimuovere giocatori dalla rosa." });
     }
 }
