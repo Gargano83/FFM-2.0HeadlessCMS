@@ -1,9 +1,11 @@
 @using DAMIHeadlessCMS.TestHost.Models.PublicSite
 @model MainMenuViewModel
 
-<nav class="navbar navbar-expand-lg public-navbar sticky-top">
+<nav class="navbar navbar-expand-lg navbar-dark public-navbar sticky-top">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="/">FFM 2.0</a>
+        <a class="navbar-brand" href="/">
+            <img src="/img/FFM_Oriz_Bianco.png" alt="FFM - Fantasy Football Manager" class="ffm-logo" />
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavCollapse"
                 aria-controls="mainNavCollapse" aria-expanded="false" aria-label="Apri/chiudi menu">
             <span class="navbar-toggler-icon"></span>
@@ -13,8 +15,8 @@
                 @if (Model.Items.Count == 0)
                 {
                     <li class="nav-item">
-                        <span class="navbar-text text-body-secondary small">
-                            Nessun menu "@DAMIHeadlessCMS.TestHost.ViewComponents.MainMenuViewComponent.MainMenuName" configurato — crealo da <a href="/dami/menus">/dami/menus</a>.
+                        <span class="navbar-text text-white-50 small">
+                            Nessun menu "@DAMIHeadlessCMS.TestHost.ViewComponents.MainMenuViewComponent.MainMenuName" configurato — crealo da <a class="text-white" href="/dami/menus">/dami/menus</a>.
                         </span>
                     </li>
                 }
@@ -25,7 +27,7 @@
                         @await Html.PartialAsync("_MenuNode", node)
                     }
                 }
-                <li class="nav-item ms-lg-2">
+                <li class="nav-item ms-lg-3">
                     @if (Model.IsPublicUserAuthenticated)
                     {
                         <a class="nav-link" href="/area-riservata" title="La mia area riservata">
@@ -46,13 +48,13 @@
                        completamente separate, non devono essere confondibili a colpo d'occhio. *@
                     @if (Model.IsBackofficeAuthenticated)
                     {
-                        <a class="nav-link text-body-secondary" href="/dami" title="Vai al backoffice">
+                        <a class="nav-link text-white-50" href="/dami" title="Vai al backoffice">
                             <i class="bi bi-shield-check fs-5"></i>
                         </a>
                     }
                     else
                     {
-                        <a class="nav-link text-body-secondary" href="/dami/account/login" title="Accedi al backoffice">
+                        <a class="nav-link text-white-50" href="/dami/account/login" title="Accedi al backoffice">
                             <i class="bi bi-shield-lock fs-5"></i>
                         </a>
                     }

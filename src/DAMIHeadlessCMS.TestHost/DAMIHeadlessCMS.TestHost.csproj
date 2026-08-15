@@ -36,6 +36,7 @@
     <Folder Include="Views\Statistiche\" />
     <Folder Include="Views\Pages\" />
     <Folder Include="Views\Shared\Components\MainMenu\" />
+    <Folder Include="wwwroot\img\" />
   </ItemGroup>
 
 </Project>

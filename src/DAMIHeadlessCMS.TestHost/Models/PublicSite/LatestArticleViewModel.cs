@@ -14,4 +14,7 @@ public class LatestArticleViewModel
     public string? NomeCategoria { get; init; }
 
     public DateTime? Data { get; init; }
+
+    /// <summary>Per il link "Leggi tutto" verso l'articolo specifico. Null se non disponibile (fallback all'elenco generico).</summary>
+    public string? Slug { get; init; }
 }

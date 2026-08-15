@@ -22,13 +22,15 @@
 }
 else
 {
-    <section class="hero-section">
-        <div class="container">
-            <h1 class="display-5 fw-bold">@Model.Hero.Titolo</h1>
-            @if (!string.IsNullOrWhiteSpace(Model.Hero.Abstract))
-            {
-                <p class="lead col-lg-8">@Model.Hero.Abstract</p>
-            }
+    <section class="home_intro">
+        <div class="p-5 bg-light rounded-3">
+            <div class="container-fluid py-5 text-center">
+                <h1 class="display-5 fw-bold">@Model.Hero.Titolo</h1>
+                @if (!string.IsNullOrWhiteSpace(Model.Hero.Abstract))
+                {
+                    <p class="col-md-12 fs-4">@Model.Hero.Abstract</p>
+                }
+            </div>
         </div>
     </section>
 
@@ -68,27 +70,32 @@ else
 
 @if (Model.LatestArticles.Count > 0)
 {
-    <section class="container py-4">
-        <h2 class="h4 mb-3">Ultime comunicazioni</h2>
-        <div class="row g-3">
+    <section class="comunicazioni container py-4">
+        <h2 class="display-5 fw-bold mb-4">Comunicazioni</h2>
+        <div class="row g-4">
             @foreach (var article in Model.LatestArticles)
             {
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="h-100 p-3 border rounded">
-                        @if (!string.IsNullOrWhiteSpace(article.NomeCategoria))
-                        {
-                            <span class="badge text-bg-secondary mb-2">@article.NomeCategoria</span>
-                        }
-                        <h3 class="h6">@article.Titolo</h3>
-                        @if (!string.IsNullOrWhiteSpace(article.Abstract))
-                        {
-                            <p class="small text-body-secondary mb-1">@article.Abstract</p>
-                        }
-                        @if (article.Data is not null)
-                        {
-                            <div class="small text-body-secondary">@article.Data.Value.ToString("d MMMM yyyy")</div>
-                        }
-                    </div>
+                <div class="col-12 col-md-6 comunicazioni-item">
+                    @if (!string.IsNullOrWhiteSpace(article.NomeCategoria) || article.Data is not null)
+                    {
+                        <div class="comunicazioni-meta mb-1">
+                            @if (!string.IsNullOrWhiteSpace(article.NomeCategoria))
+                            {
+                                <span>@article.NomeCategoria</span>
+                                <span class="mx-1">&middot;</span>
+                            }
+                            @if (article.Data is not null)
+                            {
+                                <span>@article.Data.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            }
+                        </div>
+                    }
+                    <h3 class="comunicazioni-title"><a href="@(article.Slug is not null ? $"/comunicazioni/{article.Slug}" : "/comunicazioni")">@article.Titolo</a></h3>
+                    @if (!string.IsNullOrWhiteSpace(article.Abstract))
+                    {
+                        <p class="mb-2">@article.Abstract</p>
+                    }
+                    <a href="@(article.Slug is not null ? $"/comunicazioni/{article.Slug}" : "/comunicazioni")" class="fw-semibold small">Leggi tutto</a>
                 </div>
             }
         </div>
@@ -97,11 +104,11 @@ else
 
 @if (Model.HallOfFame is not null)
 {
-    <section class="container py-4">
-        <h2 class="h4 mb-3">Albo d'oro</h2>
+    <section class="alb_riassunto container py-4">
+        <h2 class="h3 mb-3">Riassunto</h2>
         <div class="table-responsive">
-            <table class="table table-bordered table-sm align-middle">
-                <thead class="table-light">
+            <table class="table table-hover alb-riassunto-table align-middle">
+                <thead>
                     <tr>
                         <th scope="col">Stagione</th>
                         @foreach (var competition in Model.HallOfFame.CompetitionNames)

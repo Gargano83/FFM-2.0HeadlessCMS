@@ -1,4 +1,6 @@
 :root {
+    --ffm-navy: #1a1c2e;
+    --ffm-navy-light: #262a42;
     --public-accent: #0d6efd;
 }
 
@@ -15,8 +17,51 @@ main {
 /* --- Navbar --- */
 
 .public-navbar {
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    background: var(--ffm-navy);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+    padding-top: .6rem;
+    padding-bottom: .6rem;
+}
+
+.public-navbar .ffm-logo {
+    height: 44px;
+    width: auto;
+}
+
+.public-navbar .nav-link {
+    font-weight: 700;
+    font-size: .9rem;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .85);
+    padding-left: .75rem;
+    padding-right: .75rem;
+    transition: color .15s ease-in-out;
+}
+
+.public-navbar .nav-link:hover,
+.public-navbar .nav-link:focus,
+.public-navbar .nav-link.active {
+    color: #fff;
+}
+
+.public-navbar .dropdown-menu {
+    background: var(--ffm-navy-light);
+    border: none;
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .3);
+}
+
+.public-navbar .dropdown-item {
+    color: rgba(255, 255, 255, .85);
+    font-size: .85rem;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+}
+
+.public-navbar .dropdown-item:hover,
+.public-navbar .dropdown-item:focus {
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
 }
 
 /* Sottomenu annidati (dropdown-submenu): a destra su desktop, incolonnati su mobile */
@@ -32,31 +77,23 @@ main {
     }
 }
 
-/* --- Hero (Homepage) --- */
+/* --- Home intro (box chiaro con testo introduttivo). Le classi Bootstrap
+   (p-5 bg-light rounded-3 container-fluid py-5 text-center) fanno già tutto
+   il lavoro visivo, esattamente come nel legacy: qui serve solo lo spazio
+   verticale tra sezioni. "home_intro" (underscore) è il nome di classe
+   legacy: riusato identico, non reinventato, perché è lo stesso markup che
+   Alessio incolla già nei blocchi "HTML sorgente" del CMS (es. l'introduzione
+   della pagina Statistiche). --- */
 
-.hero-section {
-    background: linear-gradient(135deg, var(--public-accent), #6f42c1);
-    color: #fff;
-    padding: 4rem 0;
-}
-
-.hero-section .lead {
-    color: rgba(255, 255, 255, .9);
+.home_intro {
+    margin-bottom: 2rem;
 }
 
 /* --- Card loghi squadre --- */
 
 .team-logo-card {
-    border: 1px solid rgba(0, 0, 0, .08);
-    border-radius: .5rem;
-    padding: 1rem;
     text-align: center;
     height: 100%;
-    transition: transform .15s ease-in-out;
-}
-
-.team-logo-card:hover {
-    transform: translateY(-2px);
 }
 
 .team-logo-card img {
@@ -65,14 +102,50 @@ main {
     object-fit: contain;
 }
 
-/* --- Footer --- */
+/* --- Comunicazioni (anteprima Homepage e listing dedicato) --- */
 
-.public-footer {
-    border-top: 1px solid rgba(0, 0, 0, .08);
-    margin-top: 3rem;
+.comunicazioni-item .comunicazioni-title {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 1rem;
+    display: block;
 }
 
-/* --- Loghi inline nelle tabelle statistiche --- */
+.comunicazioni-item .comunicazioni-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.comunicazioni-item .comunicazioni-title a:hover {
+    color: var(--public-accent);
+}
+
+.comunicazioni-item .comunicazioni-meta {
+    font-size: .8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+}
+
+/* --- Albo d'oro / riassunto --- */
+
+.alb-riassunto-table {
+    font-size: .9rem;
+}
+
+.alb-riassunto-table th {
+    text-transform: uppercase;
+    font-size: .75rem;
+    letter-spacing: .03em;
+    color: #6c757d;
+    border-bottom-width: 2px;
+}
+
+.alb-riassunto-table td,
+.alb-riassunto-table th {
+    vertical-align: middle;
+    white-space: nowrap;
+}
 
 .alb-logo {
     height: 20px;
@@ -80,4 +153,16 @@ main {
     object-fit: contain;
     margin-right: .35rem;
     vertical-align: text-bottom;
+}
+
+/* --- Footer --- */
+
+.public-footer {
+    background: var(--ffm-navy);
+    color: rgba(255, 255, 255, .85);
+    margin-top: 3rem;
+}
+
+.public-footer a {
+    color: #fff;
 }

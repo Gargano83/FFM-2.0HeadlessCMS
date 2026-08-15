@@ -42,27 +42,30 @@
     }
     else
     {
-        <div class="row g-3">
+        <div class="row g-4">
             @foreach (var articolo in Model.Articoli)
             {
-                <div class="col-12 col-md-6">
-                    <a class="text-decoration-none text-body" href="/comunicazioni/@articolo.Slug">
-                        <div class="h-100 p-3 border rounded">
+                <div class="col-12 col-md-6 comunicazioni-item">
+                    @if (!string.IsNullOrWhiteSpace(articolo.NomeCategoria) || articolo.Data is not null)
+                    {
+                        <div class="comunicazioni-meta mb-1">
                             @if (!string.IsNullOrWhiteSpace(articolo.NomeCategoria))
                             {
-                                <span class="badge text-bg-secondary mb-2">@articolo.NomeCategoria</span>
-                            }
-                            <h2 class="h5">@articolo.Titolo</h2>
-                            @if (!string.IsNullOrWhiteSpace(articolo.Abstract))
-                            {
-                                <p class="small text-body-secondary mb-1">@articolo.Abstract</p>
+                                <span>@articolo.NomeCategoria</span>
+                                <span class="mx-1">&middot;</span>
                             }
                             @if (articolo.Data is not null)
                             {
-                                <div class="small text-body-secondary">@articolo.Data.Value.ToString("d MMMM yyyy")</div>
+                                <span>@articolo.Data.Value.ToString("dd/MM/yyyy HH:mm")</span>
                             }
                         </div>
-                    </a>
+                    }
+                    <h2 class="h5 comunicazioni-title"><a href="/comunicazioni/@articolo.Slug">@articolo.Titolo</a></h2>
+                    @if (!string.IsNullOrWhiteSpace(articolo.Abstract))
+                    {
+                        <p class="mb-2">@articolo.Abstract</p>
+                    }
+                    <a href="/comunicazioni/@articolo.Slug" class="fw-semibold small">Leggi tutto</a>
                 </div>
             }
         </div>

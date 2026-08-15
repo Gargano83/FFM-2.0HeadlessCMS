@@ -140,7 +140,8 @@ public class HomeController : Controller
                 Titolo = row.GetValueOrDefault("co_titolo") as string ?? string.Empty,
                 Abstract = row.GetValueOrDefault("co_abstract") as string,
                 NomeCategoria = categoryName,
-                Data = row.GetValueOrDefault("co_data_inizio") as DateTime?
+                Data = row.GetValueOrDefault("co_data_inizio") as DateTime?,
+                Slug = row.GetValueOrDefault("co_url") as string
             });
         }
 
