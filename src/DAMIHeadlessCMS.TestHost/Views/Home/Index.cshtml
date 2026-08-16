@@ -25,23 +25,21 @@ else
     <section class="home_intro">
         <div class="p-5 bg-light rounded-3">
             <div class="container-fluid py-5 text-center">
-                <h1 class="display-5 fw-bold">@Model.Hero.Titolo</h1>
-                @if (!string.IsNullOrWhiteSpace(Model.Hero.Abstract))
+                @* Model.Hero.Titolo è l'etichetta interna del contenuto in WN_Contenuti
+                   (mostra "HomePage" — pensata per l'elenco contenuti in backoffice, non
+                   per la pagina pubblica, esattamente come nel legacy): il titolo mostrato
+                   qui è Abstract. Fallback a Titolo solo se Abstract non è configurato,
+                   per non lasciare l'intestazione vuota. *@
+                <h1 class="display-5 fw-bold">@(Model.Hero.Abstract ?? Model.Hero.Titolo)</h1>
+                @if (!string.IsNullOrWhiteSpace(Model.Hero.Corpo))
                 {
-                    <p class="col-md-12 fs-4">@Model.Hero.Abstract</p>
+                    <div class="col-md-12 fs-4 mx-auto">
+                        @Html.Raw(Model.Hero.Corpo)
+                    </div>
                 }
             </div>
         </div>
     </section>
-
-    @if (!string.IsNullOrWhiteSpace(Model.Hero.Corpo))
-    {
-        <section class="container py-5">
-            <div class="col-lg-8">
-                @Html.Raw(Model.Hero.Corpo)
-            </div>
-        </section>
-    }
 }
 
 @if (Model.Teams.Count > 0)
@@ -49,7 +47,8 @@ else
     <section class="container py-4">
         <div class="swiffy-slider slider-item-show4 slider-nav-outside slider-nav-dark slider-nav-sm
                     slider-nav-visible slider-nav-page slider-item-snapstart
-                    bg-white shadow-lg py-3 py-lg-4">
+                    slider-nav-autoplay slider-nav-autopause
+                    bg-white shadow-lg py-3 py-lg-4" data-slider-nav-autoplay-interval="2000">
             <ul class="slider-container list-unstyled mb-0">
                 @foreach (var team in Model.Teams)
                 {

@@ -21,21 +21,27 @@ public class LocalFileStorageProvider : IFileStorageProvider
 
     public async Task<string> SaveAsync(IFormFile file, string subFolder, CancellationToken ct = default)
     {
+        await using var stream = file.OpenReadStream();
+        return await SaveAsync(stream, file.FileName, subFolder, ct);
+    }
+
+    public async Task<string> SaveAsync(Stream content, string fileName, string subFolder, CancellationToken ct = default)
+    {
         var invalidChars = Path.GetInvalidFileNameChars();
         var safeSubFolder = string.Join('_', subFolder.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
         var targetDirectory = Path.Combine(_env.WebRootPath, RootFolder, safeSubFolder);
         Directory.CreateDirectory(targetDirectory);
 
-        var extension = Path.GetExtension(file.FileName);
-        var fileName = $"{Guid.NewGuid():N}{extension}";
-        var fullPath = Path.Combine(targetDirectory, fileName);
+        var extension = Path.GetExtension(fileName);
+        var newFileName = $"{Guid.NewGuid():N}{extension}";
+        var fullPath = Path.Combine(targetDirectory, newFileName);
 
-        await using (var stream = new FileStream(fullPath, FileMode.Create))
+        await using (var fileStream = new FileStream(fullPath, FileMode.Create))
         {
-            await file.CopyToAsync(stream, ct);
+            await content.CopyToAsync(fileStream, ct);
         }
 
-        return $"{RootFolder}/{safeSubFolder}/{fileName}".Replace('\\', '/');
+        return $"{RootFolder}/{safeSubFolder}/{newFileName}".Replace('\\', '/');
     }
 
     public Task DeleteAsync(string? relativePath, CancellationToken ct = default)

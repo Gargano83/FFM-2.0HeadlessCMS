@@ -56,6 +56,19 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         return results;
     }
 
+    private const string UpdateLogoStatisticheSql = "UPDATE FFM.Squadre SET LogoStatistiche = @Path WHERE Id = @Id;";
+
+    public async Task UpdateLogoStatisticheAsync(int idSquadra, string relativePath, CancellationToken ct = default)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(UpdateLogoStatisticheSql, connection);
+        command.Parameters.AddWithValue("@Id", idSquadra);
+        command.Parameters.AddWithValue("@Path", relativePath);
+        await command.ExecuteNonQueryAsync(ct);
+    }
+
     // Stesso filtro della query legacy "Club_GetSquadreAttive": una squadra è
     // "attiva" se ha un utente presidente (UT_TIPOLOGIA = 4) attivo (UT_attivo = 1)
     // associato tramite UT_Squadra. A differenza di SquadreListSql, filtra

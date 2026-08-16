@@ -41,6 +41,15 @@ public interface IFfmSquadraRepository
     /// </summary>
     Task<IReadOnlyList<GiocatoreSvincolatoDto>> CercaGiocatoriSvincolatiAsync(string query, int limit = 15, CancellationToken ct = default);
 
+    /// <summary>
+    /// Aggiorna solo la colonna FFM.Squadre.LogoStatistiche — scrittura mirata,
+    /// pensata per la migrazione one-off dei loghi squadra dal sito legacy verso
+    /// lo storage locale (vedi TestHost/PublicSite/LegacyMediaMigrationService),
+    /// non per l'editing generico di FFM.Squadre (che passa dal CRUD scaffolded
+    /// standard, /dami/{entityId}).
+    /// </summary>
+    Task UpdateLogoStatisticheAsync(int idSquadra, string relativePath, CancellationToken ct = default);
+
     /// <summary>Aggiunge un giocatore svincolato alla rosa, per la stagione attualmente attiva. Nessun effetto se non c'è una stagione attiva.</summary>
     Task AggiungiGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, decimal? valoreDiMercato, decimal? stipendio, int? idUtente, CancellationToken ct = default);
 

@@ -47,6 +47,8 @@ builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.PublicUserReposit
 builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.StatisticheDataService>();
 builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.ComunicazioniDataService>();
 builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.AreaRiservataAuthorizationService>();
+builder.Services.AddScoped<DAMIHeadlessCMS.TestHost.PublicSite.LegacyMediaMigrationService>();
+builder.Services.AddHttpClient();
 
 builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 

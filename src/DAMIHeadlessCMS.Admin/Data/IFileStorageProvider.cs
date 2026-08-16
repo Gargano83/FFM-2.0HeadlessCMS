@@ -13,6 +13,14 @@ public interface IFileStorageProvider
     /// <summary>Salva il file e ritorna il percorso relativo da persistere nella colonna.</summary>
     Task<string> SaveAsync(IFormFile file, string subFolder, CancellationToken ct = default);
 
+    /// <summary>
+    /// Come <see cref="SaveAsync(IFormFile, string, CancellationToken)"/> ma per contenuto
+    /// già disponibile come stream (es. scaricato da un URL esterno) invece che da un
+    /// upload multipart — pensato per migrazioni one-off di file storici da fonti esterne
+    /// verso lo storage locale (vedi TestHost/PublicSite/LegacyMediaMigrationService).
+    /// </summary>
+    Task<string> SaveAsync(Stream content, string fileName, string subFolder, CancellationToken ct = default);
+
     /// <summary>Elimina un file precedentemente salvato, se esiste. Non solleva eccezioni se assente.</summary>
     Task DeleteAsync(string? relativePath, CancellationToken ct = default);
 }

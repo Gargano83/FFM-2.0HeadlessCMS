@@ -14,9 +14,22 @@ public static class LegacyMediaUrlResolver
             return null;
         }
 
-        return relativePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-               relativePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-            ? relativePath
-            : $"{baseUrl.TrimEnd('/')}/{relativePath.TrimStart('/')}";
+        if (relativePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            relativePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return relativePath;
+        }
+
+        // Già migrato verso lo storage locale (vedi LegacyMediaMigrationService): servito
+        // come file statico di QUESTO host, path assoluto rispetto alla root del sito —
+        // non va prefissato con la base url del sito legacy, altrimenti risulterebbe
+        // "https://.../media/files/uploads/..." invece di "/uploads/...".
+        if (relativePath.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase) ||
+            relativePath.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "/" + relativePath.TrimStart('/');
+        }
+
+        return $"{baseUrl.TrimEnd('/')}/{relativePath.TrimStart('/')}";
     }
 }

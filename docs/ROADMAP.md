@@ -819,6 +819,50 @@ com'è, nessuna modifica.
 Con questo, la migrazione delle pagine pubbliche elencate nel PDF di
 riferimento è completa.
 
+- [x] **22. Affinamenti grafici pagine pubbliche + migrazione media legacy**
+      (completata). Due interventi distinti, entrambi TestHost-specific:
+  - **Stile grafico Homepage/header/footer**: navbar e footer scuri (stessa
+    palette del sito legacy), logo `FFM_Oriz_Bianco.png` (già presente nel
+    repository sotto `wwwroot/regolamento/img/`, copiato anche in
+    `wwwroot/img/` per uso sito-wide) al posto del testo "FFM 2.0". Hero
+    Homepage riscritto con lo stesso markup Bootstrap del legacy (classe
+    `home_intro` + `p-5 bg-light rounded-3`, nessun CSS custom necessario) —
+    stesso identico markup già usato da Alessio nel blocco "HTML sorgente"
+    della CmsPage di supporto `statistiche-intro` (fase 21, checkpoint 3):
+    coerenza automatica tra le due pagine. Comunicazioni (anteprima Home +
+    pagina dedicata) e tabella "Riassunto" (ex "Albo d'oro") ristilizzate in
+    coerenza col legacy. `LatestArticleViewModel` estesa con `Slug` (già
+    letto dalla query ma non esposto): il link "Leggi tutto" dell'anteprima
+    Home ora punta all'articolo reale, non più genericamente a
+    `/comunicazioni`.
+  - **Migrazione loghi squadra dal sito legacy** (`FFM.Squadre.LogoStatistiche`,
+    oggi risolti concatenando `PublicSite:LegacyFileBaseUrl`): nuovo
+    strumento one-off `LegacyMediaToolsController`
+    (`/dami/tools/legacy-media`, riservato a CmsAdmin, non collegato al menu
+    del backoffice — stesso principio delle CmsPage di supporto tipo
+    `statistiche-intro`: raggiungibile solo conoscendo l'url). Per ogni
+    squadra con un logo ancora relativo alla base legacy: scarica il file,
+    lo salva tramite `IFileStorageProvider` (nuovo overload
+    `SaveAsync(Stream, string fileName, string subFolder, ...)`, per
+    contenuto già in memoria invece che da upload multipart) e aggiorna
+    **solo** quella colonna (`IFfmSquadraRepository.UpdateLogoStatisticheAsync`
+    — scrittura mirata, non il CRUD generico scaffolded, per non rischiare
+    di alterare altri campi della riga). Idempotente: le squadre già
+    migrate vengono saltate, non riscaricate — rilanciabile in sicurezza.
+    **Bug corretto in `LegacyMediaUrlResolver`** scoperto preparando questo
+    intervento: un path già migrato (`"uploads/..."`) veniva comunque
+    prefissato con la base url legacy invece che con `/`, producendo un url
+    concatenato non valido — sarebbe scoppiato silenziosamente al primo
+    utilizzo dello strumento di migrazione senza questo fix. A migrazione
+    completata (nessuna squadra "saltata"/"fallita" nel report dello
+    strumento), `PublicSite:LegacyFileBaseUrl` può essere rimossa dalla
+    configurazione.
+  - **Swiffy-slider loghi squadre**: aggiunte le classi
+    `slider-nav-autoplay slider-nav-autopause` e l'attributo
+    `data-slider-nav-autoplay-interval="2000"` (stessi valori del legacy) —
+    scorrimento automatico all'avvio, in pausa quando l'utente interagisce
+    manualmente con le frecce.
+
 ## Prossime fasi
 
 - [ ] Ulteriori espansioni del modulo FFM o altre tabelle applicative, da
