@@ -1,0 +1,55 @@
+<Project>
+
+  <!--
+    Metadata e versionamento condivisi da TUTTI i progetti della solution
+    (librerie distribuite + DAMIHeadlessCMS.TestHost). MSBuild applica
+    automaticamente questo file a ogni .csproj che sta in una cartella
+    figlia di quella in cui si trova (nessun <Import> manuale necessario).
+
+    Versionamento: Nerdbank.GitVersioning (pacchetto referenziato sotto)
+    calcola Version/AssemblyVersion/InformationalVersion/PackageVersion
+    automaticamente ad ogni build, leggendo "height" e commit Git — nessun
+    numero di versione da editare a mano nei singoli .csproj. L'unico file
+    da toccare per un salto di versione (major/minor) è "version.json" alla
+    radice del repository; il terzo numero (patch) e i metadati di build
+    (+hash commit) sono sempre automatici. Vedi il README, sezione
+    "Distribuzione come pacchetti NuGet", per i dettagli.
+  -->
+
+  <PropertyGroup>
+    <!-- Packaging disattivato di default: solo i 4 progetti libreria lo
+         riattivano esplicitamente (IsPackable=true nel proprio .csproj).
+         Così DAMIHeadlessCMS.TestHost (app Web, mai da distribuire come
+         pacchetto) resta escluso senza bisogno di ricordarsene ad ogni
+         nuovo progetto aggiunto alla solution. -->
+    <IsPackable>false</IsPackable>
+
+    <!-- Build deterministica e riproducibile, richiesta da Nerdbank.GitVersioning
+         e da GitHub Packages per il debug simbolico (SourceLink). -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Metadata NuGet comuni a tutti i pacchetti (sovrascrivibili nel
+         singolo .csproj se necessario, es. <Description> specifica). -->
+    <Authors>Alessio</Authors>
+    <Company>Alessio</Company>
+    <Product>DAMIHeadlessCMS</Product>
+    <PackageProjectUrl>https://github.com/Gargano83/FFM-2.0HeadlessCMS</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Gargano83/FFM-2.0HeadlessCMS</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>cms;headless-cms;aspnetcore;razor-class-library</PackageTags>
+
+    <!-- Il repository è personale/privato: i pacchetti vengono pubblicati
+         su GitHub Packages (feed privato legato all'account), non su
+         NuGet.org. Nessuna licenza OSS impostata di proposito: aggiungi
+         <PackageLicenseExpression> qui se in futuro serve. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.7.115">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

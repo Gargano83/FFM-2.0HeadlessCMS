@@ -1,0 +1,94 @@
+name: Pubblica pacchetti NuGet
+
+# Ad ogni push su main: build, pack e pubblicazione automatica su GitHub
+# Packages dei 4 progetti libreria (Core, Data, Scaffolding, Admin).
+# DAMIHeadlessCMS.TestHost NON viene mai pacchettizzato (IsPackable=false,
+# vedi Directory.Build.props e il suo .csproj).
+#
+# Versione: calcolata automaticamente da Nerdbank.GitVersioning a partire
+# da version.json + altezza della cronologia Git (vedi commento in
+# Directory.Build.props). "workflow_dispatch" permette anche un lancio
+# manuale da tab Actions, utile per ripubblicare senza dover fare un commit
+# vuoto.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Un solo publish alla volta: evita che due run concorrenti calcolino
+# un'altezza Git incoerente o si sovrappongano nel push al feed.
+concurrency:
+  group: publish-packages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
+  GH_PACKAGES_SOURCE: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+
+jobs:
+  build-pack-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Storia completa: Nerdbank.GitVersioning calcola la versione
+          # dall'altezza dei commit, un checkout superficiale la falserebbe.
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore DAMIHeadlessCMS.slnx
+
+      - name: Build (Release)
+        run: dotnet build DAMIHeadlessCMS.slnx -c Release --no-restore
+
+      # Nessun progetto di test presente ancora nella solution: step
+      # segnaposto, da attivare quando verranno aggiunti (dotnet test
+      # DAMIHeadlessCMS.slnx -c Release --no-build).
+      # - name: Test
+      #   run: dotnet test DAMIHeadlessCMS.slnx -c Release --no-build
+
+      - name: Pack (solo i 4 progetti libreria)
+        run: |
+          set -e
+          for proj in \
+            src/DAMIHeadlessCMS.Core/DAMIHeadlessCMS.Core.csproj \
+            src/DAMIHeadlessCMS.Data/DAMIHeadlessCMS.Data.csproj \
+            src/DAMIHeadlessCMS.Scaffolding/DAMIHeadlessCMS.Scaffolding.csproj \
+            src/DAMIHeadlessCMS.Admin/DAMIHeadlessCMS.Admin.csproj ; do
+            dotnet pack "$proj" -c Release --no-build -o "${{ env.ARTIFACTS_DIR }}"
+          done
+
+      - name: Elenco pacchetti generati
+        run: ls -la "${{ env.ARTIFACTS_DIR }}"
+
+      - name: Configura sorgente GitHub Packages
+        run: >
+          dotnet nuget add source "${{ env.GH_PACKAGES_SOURCE }}"
+          --name github
+          --username ${{ github.repository_owner }}
+          --password ${{ secrets.GITHUB_TOKEN }}
+          --store-password-in-clear-text
+
+      - name: Push su GitHub Packages
+        run: >
+          dotnet nuget push "${{ env.ARTIFACTS_DIR }}/*.nupkg"
+          --source github
+          --api-key ${{ secrets.GITHUB_TOKEN }}
+          --skip-duplicate
+
+      - name: Carica pacchetti come artifact della run
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ${{ env.ARTIFACTS_DIR }}/*.nupkg
+          if-no-files-found: error

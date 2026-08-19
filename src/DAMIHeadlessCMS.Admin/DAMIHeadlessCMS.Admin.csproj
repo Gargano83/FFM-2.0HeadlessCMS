@@ -8,6 +8,26 @@
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <!-- IMPORTANTE: il PackageId deve restare identico ad "DAMIHeadlessCMS.Admin"
+         (il default, ricavato dal nome del progetto): le view del backoffice
+         referenziano gli asset statici del modulo FFM con percorsi del tipo
+         "~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/...", che è la
+         convenzione standard delle Razor Class Library (_content/{PackageId}/...).
+         Cambiare il PackageId senza aggiornare quelle view romperebbe CSS/JS
+         del modulo FFM negli host che consumano il pacchetto NuGet. -->
+    <PackageId>DAMIHeadlessCMS.Admin</PackageId>
+    <Description>Backoffice completo del CMS headless DAMIHeadlessCMS: controller, view, wizard di scaffolding, CRUD generico, gestione utenti/menu/pagine/localizzazioni. Razor Class Library, montabile in un'app host ASP.NET Core MVC tramite routing standard.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="PACKAGE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <PropertyGroup>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+  </PropertyGroup>
+
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />

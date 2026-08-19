@@ -863,6 +863,58 @@ riferimento è completa.
     scorrimento automatico all'avvio, in pausa quando l'utente interagisce
     manualmente con le frecce.
 
+- [x] **23. Distribuzione come pacchetti NuGet + versionamento automatico**
+      (completata). Obiettivo: rendere i quattro progetti libreria
+      (`DAMIHeadlessCMS.Core`, `.Data`, `.Scaffolding`, `.Admin`)
+      realmente installabili in un'app host esterna via NuGet, invece che
+      solo tramite `ProjectReference` in soluzione, senza gestione manuale
+      dei numeri di versione.
+  - **`Directory.Build.props`** (radice repository): metadata NuGet comuni
+    (autori, repository URL, tag) e riferimento centralizzato a
+    **Nerdbank.GitVersioning**. `IsPackable=false` di default per ogni
+    progetto della solution, riattivato esplicitamente solo nei quattro
+    `.csproj` libreria — così `DAMIHeadlessCMS.TestHost` (e qualsiasi
+    futuro progetto aggiunto senza pensarci) resta escluso dal pack senza
+    doverlo ricordare ogni volta.
+  - **Versionamento automatico** (`version.json` in radice): major.minor
+    dichiarati a mano (`"0.1"`), patch calcolata automaticamente
+    dall'altezza della cronologia Git ad ogni build — nessun numero di
+    versione da editare nei `.csproj`. `pathFilters` limita il calcolo
+    dell'altezza ai quattro progetti libreria (+ `Directory.Build.props`/
+    `version.json`): commit che toccano solo `TestHost` o la
+    documentazione non fanno scattare una nuova versione, garantendo
+    **versionamento lockstep** (stessa versione per tutti e 4 i pacchetti
+    ad ogni pubblicazione) senza pubblicazioni superflue.
+  - **`PACKAGE.md`** per progetto (`Core`/`Data`/`Scaffolding`/`Admin`):
+    descrizione breve mostrata come readme nella pagina del pacchetto,
+    separata dal README generale del repository (troppo lungo per essere
+    duplicato in ognuno dei quattro `.nupkg`).
+  - **Attenzione preservata sul `PackageId` di `DAMIHeadlessCMS.Admin`**:
+    deve restare identico al nome progetto perché le view del modulo FFM
+    referenziano gli asset statici con il percorso standard delle Razor
+    Class Library `~/_content/DAMIHeadlessCMS.Admin/ffm-widgets/...`
+    (fase 7/8) — un `PackageId` diverso avrebbe rotto CSS/JS del modulo
+    FFM silenziosamente in qualsiasi host che installa il pacchetto NuGet
+    invece di referenziare i sorgenti in soluzione (caso di
+    `DAMIHeadlessCMS.TestHost`, che continua a usare `ProjectReference`).
+  - **`.github/workflows/publish-packages.yml`**: build + pack (solo i
+    quattro progetti, elencati esplicitamente, non per glob) + push
+    automatico ad ogni push su `main` verso **GitHub Packages** (feed
+    privato legato all'account proprietario del repository), autenticato
+    col `GITHUB_TOKEN` automatico della Action (permesso `packages:
+    write`, nessun secret da configurare a mano). `--skip-duplicate` rende
+    il push idempotente sui commit che non toccano i pacchetti (versione
+    invariata). Pacchetti allegati anche come artifact della run.
+  - Scelte fatte in accordo con Alessio: feed **GitHub Packages** (non
+    NuGet.org, repository personale/privato), versionamento **lockstep**
+    tra i quattro pacchetti, pubblicazione **automatica ad ogni push su
+    main** (nessun tag/release manuale richiesto).
+  - README aggiornato con la nuova sezione "Distribuzione: pacchetti NuGet
+    e versionamento automatico" (come funziona il calcolo della versione,
+    come funziona il workflow, come un progetto host consuma i pacchetti
+    via `nuget.config` + Personal Access Token con permesso
+    `read:packages`).
+
 ## Prossime fasi
 
 - [ ] Ulteriori espansioni del modulo FFM o altre tabelle applicative, da
@@ -884,3 +936,4 @@ riferimento è completa.
 | Mapping utenti legacy (modulo FFM) | Risoluzione via email (`IFfmUserResolver`) verso tabelle utenti legacy quando serve tracciare `IdUtente` su tabelle applicative esistenti |
 | Log di audit (fase 14) | Generato da un override di `CmsDbContext.SaveChangesAsync` sul `ChangeTracker` di EF Core, non da scritture esplicite nei controller; copre solo le entità EF-native (Pagine/Menu/Utenti), non i dati scaffoldati (ADO.NET, fuori dal ChangeTracker) |
 | Routing di dettaglio per record (fase 15) | Il CMS valida/conserva solo prefisso + campo chiave (`EntityDefinition`), doppio controllo di unicità (applicativo + indice DB filtrato); il matching URL → record a runtime resta al progetto host, come per pagine e menu |
+| Distribuzione pacchetti (fase 23) | GitHub Packages (feed privato), pubblicazione automatica ad ogni push su `main` via GitHub Actions; versione calcolata da Nerdbank.GitVersioning (major.minor manuale in `version.json` + altezza Git automatica), lockstep tra i 4 pacchetti; `DAMIHeadlessCMS.TestHost` mai pacchettizzato (`IsPackable=false`) |

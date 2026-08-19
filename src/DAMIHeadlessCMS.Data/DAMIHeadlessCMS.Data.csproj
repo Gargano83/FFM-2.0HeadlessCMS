@@ -23,11 +23,24 @@
   <ItemGroup>
     <!-- Copiato in output solo per l'uso a design-time da parte degli strumenti EF Core (migrations).
          A runtime la connection string reale arriva sempre dall'app host tramite AddDAMIHeadlessCMSData(...). -->
-    <None Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('appsettings.json')" />
+    <None Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" Pack="false" Condition="Exists('appsettings.json')" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DAMIHeadlessCMS.Core\DAMIHeadlessCMS.Core.csproj" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>DAMIHeadlessCMS.Data</PackageId>
+    <Description>CmsDbContext (schema cms), migrazioni EF Core, Identity dedicato (CmsUser/CmsRole) e extension method AddDAMIHeadlessCMSData/AddDAMIHeadlessCMSIdentity del CMS headless DAMIHeadlessCMS.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="PACKAGE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <PropertyGroup>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+  </PropertyGroup>
 
 </Project>

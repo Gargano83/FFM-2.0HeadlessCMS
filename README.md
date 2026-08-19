@@ -18,6 +18,7 @@ scaffolding che legge la struttura reale del database via `sys.*`.
 - [Architettura e progetti](#architettura-e-progetti)
 - [Setup e migrazioni](#setup-e-migrazioni)
 - [Integrazione in un progetto host](#integrazione-in-un-progetto-host)
+- [Distribuzione: pacchetti NuGet e versionamento automatico](#distribuzione-pacchetti-nuget-e-versionamento-automatico)
 - [Funzionalità implementate](#funzionalità-implementate)
   - [1. Scaffolding — mappare le tabelle del database](#1-scaffolding--mappare-le-tabelle-del-database)
   - [2. CRUD generico sui dati](#2-crud-generico-sui-dati)
@@ -68,10 +69,14 @@ Il CMS **non** si occupa di:
 | `DAMIHeadlessCMS.Admin` | Razor Class Library | Tutto il backoffice: controller, view, wizard, CRUD generico, gestione utenti/menu/pagine/localizzazioni. Montata come RCL nell'app host tramite routing MVC standard. |
 | `DAMIHeadlessCMS.TestHost` | App MVC | Host minimale usato per sviluppo/test end-to-end del CMS, mostra un esempio reale di integrazione. |
 
-Il pacchetto è pensato per essere distribuito come **libreria NuGet**
-(attualmente referenziato come progetti in soluzione), montabile in qualunque
-applicazione ASP.NET Core MVC senza richiedere una ricompilazione ogni volta
-che cambia la struttura dei dati gestiti.
+I quattro progetti libreria sono distribuiti come **pacchetti NuGet su
+GitHub Packages**, pubblicati automaticamente ad ogni push su `main` (vedi
+[Distribuzione: pacchetti NuGet e versionamento automatico](#distribuzione-pacchetti-nuget-e-versionamento-automatico)),
+montabili in qualunque applicazione ASP.NET Core MVC senza richiedere una
+ricompilazione ogni volta che cambia la struttura dei dati gestiti.
+`DAMIHeadlessCMS.TestHost` resta un progetto interno al repository,
+referenziato via `ProjectReference` ai sorgenti (non un consumer via NuGet),
+usato solo per sviluppo/test end-to-end.
 
 ### Perché "metadata-driven" e non generazione di codice
 
@@ -204,6 +209,112 @@ nessuno potrebbe accedere al backoffice per crearne uno):
 > committato** — vedi `.gitignore` e la fase 13 di
 > [`docs/ROADMAP.md`](docs/ROADMAP.md) per il perché di questo pattern a due
 > file.
+
+## Distribuzione: pacchetti NuGet e versionamento automatico
+
+I quattro progetti libreria (`DAMIHeadlessCMS.Core`, `DAMIHeadlessCMS.Data`,
+`DAMIHeadlessCMS.Scaffolding`, `DAMIHeadlessCMS.Admin`) sono distribuiti come
+**pacchetti NuGet su GitHub Packages** (feed privato legato all'account
+GitHub proprietario del repository), pubblicati **automaticamente** da una
+GitHub Action ad ogni push su `main`. `DAMIHeadlessCMS.TestHost` non viene
+mai pacchettizzato: è solo il progetto di sviluppo/test usato per simulare
+un'app host reale (`IsPackable=false`, esplicito nel suo `.csproj` e di
+default per ogni nuovo progetto tramite `Directory.Build.props`).
+
+### Come funziona il versionamento automatico
+
+Il numero di versione **non va mai editato a mano** nei singoli `.csproj`:
+è calcolato ad ogni build da [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning)
+(pacchetto referenziato centralmente in `Directory.Build.props`, alla radice
+del repository) a partire da due cose:
+
+1. Il numero major.minor scritto in `version.json` (alla radice del
+   repository) — es. `"version": "0.1"`.
+2. L'**altezza** della cronologia Git da quel punto in poi (quanti commit
+   sono stati fatti che toccano i quattro progetti libreria, `Directory.Build.props`
+   o `version.json` stesso — vedi `pathFilters` in `version.json`: i commit
+   che toccano solo `DAMIHeadlessCMS.TestHost` o la documentazione **non**
+   fanno scattare un nuovo numero di versione, così i quattro pacchetti
+   restano allineati (versionamento **lockstep**: stessa versione per
+   tutti e 4 ad ogni pubblicazione) senza pubblicazioni inutili).
+
+Il risultato è una versione tipo `0.1.42` (major.minor da `version.json`,
+patch = altezza) più metadati di build (hash del commit) nella
+`InformationalVersion` dell'assembly. Per un salto di versione "importante"
+(es. da `0.x` a `1.0`, o dopo una breaking change), basta modificare a mano
+il campo `"version"` in `version.json` e committare: da lì in poi l'altezza
+riparte da quel nuovo numero.
+
+### Il workflow di pubblicazione
+
+`.github/workflows/publish-packages.yml`, ad ogni push su `main` (o lancio
+manuale da tab *Actions*):
+
+1. Checkout **con storia Git completa** (`fetch-depth: 0`, necessario a
+   Nerdbank.GitVersioning per calcolare l'altezza).
+2. `dotnet restore` + `dotnet build` dell'intera solution in configurazione
+   `Release`.
+3. `dotnet pack` dei **soli** quattro progetti libreria (elencati
+   esplicitamente nello step, non per glob — così non c'è rischio che un
+   nuovo progetto aggiunto in futuro finisca nel pack per errore).
+4. Push dei `.nupkg` generati sul feed GitHub Packages del repository
+   (`https://nuget.pkg.github.com/<owner>/index.json`), autenticato con il
+   token automatico `GITHUB_TOKEN` della Action (permesso `packages: write`,
+   nessun secret da configurare a mano).
+5. I pacchetti vengono anche allegati come artifact della run (tab
+   *Actions* → run → *Artifacts*), utili per un'ispezione rapida o un
+   download manuale senza passare dal feed.
+
+`--skip-duplicate` rende il push idempotente: se in un push su `main` la
+versione non cambia (es. commit che tocca solo `TestHost`), la pubblicazione
+non fallisce, semplicemente non c'è nulla di nuovo da pubblicare.
+
+> **Da personalizzare al primo utilizzo**: in `Directory.Build.props`,
+> `PackageProjectUrl`/`RepositoryUrl` contengono un placeholder
+> (`CAMBIAMI-owner/CAMBIAMI-repo`, stesso pattern "CAMBIAMI" già usato per le
+> connection string) da sostituire con l'URL reale del repository GitHub.
+
+### Come consumare i pacchetti in un progetto host
+
+Un'applicazione host (diversa da `DAMIHeadlessCMS.TestHost`, che invece usa
+`ProjectReference` diretti ai sorgenti) installa il CMS come normali
+pacchetti NuGet:
+
+```
+dotnet add package DAMIHeadlessCMS.Core
+dotnet add package DAMIHeadlessCMS.Data
+dotnet add package DAMIHeadlessCMS.Scaffolding
+dotnet add package DAMIHeadlessCMS.Admin
+```
+
+Essendo GitHub Packages un feed **privato**, il progetto host deve avere un
+`nuget.config` (nella root della solution host, versionato — non contiene
+credenziali) che aggiunge il feed come sorgente:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="github-damiheadlesscms" value="https://nuget.pkg.github.com/<owner>/index.json" />
+  </packageSources>
+</configuration>
+```
+
+L'autenticazione verso il feed (obbligatoria anche solo per il restore,
+trattandosi di un feed privato) usa un **Personal Access Token** GitHub con
+permesso `read:packages`, mai committato:
+
+```
+dotnet nuget add source https://nuget.pkg.github.com/<owner>/index.json \
+  --name github-damiheadlesscms \
+  --username <tuo-utente-github> \
+  --password <PAT-con-read:packages> \
+  --store-password-in-clear-text
+```
+
+(oppure, in CI, le stesse credenziali come secret della pipeline dell'host).
+Una volta installati i pacchetti, l'integrazione in `Program.cs` è identica
+all'esempio già mostrato sopra in [Integrazione in un progetto host](#integrazione-in-un-progetto-host).
 
 ## Funzionalità implementate
 

@@ -5,6 +5,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DAMIHeadlessCMS.TestHost</RootNamespace>
+    <!-- App di solo sviluppo/test per simulare l'host reale: mai da
+         pubblicare come pacchetto NuGet (ereditava già IsPackable=false
+         da Directory.Build.props, esplicitato qui per chiarezza ed evitare
+         che finisca per errore nel workflow di pubblicazione). -->
+    <IsPackable>false</IsPackable>
     <!-- docusaurusV3/ è il progetto sorgente (Node/TypeScript) del sito statico
          Regolamento — non è codice .NET, vive qui solo per comodità (visibile in
          Solution Explorer tramite i glob impliciti dell'SDK, nessuna voce manuale

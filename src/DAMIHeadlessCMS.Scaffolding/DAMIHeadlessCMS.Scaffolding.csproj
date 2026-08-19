@@ -16,4 +16,17 @@
     <ProjectReference Include="..\DAMIHeadlessCMS.Data\DAMIHeadlessCMS.Data.csproj" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>DAMIHeadlessCMS.Scaffolding</PackageId>
+    <Description>Lettura schema DB via T-SQL diretto su sys.* (SqlServerSchemaReader), inferenza dell'EditorType e orchestrazione dello scaffold idempotente del CMS headless DAMIHeadlessCMS.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="PACKAGE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <PropertyGroup>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+  </PropertyGroup>
+
 </Project>

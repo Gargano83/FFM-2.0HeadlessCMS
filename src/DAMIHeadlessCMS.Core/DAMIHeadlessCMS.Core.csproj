@@ -7,4 +7,17 @@
     <RootNamespace>DAMIHeadlessCMS.Core</RootNamespace>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>DAMIHeadlessCMS.Core</PackageId>
+    <Description>Entità di dominio (EntityDefinition, FieldDefinition, CmsPage, CmsMenu, ...) ed enum del CMS headless DAMIHeadlessCMS. Nessuna dipendenza da EF Core.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="PACKAGE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <PropertyGroup>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+  </PropertyGroup>
+
 </Project>
