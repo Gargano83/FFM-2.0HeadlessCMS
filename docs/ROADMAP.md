@@ -915,6 +915,16 @@ riferimento è completa.
     via `nuget.config` + Personal Access Token con permesso
     `read:packages`).
 
+  - **Fix post-primo-run**: la prima esecuzione reale del workflow ha
+    fallito sul pack di `DAMIHeadlessCMS.Admin` — `ClientApp/syncfusion-tfl-app/dist/`
+    è (giustamente) in `.gitignore` come output di build Angular, quindi
+    assente su un runner con checkout pulito, mentre il `.csproj` referenzia
+    file espliciti sotto `dist/ffm-widgets/giocatori` e
+    `dist/ffm-widgets/squadra`. Aggiunti al workflow, prima del pack:
+    `actions/setup-node` (Node 20) + `npm ci` + `npm run build:giocatori-widget`
+    + `npm run build:squadra-widget` (script già presenti in `package.json`,
+    stessi usati in locale) per rigenerare `dist/` su ogni run.
+
 ## Prossime fasi
 
 - [ ] Ulteriori espansioni del modulo FFM o altre tabelle applicative, da
