@@ -2,6 +2,23 @@
 @{
     ViewData["Title"] = Model.Entity.DisplayName;
     var listFields = Model.Entity.Fields.Where(f => f.ShowInList).OrderBy(f => f.SortOrder).ToList();
+
+    // Colonne per cui non ha senso un filtro: contenuto binario/protetto/tecnico. I campi
+    // localizzati RESTANO filtrabili (rientrano nel ramo di default più sotto, ricerca
+    // testuale sul valore tradotto — mai sulla chiave fisica).
+    bool IsFilterable(FieldDefinition f) => f.EditorType is not (EditorType.File or EditorType.Hidden or EditorType.Password);
+
+    // Una relazione FK va rilevata dai metadati (IsForeignKey/target/colonna etichetta),
+    // non da EditorType: un campo può avere una relazione FK configurata pur con un
+    // editor diverso da "Select" (es. CO_Categoria mostrato come Numero) — il filtro in
+    // elenco deve comunque essere un menu a tendina, non una casella numerica.
+    bool IsForeignKeyColumn(FieldDefinition f) => f.IsForeignKey && f.ForeignKeyTargetEntity is not null && f.ForeignKeyDisplayColumn is not null;
+
+    string? Applied(string columnName) => Model.AppliedFilters.GetValueOrDefault(columnName);
+
+    // Querystring dei filtri correnti, per portarli dietro nei link di paginazione.
+    var filterQuery = string.Join("&", Model.AppliedFilters.Select(kv => $"f_{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value)}"));
+    string PageHref(int p) => $"/dami/{Model.Entity.Id}?page={p}" + (string.IsNullOrEmpty(filterQuery) ? "" : "&" + filterQuery);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -19,6 +36,13 @@
     </a>
 </div>
 
+@* Form "vuoto", non annidato nella tabella: i controlli filtro nella thead lo
+   referenziano tramite l'attributo form="cmsListFilterForm" invece di essere
+   fisicamente al suo interno. Necessario perché ogni riga ha già un proprio
+   <form> per l'eliminazione: annidare un form dentro l'altro non è valido in
+   HTML e avrebbe reso imprevedibile il comportamento del pulsante elimina. *@
+<form method="get" action="/dami/@Model.Entity.Id" id="cmsListFilterForm"></form>
+
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -29,6 +53,67 @@
                         <th>@field.DisplayName</th>
                     }
                     <th class="text-end">Azioni</th>
+                </tr>
+                <tr class="cms-filter-row">
+                    @foreach (var field in listFields)
+                    {
+                        <th class="fw-normal py-2">
+                            @if (!IsFilterable(field))
+                            {
+                                @* Colonna non filtrabile (file/hidden/password): nessun controllo. *@
+                            }
+                            else if (IsForeignKeyColumn(field))
+                            {
+                                @* Relazione FK rilevata dai metadati, non da EditorType: vedi commento su IsForeignKeyColumn. *@
+                                var current = Applied(field.ColumnName);
+                                var options = Model.FilterOptions.GetValueOrDefault(field.ColumnName) ?? [];
+                                <select name="f_@field.ColumnName" form="cmsListFilterForm" class="form-select form-select-sm">
+                                    <option value="">Tutti</option>
+                                    @foreach (var option in options)
+                                    {
+                                        <option value="@option.Value" selected="@(option.Value == current ? "selected" : null)">@option.Label</option>
+                                    }
+                                </select>
+                            }
+                            else if (field.EditorType == EditorType.Checkbox)
+                            {
+                                var current = Applied(field.ColumnName);
+                                <select name="f_@field.ColumnName" form="cmsListFilterForm" class="form-select form-select-sm">
+                                    <option value="">Tutti</option>
+                                    <option value="true" selected="@(current == "true" ? "selected" : null)">Sì</option>
+                                    <option value="false" selected="@(current == "false" ? "selected" : null)">No</option>
+                                </select>
+                            }
+                            else if (field.EditorType is EditorType.Date or EditorType.DateTime)
+                            {
+                                <input type="date" name="f_@field.ColumnName" form="cmsListFilterForm" value="@Applied(field.ColumnName)" class="form-control form-control-sm" />
+                            }
+                            else if (field.EditorType == EditorType.Number)
+                            {
+                                <input type="number" name="f_@field.ColumnName" form="cmsListFilterForm" value="@Applied(field.ColumnName)"
+                                       class="form-control form-control-sm" placeholder="Uguale a..." step="any" />
+                            }
+                            else
+                            {
+                                @* Text/TextArea/RichText, incluso il caso localizzato: ricerca sul valore
+                                   tradotto (risolto lato server via BuildListFilters/BuildWhereAndOrderBy),
+                                   mai sulla chiave fisica. *@
+                                <input type="search" name="f_@field.ColumnName" form="cmsListFilterForm" value="@Applied(field.ColumnName)"
+                                       class="form-control form-control-sm" placeholder="Cerca..." />
+                            }
+                        </th>
+                    }
+                    <th class="text-end py-2">
+                        <button type="submit" form="cmsListFilterForm" class="btn btn-sm btn-primary" title="Applica filtri">
+                            <i class="bi bi-funnel"></i>
+                        </button>
+                        @if (Model.AppliedFilters.Count > 0)
+                        {
+                            <a href="/dami/@Model.Entity.Id" class="btn btn-sm btn-outline-secondary" title="Rimuovi filtri">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        }
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -83,7 +168,9 @@
                 @if (Model.Rows.Count == 0)
                 {
                     <tr>
-                        <td colspan="@(listFields.Count + 1)" class="text-center text-muted py-4">Nessun elemento.</td>
+                        <td colspan="@(listFields.Count + 1)" class="text-center text-muted py-4">
+                            @(Model.AppliedFilters.Count > 0 ? "Nessun elemento corrisponde ai filtri applicati." : "Nessun elemento.")
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -98,9 +185,19 @@
             @for (var p = 1; p <= Model.TotalPages; p++)
             {
                 <li class="page-item @(p == Model.Page ? "active" : "")">
-                    <a class="page-link" href="/dami/@Model.Entity.Id?page=@p">@p</a>
+                    <a class="page-link" href="@PageHref(p)">@p</a>
                 </li>
             }
         </ul>
     </nav>
 }
+
+<style>
+    .cms-filter-row th {
+        background: #fff;
+        border-top: none;
+        padding-top: .35rem;
+        padding-bottom: .5rem;
+        vertical-align: middle;
+    }
+</style>

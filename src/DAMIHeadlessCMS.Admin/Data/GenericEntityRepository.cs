@@ -19,7 +19,8 @@ public class GenericEntityRepository : IGenericEntityRepository
     }
 
     public async Task<GenericEntityPage> GetListAsync(
-        EntityDefinition entity, int page, int pageSize, bool resolveForeignKeys = false, CancellationToken ct = default)
+        EntityDefinition entity, int page, int pageSize, bool resolveForeignKeys = false,
+        IReadOnlyDictionary<string, string>? filterValues = null, CancellationToken ct = default)
     {
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 200);
@@ -35,36 +36,116 @@ public class GenericEntityRepository : IGenericEntityRepository
         const string alias = "t";
         var selectColumns = string.Join(", ", listFields.Select(f => BuildSelectExpression(f, alias, resolveForeignKeys)));
 
-        await using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync(ct);
+        var filters = BuildListFilters(entity, filterValues);
+        var (whereClause, _, parameters) = BuildWhereAndOrderBy(entity, filters, sort: null, alias);
 
-        int totalCount;
-        await using (var countCmd = new SqlCommand($"SELECT COUNT(*) FROM {qualifiedTable} {alias};", connection))
-        {
-            totalCount = (int)(await countCmd.ExecuteScalarAsync(ct))!;
-        }
-
-        var rows = new List<IReadOnlyDictionary<string, object?>>();
+        // COUNT(*) OVER() in coda al SELECT: stesso approccio di QueryPageAsync, una sola
+        // query invece di un COUNT(*) separato — evita anche di dover duplicare i parametri
+        // del filtro su due SqlCommand distinti (un SqlParameter non è riusabile su più
+        // SqlCommand contemporaneamente).
         var sql = $"""
-            SELECT {selectColumns}
+            SELECT {selectColumns}, COUNT(*) OVER() AS __TotalCount
             FROM {qualifiedTable} {alias}
+            {whereClause}
             ORDER BY {alias}.{QuoteIdentifier(pkColumn.ColumnName)}
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
             """;
 
-        await using (var command = new SqlCommand(sql, connection))
-        {
-            command.Parameters.Add(new SqlParameter("@Offset", SqlDbType.Int) { Value = (page - 1) * pageSize });
-            command.Parameters.Add(new SqlParameter("@PageSize", SqlDbType.Int) { Value = pageSize });
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
 
-            await using var reader = await command.ExecuteReaderAsync(ct);
-            while (await reader.ReadAsync(ct))
-            {
-                rows.Add(ReadRow(reader, listFields.Select(f => f.ColumnName)));
-            }
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add(new SqlParameter("@Offset", SqlDbType.Int) { Value = (page - 1) * pageSize });
+        command.Parameters.Add(new SqlParameter("@PageSize", SqlDbType.Int) { Value = pageSize });
+        foreach (var parameter in parameters)
+        {
+            command.Parameters.Add(parameter);
+        }
+
+        var rows = new List<IReadOnlyDictionary<string, object?>>();
+        var totalCount = 0;
+        var columnNames = listFields.Select(f => f.ColumnName).ToList();
+
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            rows.Add(ReadRow(reader, columnNames));
+            totalCount = reader.GetInt32(columnNames.Count);
         }
 
         return new GenericEntityPage(rows, totalCount, page, pageSize);
+    }
+
+    /// <summary>
+    /// Converte i filtri grezzi (colonna -&gt; testo dal form) in QueryFilter tipizzati, in
+    /// base a EditorType — vedi il commento su IGenericEntityRepository.GetListAsync per
+    /// la semantica completa (Contains per testo, uguaglianza per numeri/checkbox/FK,
+    /// intervallo sul giorno per Date/DateTime).
+    /// </summary>
+    private static List<QueryFilter> BuildListFilters(EntityDefinition entity, IReadOnlyDictionary<string, string>? filterValues)
+    {
+        var filters = new List<QueryFilter>();
+        if (filterValues is null || filterValues.Count == 0)
+        {
+            return filters;
+        }
+
+        foreach (var (columnName, raw) in filterValues)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            var field = entity.Fields.FirstOrDefault(f => string.Equals(f.ColumnName, columnName, StringComparison.OrdinalIgnoreCase));
+            if (field is null || field.EditorType is EditorType.File or EditorType.Hidden or EditorType.Password)
+            {
+                continue;
+            }
+
+            try
+            {
+                switch (field.EditorType)
+                {
+                    case EditorType.Checkbox when !field.IsLocalized:
+                        filters.Add(new QueryFilter(field.ColumnName, QueryFilterOperator.Equal, raw == "true"));
+                        break;
+
+                    case EditorType.Date or EditorType.DateTime when !field.IsLocalized:
+                        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateValue))
+                        {
+                            var dayStart = dateValue.Date;
+                            filters.Add(new QueryFilter(field.ColumnName, QueryFilterOperator.GreaterThanOrEqual, dayStart));
+                            filters.Add(new QueryFilter(field.ColumnName, QueryFilterOperator.LessThan, dayStart.AddDays(1)));
+                        }
+                        break;
+
+                    case EditorType.Number or EditorType.Select when !field.IsLocalized:
+                        // Copre anche il caso di una relazione FK configurata con EditorType
+                        // diverso da Select (es. mostrato come Numero): uguaglianza esatta
+                        // sulla colonna fisica, corretta a prescindere dall'editor scelto.
+                        filters.Add(new QueryFilter(field.ColumnName, QueryFilterOperator.Equal, ConvertFormValue(field, raw)));
+                        break;
+
+                    default:
+                        // Text/TextArea/RichText, incluso il caso localizzato (il valore fisico
+                        // è una chiave, non il testo: BuildWhereAndOrderBy risolve il testo
+                        // tradotto via join solo per Contains, mai per gli altri operatori —
+                        // ecco perché i rami sopra escludono esplicitamente i campi localizzati
+                        // invece di lasciarli cadere qui per errore).
+                        filters.Add(new QueryFilter(field.ColumnName, QueryFilterOperator.Contains, raw));
+                        break;
+                }
+            }
+            catch (Exception ex) when (ex is FormatException or OverflowException)
+            {
+                // Valore non convertibile al tipo della colonna (es. testo non numerico o
+                // fuori range digitato per errore in un campo Number): il filtro viene
+                // ignorato invece di far fallire l'intera lista.
+            }
+        }
+
+        return filters;
     }
 
     public async Task<IReadOnlyDictionary<string, object?>?> GetByIdAsync(
@@ -441,10 +522,40 @@ public class GenericEntityRepository : IGenericEntityRepository
         for (var i = 0; i < filters.Count; i++)
         {
             var filter = filters[i];
-            var field = FindFilterableField(entity, filter.ColumnName);
+            var field = FindFilterableField(entity, filter.ColumnName, filter.Operator);
             var paramName = $"@f{i}";
-            whereClauses.Add($"{alias}.{QuoteIdentifier(field.ColumnName)} {SqlOperator(filter.Operator)} {paramName}");
-            parameters.Add(BuildParameter(paramName, field, filter.Value));
+
+            if (filter.Operator == QueryFilterOperator.Contains && field.IsLocalized && field.LocalizationSource is { } source)
+            {
+                // Il valore fisico della colonna è una chiave (l'id della riga di
+                // localizzazione), non il testo: per "contiene" va risolto il testo
+                // tradotto e confrontato quello, non la chiave — stessa join usata da
+                // BuildSelectExpression per mostrarlo in elenco, qui come EXISTS invece
+                // che come SELECT scalare (più efficiente: basta sapere se esiste una
+                // riga che soddisfa la LIKE, non leggerne il valore).
+                var contentTable = $"{QuoteIdentifier(source.ContentSchemaName)}.{QuoteIdentifier(source.ContentTableName)}";
+                whereClauses.Add($"""
+                    EXISTS (
+                        SELECT 1 FROM {contentTable} loc
+                        WHERE loc.{QuoteIdentifier(source.ContentIdColumn)} = {alias}.{QuoteIdentifier(field.ColumnName)}
+                          AND loc.{QuoteIdentifier(source.LanguageIdColumn)} = {source.DefaultLanguageId}
+                          AND loc.{QuoteIdentifier(source.TextColumn)} LIKE {paramName}
+                    )
+                    """);
+                parameters.Add(new SqlParameter(paramName, SqlDbType.NVarChar) { Value = $"%{filter.Value}%" });
+            }
+            else if (filter.Operator == QueryFilterOperator.Contains)
+            {
+                // LIKE con pattern costruito qui in C#, mai concatenato nel testo SQL: resta
+                // comunque un parametro vero, solo con % aggiunti al valore.
+                whereClauses.Add($"{alias}.{QuoteIdentifier(field.ColumnName)} LIKE {paramName}");
+                parameters.Add(new SqlParameter(paramName, SqlDbType.NVarChar) { Value = $"%{filter.Value}%" });
+            }
+            else
+            {
+                whereClauses.Add($"{alias}.{QuoteIdentifier(field.ColumnName)} {SqlOperator(filter.Operator)} {paramName}");
+                parameters.Add(BuildParameter(paramName, field, filter.Value));
+            }
         }
 
         var orderByClauses = sort
@@ -496,19 +607,24 @@ public class GenericEntityRepository : IGenericEntityRepository
 
     /// <summary>
     /// Risolve un FieldDefinition per nome colonna, valido come filtro/ordinamento di
-    /// QueryAsync: deve esistere ed essere NON localizzato (vedi commento sull'interfaccia).
+    /// QueryAsync: deve esistere. Un campo localizzato è ammesso SOLO se l'operatore è
+    /// Contains (vedi il ramo dedicato in BuildWhereAndOrderBy, che risolve il testo
+    /// tradotto tramite join invece di confrontare la chiave fisica) — per qualunque
+    /// altro operatore, o per l'ordinamento (forOperator: null), resta vietato: un
+    /// confronto diretto sulla chiave non avrebbe senso.
     /// </summary>
-    private static FieldDefinition FindFilterableField(EntityDefinition entity, string columnName)
+    private static FieldDefinition FindFilterableField(EntityDefinition entity, string columnName, QueryFilterOperator? forOperator = null)
     {
         var field = entity.Fields.FirstOrDefault(f => string.Equals(f.ColumnName, columnName, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException(
                 $"'{columnName}' non è un campo scaffoldato di '{entity.QualifiedTableName}'.");
 
-        if (field.IsLocalized)
+        if (field.IsLocalized && forOperator != QueryFilterOperator.Contains)
         {
             throw new InvalidOperationException(
-                $"'{columnName}' è un campo localizzato: non può essere usato come filtro/ordinamento diretto " +
-                "in QueryAsync (il valore fisico è una chiave, non il testo tradotto).");
+                $"'{columnName}' è un campo localizzato: non può essere usato come filtro diretto con " +
+                "l'operatore richiesto, né come ordinamento (il valore fisico è una chiave, non il testo " +
+                "tradotto) — solo l'operatore Contains è ammesso, e risolve il testo tradotto via join.");
         }
 
         return field;

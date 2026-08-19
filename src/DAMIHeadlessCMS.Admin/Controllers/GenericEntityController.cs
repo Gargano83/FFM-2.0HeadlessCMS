@@ -113,7 +113,13 @@ public class GenericEntityController : Controller
             return NotFound();
         }
 
-        var result = await _repository.GetListAsync(entity, page, DefaultPageSize, resolveForeignKeys: true, ct: ct);
+        var listFields = entity.Fields.Where(f => f.ShowInList).OrderBy(f => f.SortOrder).ToList();
+        var appliedFilters = ReadFilterValuesFromQuery(listFields);
+
+        var result = await _repository.GetListAsync(
+            entity, page, DefaultPageSize, resolveForeignKeys: true, filterValues: appliedFilters, ct: ct);
+
+        var filterOptions = await BuildFilterLookupOptionsAsync(listFields, ct);
 
         return View(new GenericEntityIndexViewModel
         {
@@ -121,8 +127,54 @@ public class GenericEntityController : Controller
             Rows = result.Rows,
             TotalCount = result.TotalCount,
             Page = result.Page,
-            PageSize = result.PageSize
+            PageSize = result.PageSize,
+            AppliedFilters = appliedFilters,
+            FilterOptions = filterOptions
         });
+    }
+
+    private const string FilterQueryPrefix = "f_";
+
+    /// <summary>
+    /// Legge dalla querystring i valori dei filtri per colonna (prefisso "f_", es.
+    /// "f_Nome=mario"), solo per le colonne effettivamente mostrate in elenco — stesso
+    /// nome di parametro usato dai campi generati in List.cshtml, così un giro
+    /// pagina/filtro/pagina si porta dietro gli stessi filtri senza altro stato.
+    /// </summary>
+    private Dictionary<string, string> ReadFilterValuesFromQuery(IReadOnlyList<FieldDefinition> listFields)
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in listFields)
+        {
+            var raw = Request.Query[FilterQueryPrefix + field.ColumnName].ToString();
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                values[field.ColumnName] = raw;
+            }
+        }
+        return values;
+    }
+
+    /// <summary>
+    /// Opzioni per i filtri Select (FK): stesso elenco (senza testo di ricerca, TOP 50
+    /// come l'autocomplete) usato per popolare l'autocomplete di Create/Edit — letto una
+    /// volta per colonna FK mostrata in elenco, non per ogni riga. Rileva la relazione FK
+    /// dai metadati (IsForeignKey/ForeignKeyTargetEntity/ForeignKeyDisplayColumn), non da
+    /// EditorType: un campo può avere una relazione FK configurata pur con un editor
+    /// diverso da "Select" (es. mostrato come Numero se l'id grezzo interessa comunque
+    /// all'utente) — il filtro in elenco deve comunque essere un menu a tendina.
+    /// </summary>
+    private async Task<Dictionary<string, IReadOnlyList<LookupOption>>> BuildFilterLookupOptionsAsync(
+        IReadOnlyList<FieldDefinition> listFields, CancellationToken ct)
+    {
+        var options = new Dictionary<string, IReadOnlyList<LookupOption>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var field in listFields.Where(f => f.IsForeignKey && f.ForeignKeyTargetEntity is not null && f.ForeignKeyDisplayColumn is not null))
+        {
+            options[field.ColumnName] = await _repository.GetLookupOptionsAsync(
+                field.ForeignKeyTargetEntity!, field.ForeignKeyDisplayColumn!, searchText: null,
+                ParseForeignKeyFilters(field.ForeignKeyFiltersJson), ct);
+        }
+        return options;
     }
 
     [HttpGet("{entityId:guid}/create")]

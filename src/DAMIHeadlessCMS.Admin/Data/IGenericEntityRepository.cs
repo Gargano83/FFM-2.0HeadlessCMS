@@ -24,8 +24,20 @@ public interface IGenericEntityRepository
     /// esterni (host) che leggono via questo metodo si aspettano il valore grezzo,
     /// per poterlo eventualmente risolvere/join-are a modo loro (es. TestHost).
     /// </param>
+    /// <param name="filterValues">
+    /// Filtri per colonna così come arrivano dal form (chiave = ColumnName, valore =
+    /// testo digitato/selezionato) — la conversione al tipo/operatore corretto avviene
+    /// qui in base a EditorType: LIKE per campi testuali, uguaglianza (con la stessa
+    /// conversione di tipo usata da Create/Update) per numeri/checkbox/FK, intervallo
+    /// sull'intero giorno per Date/DateTime. Colonne non presenti in entity.Fields,
+    /// localizzate, o con EditorType non filtrabile (File/Hidden/Password) vengono
+    /// ignorate silenziosamente, così come un valore non convertibile al tipo atteso
+    /// (es. testo non numerico per un campo Number) — un filtro "sbagliato" non deve mai
+    /// far fallire l'intera lista.
+    /// </param>
     Task<GenericEntityPage> GetListAsync(
-        EntityDefinition entity, int page, int pageSize, bool resolveForeignKeys = false, CancellationToken ct = default);
+        EntityDefinition entity, int page, int pageSize, bool resolveForeignKeys = false,
+        IReadOnlyDictionary<string, string>? filterValues = null, CancellationToken ct = default);
 
     Task<IReadOnlyDictionary<string, object?>?> GetByIdAsync(
         EntityDefinition entity, object id, CancellationToken ct = default);
@@ -138,7 +150,13 @@ public enum QueryFilterOperator
     GreaterThan,
     GreaterThanOrEqual,
     LessThan,
-    LessThanOrEqual
+    LessThanOrEqual,
+
+    /// <summary>
+    /// Corrispondenza parziale case-insensitive (LIKE '%valore%'), pensata per i filtri
+    /// testuali della griglia dati del backoffice (colonne Text/TextArea/RichText).
+    /// </summary>
+    Contains
 }
 
 /// <summary>

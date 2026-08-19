@@ -1,4 +1,5 @@
-﻿using DAMIHeadlessCMS.Core.Entities;
+﻿using DAMIHeadlessCMS.Admin.Data;
+using DAMIHeadlessCMS.Core.Entities;
 
 namespace DAMIHeadlessCMS.Admin.ViewModels;
 
@@ -10,6 +11,12 @@ public sealed class GenericEntityIndexViewModel
     public required int TotalCount { get; init; }
     public required int Page { get; init; }
     public required int PageSize { get; init; }
+
+    /// <summary>Filtri attualmente applicati (chiave = ColumnName), per ripopolare i campi filtro con quanto digitato/selezionato.</summary>
+    public IReadOnlyDictionary<string, string> AppliedFilters { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>Opzioni per i filtri Select (FK), chiave = ColumnName. Vedi GenericEntityController.BuildFilterLookupOptionsAsync.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<LookupOption>> FilterOptions { get; init; } = new Dictionary<string, IReadOnlyList<LookupOption>>();
 
     public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
 }
