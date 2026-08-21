@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +14,7 @@ namespace DAMIHeadlessCMS.Admin.Controllers;
 /// riservato a CmsAdmin (vedi gli attributi [Authorize] espliciti sulle
 /// singole azioni di scrittura).
 /// </summary>
+[Area("Dami")]
 [Route("dami/users")]
 [Authorize(Policy = CmsAuthConstants.UsersViewPolicy)]
 public class UsersController : Controller

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DAMIHeadlessCMS.Admin.Utilities;
@@ -18,6 +18,7 @@ namespace DAMIHeadlessCMS.Admin.Controllers;
 /// menu, evitando una logica di diff/merge per riordini e annidamenti misti
 /// nella stessa sessione di editing.
 /// </summary>
+[Area("Dami")]
 [Route("dami/menus")]
 [Authorize(Policy = CmsAuthConstants.EditorPolicy)]
 public class MenusController : Controller

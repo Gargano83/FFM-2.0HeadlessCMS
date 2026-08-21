@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +17,7 @@ namespace DAMIHeadlessCMS.Admin.Controllers;
 /// Il rendering front-end dei blocchi è responsabilità dell'app host: qui si
 /// gestisce solo la composizione/editing dei blocchi in backoffice.
 /// </summary>
+[Area("Dami")]
 [Route("dami/pages")]
 [Authorize(Policy = CmsAuthConstants.EditorPolicy)]
 public class PagesController : Controller

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +21,7 @@ namespace DAMIHeadlessCMS.Admin.Controllers;
 /// in TEST), quindi il nome non è un identificatore univoco affidabile
 /// per il routing.
 /// </summary>
+[Area("Dami")]
 [Route("dami")]
 [Authorize(Policy = CmsAuthConstants.EditorPolicy)]
 public class GenericEntityController : Controller

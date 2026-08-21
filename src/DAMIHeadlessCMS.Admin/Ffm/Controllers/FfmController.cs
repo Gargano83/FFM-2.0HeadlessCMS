@@ -15,6 +15,7 @@ namespace DAMIHeadlessCMS.Admin.Ffm.Controllers;
 /// compilato come faceva la vecchia integrazione legacy. Modulo opt-in:
 /// registrato solo se l'host chiama AddDAMIHeadlessCMSFfm(...).
 /// </summary>
+[Area("Dami")]
 [Route("dami/ffm")]
 [Authorize(Policy = CmsAuthConstants.FfmViewPolicy)]
 public class FfmController : Controller

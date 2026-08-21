@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DAMIHeadlessCMS.Admin.ViewModels;
@@ -17,6 +17,7 @@ namespace DAMIHeadlessCMS.Admin.Controllers;
 /// sorgente resta riservato a CmsAdmin (vedi gli attributi [Authorize]
 /// espliciti sulle singole azioni di scrittura).
 /// </summary>
+[Area("Dami")]
 [Route("dami/localization-sources")]
 [Authorize(Policy = CmsAuthConstants.LocalizationViewPolicy)]
 public class LocalizationSourcesController : Controller

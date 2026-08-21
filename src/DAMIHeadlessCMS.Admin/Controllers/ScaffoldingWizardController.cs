@@ -1,4 +1,4 @@
-﻿using DAMIHeadlessCMS.Admin.Utilities;
+using DAMIHeadlessCMS.Admin.Utilities;
 using DAMIHeadlessCMS.Admin.ViewModels;
 using DAMIHeadlessCMS.Core.Enums;
 using DAMIHeadlessCMS.Data;
@@ -18,6 +18,7 @@ namespace DAMIHeadlessCMS.Admin.Controllers;
 /// mai la struttura reale del database: legge da sys.* e scrive solo in
 /// cms.EntityDefinition/cms.FieldDefinition.
 /// </summary>
+[Area("Dami")]
 [Route("dami/scaffolding")]
 [Authorize(Policy = CmsAuthConstants.AdminPolicy)]
 public class ScaffoldingWizardController : Controller

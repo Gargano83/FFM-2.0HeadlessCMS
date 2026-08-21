@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using DAMIHeadlessCMS.Admin.ViewModels;
@@ -6,6 +6,7 @@ using DAMIHeadlessCMS.Data.Identity;
 
 namespace DAMIHeadlessCMS.Admin.Controllers;
 
+[Area("Dami")]
 [Route("dami/account")]
 public class AccountController : Controller
 {
