@@ -125,7 +125,6 @@
             <div class="fullname">Nome</div>
             <div class="value">VDM</div>
             <div class="salary">Stipendio</div>
-            <div class="month">Mesi</div>
             <div class="actions">Azioni</div>
           </div>
           <ejs-listbox #listSquadraRelGiocatori [fields]='fieldsSquadraRelGiocatori' [dataSource]='dataSquadraRelGiocatori'>
@@ -139,7 +138,6 @@
                 <div class="fullname"> {{giocatore.NomeCompleto}} </div>
                 <div class="value"> € {{giocatore.ValoreDiMercato}} </div>
                 <div class="salary"> € {{giocatore.Stipendio}} </div>
-                <div class="month"> {{giocatore.Mesi}} </div>
                 <div class="actions"><span (click)='openModal(giocatore)'><mat-icon>aspect_ratio</mat-icon></span>&nbsp;&nbsp;&nbsp;<span (click)='removePlayer($event)'><mat-icon>delete</mat-icon></span></div>
               </div>
             </ng-template>

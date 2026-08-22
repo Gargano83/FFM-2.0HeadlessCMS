@@ -29,8 +29,7 @@ export class ModalComponent implements OnInit {
       DataDiNascita: [{ value: '', disabled: true }],
       ValoreDiMercato: [{ value: '', disabled: true }, Validators.required],
       Stipendio: [{ value: '', disabled: true }, Validators.required],
-      Stato: [{ value: '' }, Validators.required],
-      Mesi: [{ value: '' }, Validators.required]
+      Stato: [{ value: '' }, Validators.required]
     });
   }
 
@@ -48,8 +47,7 @@ export class ModalComponent implements OnInit {
           DataDiNascita: response['DataDiNascitaFormat'],
           ValoreDiMercato: response['ValoreDiMercato'],
           Stipendio: response['Stipendio'],
-          Stato: response['Stato'],
-          Mesi: response['Mesi']
+          Stato: response['Stato']
         });
       },
       (error) => {
@@ -70,7 +68,6 @@ export class ModalComponent implements OnInit {
       let giocatore = {
         IdGiocatore: this.IdGiocatore,
         IdSquadra: this.IdSquadra,
-        Mesi: this.dettaglioGiocatoreForm.value.Mesi,
         Stato: this.dettaglioGiocatoreForm.value.Stato,
         Stipendio: this.dettaglioGiocatoreForm.value.Stipendio,
         ValoreDiMercato: this.dettaglioGiocatoreForm.value.ValoreDiMercato
