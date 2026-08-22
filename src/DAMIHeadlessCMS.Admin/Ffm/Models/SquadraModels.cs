@@ -59,7 +59,6 @@ public sealed class GiocatoreSquadraDto
     public decimal? ValoreDiMercato { get; set; }
     public decimal? Stipendio { get; set; }
     public string? Stato { get; set; }
-    public int Mesi { get; set; }
     public bool U22 { get; set; }
 
     public string NomeCompleto => string.IsNullOrWhiteSpace(Nome)
@@ -85,10 +84,9 @@ public sealed class GiocatoreSvincolatoDto
         : string.IsNullOrWhiteSpace(Cognome) ? Nome : $"{Nome} {Cognome}";
 }
 
-/// <summary>Corpo della richiesta per aggiornare stato/mesi di un giocatore in rosa.</summary>
+/// <summary>Corpo della richiesta per aggiornare lo stato di un giocatore in rosa.</summary>
 public sealed class AggiornaRosaRequestDto
 {
-    public int Mesi { get; set; }
     public string? Stato { get; set; }
 }
 

@@ -229,7 +229,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
 
     private const string RosaSql = """
         SELECT G.Id, G.Nome, G.Cognome, G.DataDiNascita, G.Ruolo,
-               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato, ISNULL(SRG.Mesi, 0) AS Mesi
+               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato
         FROM FFM.Giocatori G
         JOIN FFM.SquadreRelGiocatori SRG ON SRG.IdGiocatore = G.Id AND SRG.IdSquadra = @IdSquadra
         WHERE SRG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
@@ -263,7 +263,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
 
     private const string DettaglioSql = """
         SELECT G.Id, G.Nome, G.Cognome, G.DataDiNascita, G.Ruolo,
-               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato, ISNULL(SRG.Mesi, 0) AS Mesi
+               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato
         FROM FFM.Giocatori G
         JOIN FFM.SquadreRelGiocatori SRG ON SRG.IdGiocatore = G.Id
         WHERE SRG.IdSquadra = @IdSquadra AND G.Id = @IdGiocatore
@@ -401,11 +401,11 @@ public class FfmSquadraRepository : IFfmSquadraRepository
 
     private const string AggiornaDettaglioSql = """
         UPDATE FFM.SquadreRelGiocatori
-        SET Mesi = @Mesi, Stato = @Stato, IdUtente = @IdUtente
+        SET Stato = @Stato, IdUtente = @IdUtente
         WHERE IdSquadra = @IdSquadra AND IdGiocatore = @IdGiocatore;
         """;
 
-    public async Task AggiornaDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, int mesi, string? stato, int? idUtente, CancellationToken ct = default)
+    public async Task AggiornaDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, string? stato, int? idUtente, CancellationToken ct = default)
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(ct);
@@ -413,7 +413,6 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         await using var command = new SqlCommand(AggiornaDettaglioSql, connection);
         command.Parameters.AddWithValue("@IdSquadra", idSquadra);
         command.Parameters.AddWithValue("@IdGiocatore", idGiocatore);
-        command.Parameters.AddWithValue("@Mesi", mesi);
         command.Parameters.AddWithValue("@Stato", (object?)stato ?? DBNull.Value);
         command.Parameters.AddWithValue("@IdUtente", (object?)idUtente ?? DBNull.Value);
 
@@ -453,7 +452,6 @@ public class FfmSquadraRepository : IFfmSquadraRepository
             ValoreDiMercato = reader["ValoreDiMercato"] is DBNull ? null : Convert.ToDecimal(reader["ValoreDiMercato"]),
             Stipendio = reader["Stipendio"] is DBNull ? null : Convert.ToDecimal(reader["Stipendio"]),
             Stato = reader["Stato"] as string,
-            Mesi = Convert.ToInt32(reader["Mesi"]),
             U22 = dataDiNascita.HasValue && annoInizioStagioneAttiva - dataDiNascita.Value.Year <= 22
         };
     }

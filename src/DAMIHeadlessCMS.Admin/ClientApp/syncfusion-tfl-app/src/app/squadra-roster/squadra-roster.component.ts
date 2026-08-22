@@ -48,7 +48,6 @@ interface GiocatoreSquadra {
   valoreDiMercato: number | null;
   stipendio: number | null;
   stato: string | null;
-  mesi: number;
   u22: boolean;
   eta: number;
 }
@@ -71,7 +70,7 @@ interface GiocatoreSvincolato {
  *
  * Sostituisce il vecchio popup Angular Material (ModalComponent) con una riga
  * di dettaglio espandibile della Grid stessa (detailTemplate): meno
- * dipendenze, stesso risultato funzionale (visualizza/modifica Stato e Mesi
+ * dipendenze, stesso risultato funzionale (visualizza/modifica lo Stato
  * di un giocatore in rosa).
  */
 @Component({
@@ -199,12 +198,12 @@ export class SquadraRosterComponent implements OnInit {
     });
   }
 
-  /** Salvataggio Stato/Mesi dalla riga di dettaglio espansa. */
+  /** Salvataggio Stato dalla riga di dettaglio espansa. */
   salvaDettaglio(giocatore: GiocatoreSquadra): void {
     if (this.isReadOnly) {
       return;
     }
-    const payload = { mesi: giocatore.mesi, stato: giocatore.stato };
+    const payload = { stato: giocatore.stato };
     this.http.put(`${this.apiBaseUrl}/${this.idSquadra}/rosa/${giocatore.id}`, payload).subscribe({
       next: () => this.loadRosa(),
       error: () => (this.loadError = "Errore durante l'aggiornamento del giocatore.")

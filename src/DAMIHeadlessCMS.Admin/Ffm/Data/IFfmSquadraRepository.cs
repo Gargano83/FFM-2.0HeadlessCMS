@@ -55,5 +55,5 @@ public interface IFfmSquadraRepository
 
     Task EliminaGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, CancellationToken ct = default);
 
-    Task AggiornaDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, int mesi, string? stato, int? idUtente, CancellationToken ct = default);
+    Task AggiornaDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, string? stato, int? idUtente, CancellationToken ct = default);
 }
