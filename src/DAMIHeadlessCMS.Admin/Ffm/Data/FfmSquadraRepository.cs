@@ -128,46 +128,46 @@ public class FfmSquadraRepository : IFfmSquadraRepository
                ISNULL(DurataContrattoAllenatore, 0) AS DurataContrattoAllenatore,
                ISNULL(StipendioAllenatore, 0) AS StipendioAllenatore,
                ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori
-                       WHERE IdSquadra = @Id AND Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                       WHERE IdSquadra = @Id AND Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                          AND ISNULL(Stato, '') != 'Lista A (Pr)'), 0) AS Tesserati,
                ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori
-                       WHERE IdSquadra = @Id AND Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                       WHERE IdSquadra = @Id AND Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                          AND ISNULL(Stato, '') = 'Lista A (Pr)'), 0) AS InPrestito,
                ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori
-                       WHERE IdSquadra = @Id AND Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                       WHERE IdSquadra = @Id AND Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                          AND ISNULL(Stato, '') IN ('Lista A', 'Lista A (Pr)')), 0) AS InRosa,
                ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori
-                       WHERE IdSquadra = @Id AND Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                       WHERE IdSquadra = @Id AND Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                          AND ISNULL(Stato, '') IN ('In prestito', 'No Serie A')), 0) AS APrestito,
                CASE
                    WHEN ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori SRelG JOIN FFM.Giocatori G ON G.Id = SRelG.IdGiocatore
-                                WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                                WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                                   AND SRelG.Stato IN ('Lista A', 'Lista A (Pr)') AND G.Ruolo = 'Portiere'
                                   AND (@AnnoInizioStagioneAttiva - YEAR(G.DataDiNascita) > 22)), 0) > 2
                    THEN
                        ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori SRelG JOIN FFM.Giocatori G ON G.Id = SRelG.IdGiocatore
-                               WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                               WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                                  AND SRelG.Stato IN ('Lista A', 'Lista A (Pr)') AND G.Ruolo IN ('Attaccante', 'Difensore', 'Centrocampista')), 0)
                        - ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori SRelG JOIN FFM.Giocatori G ON G.Id = SRelG.IdGiocatore
-                                 WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                                 WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                                    AND SRelG.Stato IN ('Lista A', 'Lista A (Pr)') AND G.Ruolo IN ('Attaccante', 'Difensore', 'Centrocampista')
                                    AND (@AnnoInizioStagioneAttiva - YEAR(G.DataDiNascita) <= 22)), 0)
                        + 2
                    ELSE
                        ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori SRelG JOIN FFM.Giocatori G ON G.Id = SRelG.IdGiocatore
-                               WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                               WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                                  AND SRelG.Stato IN ('Lista A', 'Lista A (Pr)') AND G.Ruolo IN ('Attaccante', 'Difensore', 'Centrocampista')), 0)
                        - ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori SRelG JOIN FFM.Giocatori G ON G.Id = SRelG.IdGiocatore
-                                 WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                                 WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                                    AND SRelG.Stato IN ('Lista A', 'Lista A (Pr)') AND G.Ruolo IN ('Attaccante', 'Difensore', 'Centrocampista')
                                    AND (@AnnoInizioStagioneAttiva - YEAR(G.DataDiNascita) <= 22)), 0)
                        + ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori SRelG JOIN FFM.Giocatori G ON G.Id = SRelG.IdGiocatore
-                                 WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                                 WHERE SRelG.IdSquadra = @Id AND SRelG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                                    AND SRelG.Stato IN ('Lista A', 'Lista A (Pr)') AND G.Ruolo = 'Portiere'
                                    AND (@AnnoInizioStagioneAttiva - YEAR(G.DataDiNascita) > 22)), 0)
                END AS ListaA,
                ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori SRelG JOIN FFM.Giocatori G ON G.Id = SRelG.IdGiocatore
-                       WHERE SRelG.IdSquadra = @Id AND Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+                       WHERE SRelG.IdSquadra = @Id AND Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                          AND @AnnoInizioStagioneAttiva - YEAR(G.DataDiNascita) <= 22
                          AND SRelG.Stato IN ('Lista A', 'Lista A (Pr)')), 0) AS Under22InRosa,
                ISNULL(RimanenzaStagionePrecedente, 0) AS RimanenzaStagionePrecedente,
@@ -232,7 +232,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
                SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato
         FROM FFM.Giocatori G
         JOIN FFM.SquadreRelGiocatori SRG ON SRG.IdGiocatore = G.Id AND SRG.IdSquadra = @IdSquadra
-        WHERE SRG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
+        WHERE SRG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
         ORDER BY CASE WHEN G.Ruolo = 'Portiere' THEN 1
                       WHEN G.Ruolo = 'Difensore' THEN 2
                       WHEN G.Ruolo = 'Centrocampista' THEN 3
@@ -267,7 +267,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         FROM FFM.Giocatori G
         JOIN FFM.SquadreRelGiocatori SRG ON SRG.IdGiocatore = G.Id
         WHERE SRG.IdSquadra = @IdSquadra AND G.Id = @IdGiocatore
-          AND SRG.Stagione = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
+          AND SRG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
         """;
 
     public async Task<GiocatoreSquadraDto?> GetDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, CancellationToken ct = default)
