@@ -227,17 +227,44 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         };
     }
 
-    private const string RosaSql = """
+    // Ordinamento aggiornato per riflettere i ruoli specifici di
+    // FFM.SquadreRelGiocatori.Ruolo (vedi RuoloRosaCodes), nello stesso
+    // ordine di formazione mostrato nel selettore a tag: portiere, poi linea
+    // difensiva (Ds/Dc/Dd/B), centrocampo (E/M/C), trequarti (W/T), attacco
+    // (A/Pc). Se un giocatore ha più ruoli specifici viene ordinato in base
+    // al primo che compare in questa gerarchia (CHARINDEX si ferma al primo
+    // match). Finché SRG.Ruolo non è stato valorizzato (giocatori non ancora
+    // toccati dal nuovo editor) si ricade sul vecchio ordinamento per ruolo
+    // base di FFM.Giocatori, mappato sulla stessa gerarchia.
+    private const string RuoloOrdineCase = """
+        CASE
+            WHEN CHARINDEX(',P,', ISNULL(SRG.Ruolo, '')) > 0 THEN 1
+            WHEN CHARINDEX(',Ds,', ISNULL(SRG.Ruolo, '')) > 0 THEN 2
+            WHEN CHARINDEX(',Dc,', ISNULL(SRG.Ruolo, '')) > 0 THEN 3
+            WHEN CHARINDEX(',Dd,', ISNULL(SRG.Ruolo, '')) > 0 THEN 4
+            WHEN CHARINDEX(',B,', ISNULL(SRG.Ruolo, '')) > 0 THEN 5
+            WHEN CHARINDEX(',E,', ISNULL(SRG.Ruolo, '')) > 0 THEN 6
+            WHEN CHARINDEX(',M,', ISNULL(SRG.Ruolo, '')) > 0 THEN 7
+            WHEN CHARINDEX(',C,', ISNULL(SRG.Ruolo, '')) > 0 THEN 8
+            WHEN CHARINDEX(',W,', ISNULL(SRG.Ruolo, '')) > 0 THEN 9
+            WHEN CHARINDEX(',T,', ISNULL(SRG.Ruolo, '')) > 0 THEN 10
+            WHEN CHARINDEX(',A,', ISNULL(SRG.Ruolo, '')) > 0 THEN 11
+            WHEN CHARINDEX(',Pc,', ISNULL(SRG.Ruolo, '')) > 0 THEN 12
+            WHEN G.Ruolo = 'Portiere' THEN 1
+            WHEN G.Ruolo = 'Difensore' THEN 3
+            WHEN G.Ruolo = 'Centrocampista' THEN 8
+            WHEN G.Ruolo = 'Attaccante' THEN 11
+            ELSE 13
+        END
+        """;
+
+    private static readonly string RosaSql = $"""
         SELECT G.Id, G.Nome, G.Cognome, G.DataDiNascita, G.Ruolo,
-               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato
+               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato, SRG.Ruolo AS RuoloSpecifico
         FROM FFM.Giocatori G
         JOIN FFM.SquadreRelGiocatori SRG ON SRG.IdGiocatore = G.Id AND SRG.IdSquadra = @IdSquadra
         WHERE SRG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
-        ORDER BY CASE WHEN G.Ruolo = 'Portiere' THEN 1
-                      WHEN G.Ruolo = 'Difensore' THEN 2
-                      WHEN G.Ruolo = 'Centrocampista' THEN 3
-                      WHEN G.Ruolo = 'Attaccante' THEN 4
-                      ELSE 5 END,
+        ORDER BY {RuoloOrdineCase},
                  SRG.Stipendio DESC, SRG.ValoreDiMercato DESC, G.Nome, G.Cognome;
         """;
 
@@ -263,7 +290,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
 
     private const string DettaglioSql = """
         SELECT G.Id, G.Nome, G.Cognome, G.DataDiNascita, G.Ruolo,
-               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato
+               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato, SRG.Ruolo AS RuoloSpecifico
         FROM FFM.Giocatori G
         JOIN FFM.SquadreRelGiocatori SRG ON SRG.IdGiocatore = G.Id
         WHERE SRG.IdSquadra = @IdSquadra AND G.Id = @IdGiocatore
@@ -401,11 +428,11 @@ public class FfmSquadraRepository : IFfmSquadraRepository
 
     private const string AggiornaDettaglioSql = """
         UPDATE FFM.SquadreRelGiocatori
-        SET Stato = @Stato, IdUtente = @IdUtente
+        SET Stato = @Stato, Ruolo = @Ruolo, IdUtente = @IdUtente
         WHERE IdSquadra = @IdSquadra AND IdGiocatore = @IdGiocatore;
         """;
 
-    public async Task AggiornaDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, string? stato, int? idUtente, CancellationToken ct = default)
+    public async Task AggiornaDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, string? stato, IReadOnlyList<string>? ruoliSpecifici, int? idUtente, CancellationToken ct = default)
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(ct);
@@ -414,6 +441,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         command.Parameters.AddWithValue("@IdSquadra", idSquadra);
         command.Parameters.AddWithValue("@IdGiocatore", idGiocatore);
         command.Parameters.AddWithValue("@Stato", (object?)stato ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Ruolo", (object?)RuoloRosaCodes.Format(ruoliSpecifici) ?? DBNull.Value);
         command.Parameters.AddWithValue("@IdUtente", (object?)idUtente ?? DBNull.Value);
 
         await command.ExecuteNonQueryAsync(ct);
@@ -442,13 +470,28 @@ public class FfmSquadraRepository : IFfmSquadraRepository
     private static GiocatoreSquadraDto MapGiocatoreSquadra(SqlDataReader reader, int annoInizioStagioneAttiva)
     {
         var dataDiNascita = reader["DataDiNascita"] as DateTime?;
+        var ruoloBase = reader["Ruolo"] as string;
+        var ruoliSpecifici = RuoloRosaCodes.Parse(reader["RuoloSpecifico"] as string);
+
+        if (ruoliSpecifici.Count == 0)
+        {
+            // SRG.Ruolo non ancora valorizzato: pre-selezione di default dedotta dal
+            // ruolo base, solo per la visualizzazione — vedi RuoloRosaCodes.MappaDaRuoloBase.
+            var ruoloDiDefault = RuoloRosaCodes.MappaDaRuoloBase(ruoloBase);
+            if (ruoloDiDefault is not null)
+            {
+                ruoliSpecifici = [ruoloDiDefault];
+            }
+        }
+
         return new GiocatoreSquadraDto
         {
             Id = reader.GetInt32(reader.GetOrdinal("Id")),
             Nome = reader["Nome"] as string ?? string.Empty,
             Cognome = reader["Cognome"] as string ?? string.Empty,
             DataDiNascita = dataDiNascita,
-            Ruolo = reader["Ruolo"] as string,
+            Ruolo = ruoloBase,
+            RuoliSpecifici = ruoliSpecifici,
             ValoreDiMercato = reader["ValoreDiMercato"] is DBNull ? null : Convert.ToDecimal(reader["ValoreDiMercato"]),
             Stipendio = reader["Stipendio"] is DBNull ? null : Convert.ToDecimal(reader["Stipendio"]),
             Stato = reader["Stato"] as string,

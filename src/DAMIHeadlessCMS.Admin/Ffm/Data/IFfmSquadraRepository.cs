@@ -55,5 +55,6 @@ public interface IFfmSquadraRepository
 
     Task EliminaGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, CancellationToken ct = default);
 
-    Task AggiornaDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, string? stato, int? idUtente, CancellationToken ct = default);
+    /// <summary>Aggiorna stato e ruoli specifici (vedi <see cref="RuoloRosaCodes"/>) di un giocatore in rosa.</summary>
+    Task AggiornaDettaglioGiocatorePerSquadraAsync(int idSquadra, int idGiocatore, string? stato, IReadOnlyList<string>? ruoliSpecifici, int? idUtente, CancellationToken ct = default);
 }

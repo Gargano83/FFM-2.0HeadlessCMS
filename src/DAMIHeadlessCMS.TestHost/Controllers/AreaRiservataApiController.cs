@@ -129,7 +129,7 @@ public class AreaRiservataApiController : ControllerBase
             return NotFound(new { error = "Il giocatore non è nella rosa di questa squadra." });
         }
 
-        await _squadre.AggiornaDettaglioGiocatorePerSquadraAsync(idSquadra, idGiocatore, request.Stato, User.GetIdUtente(), ct);
+        await _squadre.AggiornaDettaglioGiocatorePerSquadraAsync(idSquadra, idGiocatore, request.Stato, request.RuoliSpecifici, User.GetIdUtente(), ct);
 
         var model = await BuildSquadraViewModelAsync(idSquadra, ct);
         return model is null ? NotFound() : Ok(model);

@@ -56,6 +56,16 @@ public sealed class GiocatoreSquadraDto
     public string Cognome { get; set; } = string.Empty;
     public DateTime? DataDiNascita { get; set; }
     public string? Ruolo { get; set; }
+
+    /// <summary>
+    /// Ruoli specifici assegnati in FFM.SquadreRelGiocatori.Ruolo (vedi
+    /// <see cref="RuoloRosaCodes"/>), zero o più tra le 12 sigle valide. Se
+    /// non ancora valorizzato a database, contiene la pre-selezione di
+    /// default dedotta da <see cref="Ruolo"/> — vedi
+    /// <see cref="RuoloRosaCodes.MappaDaRuoloBase"/>.
+    /// </summary>
+    public IReadOnlyList<string> RuoliSpecifici { get; set; } = [];
+
     public decimal? ValoreDiMercato { get; set; }
     public decimal? Stipendio { get; set; }
     public string? Stato { get; set; }
@@ -84,10 +94,13 @@ public sealed class GiocatoreSvincolatoDto
         : string.IsNullOrWhiteSpace(Cognome) ? Nome : $"{Nome} {Cognome}";
 }
 
-/// <summary>Corpo della richiesta per aggiornare lo stato di un giocatore in rosa.</summary>
+/// <summary>Corpo della richiesta per aggiornare stato e ruoli specifici di un giocatore in rosa.</summary>
 public sealed class AggiornaRosaRequestDto
 {
     public string? Stato { get; set; }
+
+    /// <summary>Zero o più sigle tra quelle di <see cref="RuoloRosaCodes.Tutti"/>. Sigle non valide vengono scartate silenziosamente.</summary>
+    public IReadOnlyList<string>? RuoliSpecifici { get; set; }
 }
 
 /// <summary>Corpo della richiesta per aggiungere un giocatore svincolato alla rosa.</summary>

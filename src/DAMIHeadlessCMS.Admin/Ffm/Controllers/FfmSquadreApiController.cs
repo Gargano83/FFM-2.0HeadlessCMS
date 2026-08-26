@@ -59,7 +59,7 @@ public class FfmSquadreApiController : ControllerBase
     public async Task<IActionResult> AggiornaDettaglio(int idSquadra, int idGiocatore, [FromBody] AggiornaRosaRequestDto request, CancellationToken ct)
     {
         var idUtente = await ResolveCurrentIdUtenteAsync(ct);
-        await _repository.AggiornaDettaglioGiocatorePerSquadraAsync(idSquadra, idGiocatore, request.Stato, idUtente, ct);
+        await _repository.AggiornaDettaglioGiocatorePerSquadraAsync(idSquadra, idGiocatore, request.Stato, request.RuoliSpecifici, idUtente, ct);
         return NoContent();
     }
 
