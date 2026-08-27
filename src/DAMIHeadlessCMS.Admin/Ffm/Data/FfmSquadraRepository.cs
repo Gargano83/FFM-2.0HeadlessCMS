@@ -258,20 +258,33 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         END
         """;
 
-    // Prezzo di acquisto più recente del giocatore per QUESTA squadra (non un
-    // movimento qualsiasi in tabella: IdSquadraA è la squadra che acquisisce
-    // il giocatore in quel movimento — vedi FFM.MovimentiBilancio). Solo i
-    // movimenti confermati (ConfermaMovimento = 1) contano come acquisto
-    // effettivo; rifiutati e in attesa vengono ignorati. Colonna prezzo
-    // diversa a seconda della tipologia: PrezzoGiocatore per 285
-    // (InserimentoGiocatoriDaAste), Prezzo per 287 (TrasferimentoGiocatore).
+    // Prezzo di acquisto più recente del giocatore per QUESTA squadra. Le due
+    // tipologie di movimento usano IdSquadraA/IdSquadraB in modo diverso,
+    // verificato su un caso reale (trasferimento confermato di un giocatore
+    // tra due squadre):
+    //   - 285 (InserimentoGiocatoriDaAste): nessuna squadra di provenienza,
+    //     IdSquadraA è l'UNICA squadra popolata ed è quella che acquisisce
+    //     il giocatore (IdSquadraB è NULL).
+    //   - 287 (TrasferimentoGiocatore): IdSquadraA è la squadra di
+    //     provenienza (cede il giocatore), IdSquadraB è quella che lo
+    //     acquisisce e paga Prezzo.
+    // Solo i movimenti confermati (ConfermaMovimento = 1) contano come
+    // acquisto effettivo; rifiutati e in attesa vengono ignorati. Al prezzo
+    // base si sommano le eventuali rate pattuite (PrezzoRataUno/Due/Tre):
+    // fanno parte del prezzo di acquisto concordato anche se non ancora
+    // singolarmente confermate come pagate, dato che l'intero movimento è
+    // già confermato.
     private const string PrezzoAcquistoApply = """
         OUTER APPLY (
-            SELECT TOP 1 CASE WHEN MB.TipologiaMovimento = 285 THEN MB.PrezzoGiocatore ELSE MB.Prezzo END AS Prezzo
+            SELECT TOP 1
+                ISNULL(CASE WHEN MB.TipologiaMovimento = 285 THEN MB.PrezzoGiocatore ELSE MB.Prezzo END, 0)
+                + ISNULL(MB.PrezzoRataUno, 0) + ISNULL(MB.PrezzoRataDue, 0) + ISNULL(MB.PrezzoRataTre, 0) AS Prezzo
             FROM FFM.MovimentiBilancio MB
             WHERE MB.IdGiocatore = G.Id
-              AND MB.IdSquadraA = SRG.IdSquadra
-              AND MB.TipologiaMovimento IN (285, 287)
+              AND (
+                    (MB.TipologiaMovimento = 285 AND MB.IdSquadraA = SRG.IdSquadra)
+                 OR (MB.TipologiaMovimento = 287 AND MB.IdSquadraB = SRG.IdSquadra)
+                  )
               AND MB.ConfermaMovimento = 1
             ORDER BY MB.DataCreazione DESC, MB.Id DESC
         ) PA
