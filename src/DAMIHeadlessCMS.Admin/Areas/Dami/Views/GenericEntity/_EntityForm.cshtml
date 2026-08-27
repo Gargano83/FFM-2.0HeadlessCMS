@@ -52,7 +52,10 @@
                     var numberValue = value switch
                     {
                         null => "",
-                        IFormattable formattable => formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+                        // "0.###" = fino a 3 decimali, senza zeri finali superflui — evita sia
+                        // gli artefatti di precisione dei double (es. "-25,3500000000000016")
+                        // sia zeri inutili per valori come 45 (mostrato "45", non "45,000").
+                        IFormattable formattable => formattable.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
                         _ => value.ToString()
                     };
                     <input type="number" step="any" class="form-control" id="field_@field.ColumnName"
