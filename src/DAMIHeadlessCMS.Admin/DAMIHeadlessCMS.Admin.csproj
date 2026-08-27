@@ -133,5 +133,8 @@
     <None Include="wwwroot\ffm-widgets\squadra\polyfills.js" />
     <None Include="wwwroot\ffm-widgets\squadra\runtime.js" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.91" />
+  </ItemGroup>
 
 </Project>

@@ -258,11 +258,32 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         END
         """;
 
+    // Prezzo di acquisto più recente del giocatore per QUESTA squadra (non un
+    // movimento qualsiasi in tabella: IdSquadraA è la squadra che acquisisce
+    // il giocatore in quel movimento — vedi FFM.MovimentiBilancio). Solo i
+    // movimenti confermati (ConfermaMovimento = 1) contano come acquisto
+    // effettivo; rifiutati e in attesa vengono ignorati. Colonna prezzo
+    // diversa a seconda della tipologia: PrezzoGiocatore per 285
+    // (InserimentoGiocatoriDaAste), Prezzo per 287 (TrasferimentoGiocatore).
+    private const string PrezzoAcquistoApply = """
+        OUTER APPLY (
+            SELECT TOP 1 CASE WHEN MB.TipologiaMovimento = 285 THEN MB.PrezzoGiocatore ELSE MB.Prezzo END AS Prezzo
+            FROM FFM.MovimentiBilancio MB
+            WHERE MB.IdGiocatore = G.Id
+              AND MB.IdSquadraA = SRG.IdSquadra
+              AND MB.TipologiaMovimento IN (285, 287)
+              AND MB.ConfermaMovimento = 1
+            ORDER BY MB.DataCreazione DESC, MB.Id DESC
+        ) PA
+        """;
+
     private static readonly string RosaSql = $"""
         SELECT G.Id, G.Nome, G.Cognome, G.DataDiNascita, G.Ruolo,
-               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato, SRG.Ruolo AS RuoloSpecifico
+               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato, SRG.Ruolo AS RuoloSpecifico,
+               PA.Prezzo AS PrezzoAcquisto
         FROM FFM.Giocatori G
         JOIN FFM.SquadreRelGiocatori SRG ON SRG.IdGiocatore = G.Id AND SRG.IdSquadra = @IdSquadra
+        {PrezzoAcquistoApply}
         WHERE SRG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
         ORDER BY {RuoloOrdineCase},
                  SRG.Stipendio DESC, SRG.ValoreDiMercato DESC, G.Nome, G.Cognome;
@@ -288,11 +309,13 @@ public class FfmSquadraRepository : IFfmSquadraRepository
         return results;
     }
 
-    private const string DettaglioSql = """
+    private static readonly string DettaglioSql = $"""
         SELECT G.Id, G.Nome, G.Cognome, G.DataDiNascita, G.Ruolo,
-               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato, SRG.Ruolo AS RuoloSpecifico
+               SRG.ValoreDiMercato, SRG.Stipendio, SRG.Stato, SRG.Ruolo AS RuoloSpecifico,
+               PA.Prezzo AS PrezzoAcquisto
         FROM FFM.Giocatori G
         JOIN FFM.SquadreRelGiocatori SRG ON SRG.IdGiocatore = G.Id
+        {PrezzoAcquistoApply}
         WHERE SRG.IdSquadra = @IdSquadra AND G.Id = @IdGiocatore
           AND SRG.Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
         """;
@@ -494,6 +517,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
             RuoliSpecifici = ruoliSpecifici,
             ValoreDiMercato = reader["ValoreDiMercato"] is DBNull ? null : Convert.ToDecimal(reader["ValoreDiMercato"]),
             Stipendio = reader["Stipendio"] is DBNull ? null : Convert.ToDecimal(reader["Stipendio"]),
+            PrezzoAcquisto = reader["PrezzoAcquisto"] is DBNull ? null : Convert.ToDecimal(reader["PrezzoAcquisto"]),
             Stato = reader["Stato"] as string,
             U22 = dataDiNascita.HasValue && annoInizioStagioneAttiva - dataDiNascita.Value.Year <= 22
         };

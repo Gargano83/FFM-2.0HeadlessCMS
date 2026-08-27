@@ -67,6 +67,16 @@ public sealed class GiocatoreSquadraDto
     public IReadOnlyList<string> RuoliSpecifici { get; set; } = [];
 
     public decimal? ValoreDiMercato { get; set; }
+
+    /// <summary>
+    /// Prezzo a cui questa squadra ha acquisito il giocatore, dal movimento
+    /// confermato più recente in FFM.MovimentiBilancio (tipologia 285
+    /// InserimentoGiocatoriDaAste o 287 TrasferimentoGiocatore) con questa
+    /// squadra come IdSquadraA. Null se non c'è alcun movimento confermato —
+    /// il client mostra "N.D." in quel caso.
+    /// </summary>
+    public decimal? PrezzoAcquisto { get; set; }
+
     public decimal? Stipendio { get; set; }
     public string? Stato { get; set; }
     public bool U22 { get; set; }
