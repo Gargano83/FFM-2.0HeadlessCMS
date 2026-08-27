@@ -44,8 +44,19 @@
                     break;
 
                 case EditorType.Number:
+                    @* L'attributo value di <input type="number"> richiede SEMPRE il punto come
+                       separatore decimale, per specifica HTML — indipendentemente dalla cultura
+                       della pagina. Con CurrentCulture=it-IT, @value userebbe la virgola (es.
+                       "3,45"), che il browser rifiuta silenziosamente: campo vuoto e warning
+                       "cannot be parsed, or is out of range" in console. *@
+                    var numberValue = value switch
+                    {
+                        null => "",
+                        IFormattable formattable => formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+                        _ => value.ToString()
+                    };
                     <input type="number" step="any" class="form-control" id="field_@field.ColumnName"
-                            name="@field.ColumnName" value="@value" required="@field.IsRequired" />
+                            name="@field.ColumnName" value="@numberValue" required="@field.IsRequired" />
                     break;
 
                 case EditorType.Checkbox:

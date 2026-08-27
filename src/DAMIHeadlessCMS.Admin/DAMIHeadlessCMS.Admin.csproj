@@ -65,17 +65,6 @@
     <EmbeddedResource Remove="ClientApp/**" />
   </ItemGroup>
   <ItemGroup>
-    <Content Remove="wwwroot\ffm-widgets\giocatori\main.js" />
-    <Content Remove="wwwroot\ffm-widgets\giocatori\polyfills.js" />
-    <Content Remove="wwwroot\ffm-widgets\giocatori\runtime.js" />
-    <Content Remove="wwwroot\ffm-widgets\squadra\giocatori\main.js" />
-    <Content Remove="wwwroot\ffm-widgets\squadra\giocatori\polyfills.js" />
-    <Content Remove="wwwroot\ffm-widgets\squadra\giocatori\runtime.js" />
-    <Content Remove="wwwroot\ffm-widgets\squadra\main.js" />
-    <Content Remove="wwwroot\ffm-widgets\squadra\polyfills.js" />
-    <Content Remove="wwwroot\ffm-widgets\squadra\runtime.js" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="ClientApp\syncfusion-tfl-app\angular.json" />
     <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\3rdpartylicenses.txt" />
     <Content Include="ClientApp\syncfusion-tfl-app\dist\ffm-widgets\giocatori\favicon.ico" />
@@ -123,18 +112,6 @@
     <None Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.spec.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\polyfills.ts" />
-    <None Include="wwwroot\ffm-widgets\giocatori\main.js" />
-    <None Include="wwwroot\ffm-widgets\giocatori\polyfills.js" />
-    <None Include="wwwroot\ffm-widgets\giocatori\runtime.js" />
-    <None Include="wwwroot\ffm-widgets\squadra\giocatori\main.js" />
-    <None Include="wwwroot\ffm-widgets\squadra\giocatori\polyfills.js" />
-    <None Include="wwwroot\ffm-widgets\squadra\giocatori\runtime.js" />
-    <None Include="wwwroot\ffm-widgets\squadra\main.js" />
-    <None Include="wwwroot\ffm-widgets\squadra\polyfills.js" />
-    <None Include="wwwroot\ffm-widgets\squadra\runtime.js" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.91" />
   </ItemGroup>
 
 </Project>
