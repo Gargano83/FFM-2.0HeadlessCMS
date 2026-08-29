@@ -113,5 +113,8 @@
     <None Include="ClientApp\syncfusion-tfl-app\src\modal\modal.component.ts" />
     <None Include="ClientApp\syncfusion-tfl-app\src\polyfills.ts" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
+  </ItemGroup>
 
 </Project>

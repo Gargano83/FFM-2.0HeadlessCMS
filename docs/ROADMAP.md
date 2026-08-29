@@ -104,7 +104,7 @@ metadati salvati nello schema `cms.*` del database).
           autocomplete giocatori svincolati, aggregati finanziari) non è
           riconducibile agli `EditorType` standard.
         - Backend: `FfmSquadraRepository` (ADO.NET dedicato — InfoSquadra
-          aggregata con conteggi Tesserati/InRosa/ListaA/Under22 per stagione
+          aggregata con conteggi Tesserati/InRosa/Under22 per stagione
           attiva, rosa, dettaglio, giocatori svincolati, aggiungi/rimuovi/
           aggiorna giocatore in rosa) + `FfmSquadreApiController`
           (`/dami/ffm/api/squadre/*`). Riusa **as-is** la funzione SQL legacy

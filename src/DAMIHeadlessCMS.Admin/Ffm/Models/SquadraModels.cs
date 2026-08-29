@@ -19,7 +19,6 @@ public sealed class InfoSquadraDto
     public int InPrestito { get; set; }
     public int InRosa { get; set; }
     public int APrestito { get; set; }
-    public int ListaA { get; set; }
     public int Under22InRosa { get; set; }
     public decimal RimanenzaStagionePrecedente { get; set; }
     public decimal RefillRanking { get; set; }

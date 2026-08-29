@@ -856,7 +856,7 @@ svincolati, pannello finanziario aggregato) non è riconducibile agli
 `EditorType` standard:
 
 - `FfmSquadraRepository` (ADO.NET parametrico) espone InfoSquadra aggregata
-  (conteggi Tesserati/InRosa/ListaA/Under22 per la stagione attiva), la rosa,
+  (conteggi Tesserati/InRosa/Under22 per la stagione attiva), la rosa,
   il dettaglio di un giocatore in rosa, i giocatori svincolati, e le
   operazioni di aggiunta/rimozione/aggiornamento.
 - `FfmSquadreApiController` (`/dami/ffm/api/squadre/*`) espone l'API REST

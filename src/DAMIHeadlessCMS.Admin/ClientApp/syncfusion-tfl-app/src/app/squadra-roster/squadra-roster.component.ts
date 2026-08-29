@@ -25,7 +25,6 @@ interface InfoSquadra {
   inPrestito: number;
   inRosa: number;
   aPrestito: number;
-  listaA: number;
   under22InRosa: number;
   rimanenzaStagionePrecedente: number;
   refillRanking: number;
