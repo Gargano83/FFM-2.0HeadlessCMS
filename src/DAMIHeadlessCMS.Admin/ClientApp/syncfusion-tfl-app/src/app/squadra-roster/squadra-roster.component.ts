@@ -31,8 +31,7 @@ interface InfoSquadra {
   refillValoreSocieta: number;
   refillStadio: number;
   refillStipendi: number;
-  monteStipendiAndata: number;
-  monteStipendiRitorno: number;
+  monteStipendi: number;
   bilancioMercato: number;
   fairPlayFinanziario: number;
 }

@@ -25,8 +25,7 @@ public sealed class InfoSquadraDto
     public decimal RefillValoreSocieta { get; set; }
     public decimal RefillStadio { get; set; }
     public decimal RefillStipendi { get; set; }
-    public decimal MonteStipendiAndata { get; set; }
-    public decimal MonteStipendiRitorno { get; set; }
+    public decimal MonteStipendi { get; set; }
     public decimal BilancioMercato { get; set; }
     public decimal FairPlayFinanziario { get; set; }
 

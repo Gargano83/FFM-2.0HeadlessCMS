@@ -148,8 +148,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
                ISNULL(RefillValoreSocieta, 0) AS RefillValoreSocieta,
                ISNULL(RefillStadio, 0) AS RefillStadio,
                ISNULL(RefillStipendi, 0) AS RefillStipendi,
-               ISNULL(MonteStipendiAndata, 0) AS MonteStipendiAndata,
-               ISNULL(MonteStipendiRitorno, 0) AS MonteStipendiRitorno,
+               ISNULL(MonteStipendi, 0) AS MonteStipendi,
                ISNULL(BilancioMercato, 0) AS BilancioMercato,
                ISNULL(FairPlayFinanziario, 0) AS FairPlayFinanziario,
                ISNULL(AbilitaModifica, 0) AS AbilitaModifica
@@ -191,8 +190,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
             RefillValoreSocieta = Convert.ToDecimal(reader["RefillValoreSocieta"]),
             RefillStadio = Convert.ToDecimal(reader["RefillStadio"]),
             RefillStipendi = Convert.ToDecimal(reader["RefillStipendi"]),
-            MonteStipendiAndata = Convert.ToDecimal(reader["MonteStipendiAndata"]),
-            MonteStipendiRitorno = Convert.ToDecimal(reader["MonteStipendiRitorno"]),
+            MonteStipendi = Convert.ToDecimal(reader["MonteStipendi"]),
             BilancioMercato = Convert.ToDecimal(reader["BilancioMercato"]),
             FairPlayFinanziario = Convert.ToDecimal(reader["FairPlayFinanziario"]),
             AbilitaModifica = Convert.ToBoolean(reader["AbilitaModifica"])
