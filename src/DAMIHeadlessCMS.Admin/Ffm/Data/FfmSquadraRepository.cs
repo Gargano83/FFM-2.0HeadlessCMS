@@ -394,13 +394,24 @@ public class FfmSquadraRepository : IFfmSquadraRepository
 
     // Stessa logica della query legacy: l'inserimento avviene solo se esiste
     // una stagione attiva in FFM.Lega, altrimenti l'operazione non ha effetto
-    // (nessuna eccezione, comportamento legacy preservato).
+    // (nessuna eccezione, comportamento legacy preservato). FFM.Lega.StagioneAttiva
+    // è una stringa (es. "2025/2026", vedi Constant.TFLCostanti.StagioneAttiva
+    // nell'host), NON un numero: @Stagione deve essere NVARCHAR, non INT, altrimenti
+    // SQL Server fallisce la conversione implicita ad ogni inserimento (bug fisso
+    // qui). Id è la chiave primaria GUID di FFM.SquadreRelGiocatori: il codice
+    // legacy basato su EF Core la genera lato client (Guid.NewGuid()) prima di
+    // ogni insert, quindi va generata esplicitamente anche qui con NEWID().
+    // Stato viene impostato a "Lista A" come fa il codice legacy (Constant.
+    // StatiGiocatore.A) quando un giocatore entra in rosa: senza uno stato
+    // valorizzato il giocatore non verrebbe conteggiato in nessuna delle
+    // statistiche di InfoSquadra (Tesserati/InRosa/...) né avrebbe una pillola
+    // di stato visibile in UI.
     private const string AggiungiGiocatoreSql = """
-        DECLARE @Stagione INT = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
+        DECLARE @Stagione NVARCHAR(50) = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
         IF @Stagione IS NOT NULL
         BEGIN
-            INSERT INTO FFM.SquadreRelGiocatori (IdSquadra, IdGiocatore, ValoreDiMercato, Stipendio, Stagione, IdUtente)
-            VALUES (@IdSquadra, @IdGiocatore, @ValoreDiMercato, @Stipendio, @Stagione, @IdUtente);
+            INSERT INTO FFM.SquadreRelGiocatori (Id, IdSquadra, IdGiocatore, ValoreDiMercato, Stipendio, Stato, Stagione, IdUtente)
+            VALUES (NEWID(), @IdSquadra, @IdGiocatore, @ValoreDiMercato, @Stipendio, N'Lista A', @Stagione, @IdUtente);
         END
         """;
 

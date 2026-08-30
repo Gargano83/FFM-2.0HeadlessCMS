@@ -46,8 +46,13 @@ public class FfmGiocatoriRepository : IFfmGiocatoriRepository
     //   FFM.SquadreRelGiocatori per la stagione attiva, per i giocatori importati.
     // Se non c'è una stagione attiva in FFM.Lega, l'operazione non fa nulla
     // (comportamento legacy preservato, nessuna eccezione sollevata).
+    // FFM.Lega.StagioneAttiva è una stringa (es. "2025/2026"), NON un numero,
+    // e FFM.SquadreRelGiocatori.Stagione è a sua volta una stringa: @Stagione
+    // deve essere NVARCHAR, non INT, altrimenti SQL Server fallisce la
+    // conversione implicita ad ogni import (stesso bug corretto in
+    // FfmSquadraRepository.AggiungiGiocatoreSql).
     private const string ImportSql = """
-        DECLARE @Stagione INT = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
+        DECLARE @Stagione NVARCHAR(50) = (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1);
 
         IF @Stagione IS NOT NULL
         BEGIN
