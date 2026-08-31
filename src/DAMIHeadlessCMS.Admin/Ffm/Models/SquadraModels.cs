@@ -13,8 +13,7 @@ public sealed class InfoSquadraDto
     public string? Presidente { get; set; }
     public string? VicePresidente { get; set; }
     public string? Allenatore { get; set; }
-    public int DurataContrattoAllenatore { get; set; }
-    public decimal StipendioAllenatore { get; set; }
+    public string? NomeStadio { get; set; }
     public int Tesserati { get; set; }
     public int InPrestito { get; set; }
     public int InRosa { get; set; }
@@ -116,4 +115,19 @@ public sealed class AggiungiGiocatoreRequestDto
 {
     public decimal? ValoreDiMercato { get; set; }
     public decimal? Stipendio { get; set; }
+}
+
+/// <summary>
+/// Corpo della richiesta per aggiornare i dati anagrafici di una squadra
+/// (FFM.Squadre: Presidente, VicePresidente, Allenatore, NomeStadio). Non
+/// tocca i campi finanziari (Refill*, MonteStipendi, ecc.), gestiti solo
+/// internamente da FinancialService, né i campi di contratto allenatore
+/// (rimossi dal DTO esposto, restano solo a database).
+/// </summary>
+public sealed class AggiornaInfoSquadraRequestDto
+{
+    public string? Presidente { get; set; }
+    public string? VicePresidente { get; set; }
+    public string? Allenatore { get; set; }
+    public string? NomeStadio { get; set; }
 }

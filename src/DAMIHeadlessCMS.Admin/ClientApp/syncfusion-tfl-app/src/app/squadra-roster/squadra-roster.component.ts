@@ -19,8 +19,7 @@ interface InfoSquadra {
   presidente?: string;
   vicePresidente?: string;
   allenatore?: string;
-  durataContrattoAllenatore: number;
-  stipendioAllenatore: number;
+  nomeStadio?: string;
   tesserati: number;
   inPrestito: number;
   inRosa: number;

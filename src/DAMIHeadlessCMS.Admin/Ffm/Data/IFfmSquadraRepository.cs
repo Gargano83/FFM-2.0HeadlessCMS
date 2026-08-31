@@ -25,6 +25,15 @@ public interface IFfmSquadraRepository
 
     Task<InfoSquadraDto?> GetInfoSquadraAsync(int idSquadra, CancellationToken ct = default);
 
+    /// <summary>
+    /// Aggiorna i soli campi anagrafici di FFM.Squadre esposti in modifica
+    /// (Presidente, VicePresidente, Allenatore, NomeStadio) — non i campi
+    /// finanziari né di contratto allenatore. Nessun controllo di autorizzazione
+    /// qui: va ri-applicato dal chiamante (stessa convenzione di
+    /// <see cref="AggiornaDettaglioGiocatorePerSquadraAsync"/>).
+    /// </summary>
+    Task AggiornaInfoSquadraAsync(int idSquadra, string? presidente, string? vicePresidente, string? allenatore, string? nomeStadio, CancellationToken ct = default);
+
     /// <summary>Rosa completa di una squadra per la stagione attiva, ordinata come nel sistema legacy (ruolo, stipendio, valore, nome).</summary>
     Task<IReadOnlyList<GiocatoreSquadraDto>> GetRosaAsync(int idSquadra, CancellationToken ct = default);
 

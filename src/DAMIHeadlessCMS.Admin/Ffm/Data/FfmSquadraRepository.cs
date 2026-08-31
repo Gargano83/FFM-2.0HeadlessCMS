@@ -125,8 +125,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
                Presidente,
                VicePresidente,
                Allenatore,
-               ISNULL(DurataContrattoAllenatore, 0) AS DurataContrattoAllenatore,
-               ISNULL(StipendioAllenatore, 0) AS StipendioAllenatore,
+               NomeStadio,
                ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori
                        WHERE IdSquadra = @Id AND Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                          AND ISNULL(Stato, '') != 'Lista A (Pr)'), 0) AS Tesserati,
@@ -178,8 +177,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
             Presidente = reader["Presidente"] as string,
             VicePresidente = reader["VicePresidente"] as string,
             Allenatore = reader["Allenatore"] as string,
-            DurataContrattoAllenatore = reader.GetInt32(reader.GetOrdinal("DurataContrattoAllenatore")),
-            StipendioAllenatore = Convert.ToDecimal(reader["StipendioAllenatore"]),
+            NomeStadio = reader["NomeStadio"] as string,
             Tesserati = reader.GetInt32(reader.GetOrdinal("Tesserati")),
             InPrestito = reader.GetInt32(reader.GetOrdinal("InPrestito")),
             InRosa = reader.GetInt32(reader.GetOrdinal("InRosa")),
@@ -195,6 +193,36 @@ public class FfmSquadraRepository : IFfmSquadraRepository
             FairPlayFinanziario = Convert.ToDecimal(reader["FairPlayFinanziario"]),
             AbilitaModifica = Convert.ToBoolean(reader["AbilitaModifica"])
         };
+    }
+
+    // Scrittura mirata sui soli 4 campi anagrafici esposti in modifica
+    // (Presidente/VicePresidente/Allenatore/NomeStadio): non tocca i campi
+    // finanziari (Refill*, MonteStipendi, BilancioMercato, ...), che restano
+    // di competenza esclusiva di FinancialService, né DurataContrattoAllenatore/
+    // StipendioAllenatore (rimossi dal DTO esposto ma non dalla tabella: la
+    // colonna resta, semplicemente non viene più letta né scritta da qui).
+    private const string AggiornaInfoSquadraSql = """
+        UPDATE FFM.Squadre
+        SET Presidente = @Presidente,
+            VicePresidente = @VicePresidente,
+            Allenatore = @Allenatore,
+            NomeStadio = @NomeStadio
+        WHERE Id = @Id;
+        """;
+
+    public async Task AggiornaInfoSquadraAsync(
+        int idSquadra, string? presidente, string? vicePresidente, string? allenatore, string? nomeStadio, CancellationToken ct = default)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        await using var command = new SqlCommand(AggiornaInfoSquadraSql, connection);
+        command.Parameters.AddWithValue("@Id", idSquadra);
+        command.Parameters.AddWithValue("@Presidente", (object?)presidente ?? DBNull.Value);
+        command.Parameters.AddWithValue("@VicePresidente", (object?)vicePresidente ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Allenatore", (object?)allenatore ?? DBNull.Value);
+        command.Parameters.AddWithValue("@NomeStadio", (object?)nomeStadio ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(ct);
     }
 
     // Ordinamento aggiornato per riflettere i ruoli specifici di
