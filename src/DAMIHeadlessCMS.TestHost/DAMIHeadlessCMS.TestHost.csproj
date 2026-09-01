@@ -39,10 +39,12 @@
     <Folder Include="Views\Comunicazioni\" />
     <Folder Include="Views\AreaRiservata\" />
     <Folder Include="Views\LegacyMediaTools\" />
+    <Folder Include="Views\DivisaEngine\" />
     <Folder Include="Views\Statistiche\" />
     <Folder Include="Views\Pages\" />
     <Folder Include="Views\Shared\Components\MainMenu\" />
-    <Folder Include="wwwroot\img\" />
+    <Folder Include="wwwroot\img\divisa\" />
+    <Folder Include="wwwroot\js\divisa\" />
   </ItemGroup>
   
   <ItemGroup>

@@ -925,10 +925,47 @@ riferimento è completa.
     + `npm run build:squadra-widget` (script già presenti in `package.json`,
     stessi usati in locale) per rigenerare `dist/` su ogni run.
 
+- [x] **24. Personalizzazione divisa squadra — fase 1 (modello dati)**.
+      Obiettivo finale (in corso, a passi separati confermati singolarmente):
+      un configuratore in `/area-riservata` per personalizzare la maglia
+      della propria squadra (colori, sponsor testo libero), riusando come
+      base grafica i 52 template di un vecchio configuratore proprietario
+      dell'utente (FFM3.1, nessun problema di copyright — a differenza dei
+      template di un competitor analizzato solo come riferimento tecnico,
+      mai scaricati né usati). Questa fase copre solo il modello dati,
+      nessuna UI né motore di rendering.
+  - **`FFM.DivisaTemplate`** (nuova): catalogo estendibile dei template
+    maglia — `Id`, `Nome`, `CartellaAsset`, `Attivo`, `Ordine`,
+    `DataInserimento`. Requisito esplicito: poter aggiungere template futuri
+    senza toccare il codice — galleria e motore di rendering leggeranno
+    sempre questa tabella, mai un elenco hardcoded. `Attivo` permette di
+    ritirare un template dalla selezione senza eliminarlo (le squadre che lo
+    hanno già scelto continuano a vederlo).
+  - **`FFM.SquadreMaglia`** (nuova, 1:1 con `FFM.Squadre`): personalizzazione
+    per squadra — template scelto, 3 colori zona, testo sponsor libero (+
+    colori facoltativi), URL dell'immagine finale "cotta" dal motore di
+    rendering, audit (`DataUltimaModifica`/`IdUtenteUltimaModifica`).
+    Script di creazione in `docs/sql/2026-09-01_divisa-squadra-schema.sql`
+    (da eseguire manualmente — schema FFM fuori da EF, come le tabelle
+    legacy esistenti).
+  - **`IFfmDivisaTemplateRepository`/`FfmDivisaTemplateRepository`** e
+    **`IFfmDivisaRepository`/`FfmDivisaRepository`**, stesso pattern ADO.NET
+    puro di `FfmSquadraRepository`. `GetDivisaAsync` non restituisce mai
+    null per una squadra senza personalizzazione: costruisce un default
+    (primo template attivo, colori neutri) con `NonAncoraPersonalizzata =
+    true`, così un chiamante ha sempre qualcosa da mostrare.
+  - Registrati in `FfmServiceCollectionExtensions.AddDAMIHeadlessCMSFfm`.
+  - **Non ancora fatto** (prossimi passi, uno alla volta): migrazione dei 52
+    template esistenti nella nuova convenzione di cartelle + seed del
+    catalogo, produzione del layer di ombre/pieghe condiviso, motore di
+    rendering Canvas 2D lato host, endpoint API, UI.
+
 ## Prossime fasi
 
 - [ ] Ulteriori espansioni del modulo FFM o altre tabelle applicative, da
       valutare in base alle esigenze che emergeranno.
+- [ ] Personalizzazione divisa squadra — fasi successive (migrazione asset,
+      layer ombre condiviso, motore di rendering, endpoint host, UI).
 
 ## Decisioni architetturali chiave
 

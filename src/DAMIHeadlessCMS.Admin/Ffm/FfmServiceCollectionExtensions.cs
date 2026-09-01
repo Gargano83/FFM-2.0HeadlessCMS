@@ -30,6 +30,14 @@ public static class FfmServiceCollectionExtensions
         services.AddScoped<IFfmSquadraRepository>(_ => new FfmSquadraRepository(connectionString, defaultLanguageId));
         services.AddScoped<IFfmUserResolver>(_ => new FfmUserResolver(connectionString));
 
+        // Personalizzazione divisa squadra (FFM.DivisaTemplate + FFM.SquadreMaglia,
+        // vedi piano "Personalizzazione divisa squadra"): modello dati, motore di
+        // rendering Canvas 2D ed endpoint GET/PUT sviluppati e validati dentro
+        // DAMIHeadlessCMS.TestHost (fasi 1-5) — integrazione sull'host reale
+        // FFM2.0Core ancora da fare (fase 7), a valle anche della UI (fase 6).
+        services.AddScoped<IFfmDivisaTemplateRepository>(_ => new FfmDivisaTemplateRepository(connectionString));
+        services.AddScoped<IFfmDivisaRepository>(_ => new FfmDivisaRepository(connectionString));
+
         return services;
     }
 }

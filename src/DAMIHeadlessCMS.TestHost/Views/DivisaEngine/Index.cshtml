@@ -1,0 +1,112 @@
+@using DAMIHeadlessCMS.Admin.Ffm.Models
+@model IReadOnlyList<DivisaTemplateDto>
+@{
+    ViewData["Title"] = "Motore divisa — validazione";
+    var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+}
+
+<div class="container py-4 py-lg-5">
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Motore di rendering divisa — validazione tecnica</h1>
+        <p class="text-body-secondary mb-0">
+            Pagina di sola verifica (fase 4 del piano "Personalizzazione divisa squadra"): nessun
+            salvataggio, nessuna autenticazione, nessuna squadra reale coinvolta. Serve solo a
+            controllare che il motore Canvas 2D componga correttamente i template del catalogo con
+            colori e sponsor arbitrari, prima di collegare gli endpoint host e l'interfaccia definitiva.
+        </p>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-warning">
+            Nessun template attivo trovato nel catalogo (<code>FFM.DivisaTemplate</code>, colonna
+            <code>Attivo</code>) — verifica che gli script di schema e seed siano stati eseguiti sul database.
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-12 col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        Catalogo template (<span id="numeroTemplate">@Model.Count</span> attivi)
+                    </div>
+                    <div class="card-body" style="max-height:420px; overflow-y:auto;">
+                        <div class="row row-cols-3 g-2" id="templateGallery"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Colori e sponsor</div>
+                    <div class="card-body d-flex flex-column gap-3">
+                        <div>
+                            <label class="form-label small mb-1" for="colore1">Colore 1 — corpo</label>
+                            <input type="color" id="colore1" class="form-control form-control-color w-100" value="#FFFFFF">
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1" for="colore2">Colore 2 — maniche</label>
+                            <input type="color" id="colore2" class="form-control form-control-color w-100" value="#000000">
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1" for="colore3">Colore 3 — colletto/polsini</label>
+                            <input type="color" id="colore3" class="form-control form-control-color w-100" value="#000000">
+                        </div>
+
+                        <hr class="my-1">
+
+                        <div>
+                            <label class="form-label small mb-1" for="testoSponsor">Sponsor (testo libero)</label>
+                            <input type="text" id="testoSponsor" class="form-control" maxlength="50" placeholder="Es. NomeSponsor">
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-4">
+                                <label class="form-label small mb-1" for="coloreTestoSponsor">Testo</label>
+                                <input type="color" id="coloreTestoSponsor" class="form-control form-control-color w-100" value="#FFFFFF">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small mb-1" for="coloreContornoTestoSponsor">Contorno</label>
+                                <input type="color" id="coloreContornoTestoSponsor" class="form-control form-control-color w-100" value="#000000">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small mb-1" for="coloreSfondoTestoSponsor">Sfondo</label>
+                                <input type="color" id="coloreSfondoTestoSponsor" class="form-control form-control-color w-100" value="#000000">
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="usaContornoSponsor">
+                                <label class="form-check-label small" for="usaContornoSponsor">Applica contorno</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="usaSfondoSponsor">
+                                <label class="form-check-label small" for="usaSfondoSponsor">Applica sfondo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Anteprima</span>
+                        <span class="small text-body-secondary" id="templateSelezionatoLabel"></span>
+                    </div>
+                    <div class="card-body text-center">
+                        <canvas id="anteprimaCanvas" width="512" height="512"
+                                style="max-width:100%; height:auto; background:repeating-conic-gradient(#e9ecef 0% 25%, #fff 0% 50%) 50% / 24px 24px;"></canvas>
+                        <div class="text-danger small mt-2 d-none" id="erroreMotore"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        const CATALOGO_TEMPLATE = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, jsonOptions));
+    </script>
+    <script src="~/js/divisa/divisa-render-engine.js"></script>
+    <script src="~/js/divisa/divisa-engine-page.js"></script>
+}

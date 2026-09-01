@@ -71,12 +71,118 @@
     </div>
 </div>
 
+<!--
+    Personalizzazione divisa squadra — fase 6 (sviluppata e validata qui, in
+    DAMIHeadlessCMS.TestHost, prima dell'integrazione su FFM2.0Core: vedi
+    claude/piano-divisa-squadra.md). Modale statica fuori da #squadraContent,
+    stesso pattern di #modificaGiocatoreModal: il punto di ingresso (pulsante
+    dentro renderInfo()) va riagganciato ad ogni renderSquadra(), la modale e
+    la sua interazione interna sono invece agganciate una sola volta qui sotto.
+-->
+<div class="modal fade" id="divisaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Personalizza divisa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <div id="divisaCaricamento" class="text-center py-5">
+                    <div class="spinner-border" role="status"><span class="visually-hidden">Caricamento...</span></div>
+                </div>
+                <div id="divisaErrore" class="alert alert-danger d-none"></div>
+                <div id="divisaContenuto" class="d-none">
+                    <ul class="nav nav-pills mb-3" id="divisaStepNav">
+                        <li class="nav-item"><button type="button" class="nav-link active" data-step="1">1. Modello</button></li>
+                        <li class="nav-item"><button type="button" class="nav-link" data-step="2">2. Colori</button></li>
+                        <li class="nav-item"><button type="button" class="nav-link" data-step="3">3. Sponsor</button></li>
+                    </ul>
+                    <div class="row g-4">
+                        <div class="col-12 col-lg-7">
+                            <div id="divisaStep1">
+                                <p class="text-body-secondary small">Scegli il modello di maglia.</p>
+                                <div class="row row-cols-3 row-cols-sm-4 g-2" id="divisaGalleria" style="max-height:360px; overflow-y:auto;"></div>
+                            </div>
+                            <div id="divisaStep2" class="d-none">
+                                <p class="text-body-secondary small">Scegli i tre colori della maglia.</p>
+                                <div class="row g-3">
+                                    <div class="col-4">
+                                        <label class="form-label small mb-1" for="divisaColore1">Colore 1 — corpo</label>
+                                        <input type="color" id="divisaColore1" class="form-control form-control-color w-100">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label small mb-1" for="divisaColore2">Colore 2 — maniche</label>
+                                        <input type="color" id="divisaColore2" class="form-control form-control-color w-100">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label small mb-1" for="divisaColore3">Colore 3 — colletto/polsini</label>
+                                        <input type="color" id="divisaColore3" class="form-control form-control-color w-100">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="divisaStep3" class="d-none">
+                                <p class="text-body-secondary small">Sponsor (testo libero, facoltativo).</p>
+                                <div class="mb-3">
+                                    <label for="divisaTestoSponsor" class="form-label small mb-1">Sponsor</label>
+                                    <input type="text" id="divisaTestoSponsor" class="form-control" maxlength="50" placeholder="Es. NomeSponsor">
+                                </div>
+                                <div class="row g-2 align-items-end mb-2">
+                                    <div class="col-4">
+                                        <label class="form-label small mb-1" for="divisaColoreTestoSponsor">Testo</label>
+                                        <input type="color" id="divisaColoreTestoSponsor" class="form-control form-control-color w-100">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label small mb-1" for="divisaColoreContornoTestoSponsor">Contorno</label>
+                                        <input type="color" id="divisaColoreContornoTestoSponsor" class="form-control form-control-color w-100">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label small mb-1" for="divisaColoreSfondoTestoSponsor">Sfondo</label>
+                                        <input type="color" id="divisaColoreSfondoTestoSponsor" class="form-control form-control-color w-100">
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="divisaUsaContornoSponsor">
+                                        <label class="form-check-label small" for="divisaUsaContornoSponsor">Applica contorno</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="divisaUsaSfondoSponsor">
+                                        <label class="form-check-label small" for="divisaUsaSfondoSponsor">Applica sfondo</label>
+                                    </div>
+                                </div>
+                                <div class="text-danger small mt-3 d-none" id="divisaErroreSalvataggio"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-outline-secondary" id="divisaIndietro" disabled>
+                                    <i class="bi bi-arrow-left me-1"></i>Indietro
+                                </button>
+                                <button type="button" class="btn btn-primary" id="divisaAvanti">
+                                    Avanti<i class="bi bi-arrow-right ms-1"></i>
+                                </button>
+                                <button type="button" class="btn btn-success d-none" id="divisaSalva">
+                                    <i class="bi bi-check-lg me-1"></i>Salva
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-5 text-center">
+                            <canvas id="divisaAnteprimaCanvas" width="512" height="512"
+                                    style="max-width:100%; height:auto; background:repeating-conic-gradient(#e9ecef 0% 25%, #fff 0% 50%) 50% / 24px 24px;"></canvas>
+                            <div class="text-danger small mt-2 d-none" id="divisaErroreMotore"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @{
     var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
 }
 @Html.AntiForgeryToken()
 
 @section Scripts {
+    <script src="~/js/divisa/divisa-render-engine.js"></script>
     <script>
         (function () {
             const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
@@ -88,6 +194,15 @@
             const errorEl = document.getElementById('squadraLoadError');
             const modalEl = document.getElementById('modificaGiocatoreModal');
             const modal = new bootstrap.Modal(modalEl);
+
+            // --- Personalizzazione divisa squadra (fase 6) ---
+            const divisaModalEl = document.getElementById('divisaModal');
+            const divisaModal = new bootstrap.Modal(divisaModalEl);
+            const DIVISA_BASE_URL_TEMPLATE = '/img/divisa/template';
+            const DIVISA_BASE_URL_CONDIVISI = '/img/divisa/condivisi';
+            let divisaCatalogo = [];
+            let divisaTemplateSelezionatoId = null;
+            let divisaStepCorrente = 1;
 
             let currentData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, jsonOptions));
             const nuoviGiocatoriIds = new Set();
@@ -126,7 +241,13 @@
                 return `
                     <div class="col-12 col-lg-6">
                         <div class="border rounded p-3 h-100">
-                            <h2 class="h5 mb-3">Squadra</h2>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h5 mb-0">Squadra</h2>
+                                ${currentData.puoModificare ? `
+                                <button type="button" class="btn btn-sm btn-outline-primary cms-personalizza-divisa">
+                                    <i class="bi bi-palette2 me-1"></i>Personalizza divisa
+                                </button>` : ''}
+                            </div>
                             <dl class="row mb-0 small">
                                 <dt class="col-6">Presidente</dt><dd class="col-6">${info.presidente ?? ''}</dd>
                                 <dt class="col-6">Vice presidente</dt><dd class="col-6">${info.vicePresidente ?? ''}</dd>
@@ -243,6 +364,7 @@
 
                 wireRosaEvents();
                 wireSearchBar();
+                wireDivisaButton();
             }
 
             // --- Cambio squadra dal selettore: fetch senza reload, URL aggiornata via
@@ -391,6 +513,158 @@
                     errorEl.classList.remove('d-none');
                 }
             }
+
+            // --- Personalizzazione divisa squadra (fase 6): pulsante nel box "Squadra"
+            // (dentro #squadraContent, riagganciato ad ogni renderSquadra), modale e sua
+            // interazione interna (agganciate una sola volta, come per #modificaGiocatoreModal). ---
+            function wireDivisaButton() {
+                const btn = contentEl.querySelector('.cms-personalizza-divisa');
+                if (btn) btn.addEventListener('click', apriModaleDivisa);
+            }
+
+            function mostraStepDivisa(n) {
+                divisaStepCorrente = n;
+                [1, 2, 3].forEach(i => {
+                    document.getElementById(`divisaStep${i}`).classList.toggle('d-none', i !== n);
+                });
+                divisaModalEl.querySelectorAll('#divisaStepNav [data-step]').forEach(btn => {
+                    btn.classList.toggle('active', Number(btn.dataset.step) === n);
+                });
+                document.getElementById('divisaIndietro').disabled = n === 1;
+                document.getElementById('divisaAvanti').classList.toggle('d-none', n === 3);
+                document.getElementById('divisaSalva').classList.toggle('d-none', n !== 3);
+            }
+
+            function renderGalleriaDivisa() {
+                const galleriaEl = document.getElementById('divisaGalleria');
+                galleriaEl.innerHTML = divisaCatalogo.map(t => `
+                    <div class="col">
+                        <button type="button" class="btn btn-outline-secondary p-1 w-100 divisa-template-thumb ${t.id === divisaTemplateSelezionatoId ? 'btn-secondary active' : ''}"
+                                data-id="${t.id}" title="${t.nome}">
+                            <img src="${DIVISA_BASE_URL_TEMPLATE}/${t.cartellaAsset}/icona.png" class="img-fluid" alt="${t.nome}">
+                        </button>
+                    </div>`).join('');
+
+                galleriaEl.querySelectorAll('.divisa-template-thumb').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        divisaTemplateSelezionatoId = Number(btn.dataset.id);
+                        galleriaEl.querySelectorAll('.divisa-template-thumb').forEach(b => b.classList.remove('btn-secondary', 'active'));
+                        btn.classList.add('btn-secondary', 'active');
+                        aggiornaAnteprimaDivisa();
+                    });
+                });
+            }
+
+            async function aggiornaAnteprimaDivisa() {
+                const template = divisaCatalogo.find(t => t.id === divisaTemplateSelezionatoId);
+                const erroreMotoreEl = document.getElementById('divisaErroreMotore');
+                if (!template) return;
+
+                erroreMotoreEl.classList.add('d-none');
+                try {
+                    await DivisaRenderEngine.componiMaglia(document.getElementById('divisaAnteprimaCanvas'), {
+                        cartellaAssetTemplate: template.cartellaAsset,
+                        baseUrlTemplate: DIVISA_BASE_URL_TEMPLATE,
+                        baseUrlCondivisi: DIVISA_BASE_URL_CONDIVISI,
+                        colore1: document.getElementById('divisaColore1').value,
+                        colore2: document.getElementById('divisaColore2').value,
+                        colore3: document.getElementById('divisaColore3').value,
+                        testoSponsor: document.getElementById('divisaTestoSponsor').value,
+                        coloreTestoSponsor: document.getElementById('divisaColoreTestoSponsor').value,
+                        coloreContornoTestoSponsor: document.getElementById('divisaUsaContornoSponsor').checked ? document.getElementById('divisaColoreContornoTestoSponsor').value : null,
+                        coloreSfondoTestoSponsor: document.getElementById('divisaUsaSfondoSponsor').checked ? document.getElementById('divisaColoreSfondoTestoSponsor').value : null
+                    });
+                } catch (err) {
+                    erroreMotoreEl.textContent = `Errore nella composizione: ${err.message}`;
+                    erroreMotoreEl.classList.remove('d-none');
+                }
+            }
+
+            async function apriModaleDivisa() {
+                document.getElementById('divisaCaricamento').classList.remove('d-none');
+                document.getElementById('divisaErrore').classList.add('d-none');
+                document.getElementById('divisaContenuto').classList.add('d-none');
+                document.getElementById('divisaErroreSalvataggio').classList.add('d-none');
+                divisaModal.show();
+
+                try {
+                    const dati = await apiFetch(`/area-riservata/api/squadre/${currentData.info.idSquadra}/divisa`);
+                    divisaCatalogo = dati.catalogoTemplate;
+                    divisaTemplateSelezionatoId = dati.divisa.idTemplate;
+
+                    document.getElementById('divisaColore1').value = dati.divisa.colore1;
+                    document.getElementById('divisaColore2').value = dati.divisa.colore2;
+                    document.getElementById('divisaColore3').value = dati.divisa.colore3;
+                    document.getElementById('divisaTestoSponsor').value = dati.divisa.testoSponsor ?? '';
+                    document.getElementById('divisaColoreTestoSponsor').value = dati.divisa.coloreTestoSponsor ?? '#FFFFFF';
+                    document.getElementById('divisaColoreContornoTestoSponsor').value = dati.divisa.coloreContornoTestoSponsor ?? '#000000';
+                    document.getElementById('divisaColoreSfondoTestoSponsor').value = dati.divisa.coloreSfondoTestoSponsor ?? '#000000';
+                    document.getElementById('divisaUsaContornoSponsor').checked = !!dati.divisa.coloreContornoTestoSponsor;
+                    document.getElementById('divisaUsaSfondoSponsor').checked = !!dati.divisa.coloreSfondoTestoSponsor;
+
+                    renderGalleriaDivisa();
+                    mostraStepDivisa(1);
+                    await aggiornaAnteprimaDivisa();
+
+                    document.getElementById('divisaCaricamento').classList.add('d-none');
+                    document.getElementById('divisaContenuto').classList.remove('d-none');
+                } catch (err) {
+                    document.getElementById('divisaCaricamento').classList.add('d-none');
+                    const erroreEl = document.getElementById('divisaErrore');
+                    erroreEl.textContent = err.message;
+                    erroreEl.classList.remove('d-none');
+                }
+            }
+
+            divisaModalEl.querySelector('#divisaStepNav').addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-step]');
+                if (btn) mostraStepDivisa(Number(btn.dataset.step));
+            });
+            document.getElementById('divisaAvanti').addEventListener('click', () => mostraStepDivisa(Math.min(3, divisaStepCorrente + 1)));
+            document.getElementById('divisaIndietro').addEventListener('click', () => mostraStepDivisa(Math.max(1, divisaStepCorrente - 1)));
+
+            [
+                'divisaColore1', 'divisaColore2', 'divisaColore3',
+                'divisaTestoSponsor', 'divisaColoreTestoSponsor', 'divisaColoreContornoTestoSponsor', 'divisaColoreSfondoTestoSponsor',
+                'divisaUsaContornoSponsor', 'divisaUsaSfondoSponsor'
+            ].forEach(id => document.getElementById(id).addEventListener('input', aggiornaAnteprimaDivisa));
+
+            document.getElementById('divisaSalva').addEventListener('click', async () => {
+                const erroreEl = document.getElementById('divisaErroreSalvataggio');
+                erroreEl.classList.add('d-none');
+
+                if (!divisaTemplateSelezionatoId) {
+                    erroreEl.textContent = 'Seleziona un template dal passo 1.';
+                    erroreEl.classList.remove('d-none');
+                    return;
+                }
+
+                const payload = {
+                    idTemplate: divisaTemplateSelezionatoId,
+                    colore1: document.getElementById('divisaColore1').value,
+                    colore2: document.getElementById('divisaColore2').value,
+                    colore3: document.getElementById('divisaColore3').value,
+                    testoSponsor: document.getElementById('divisaTestoSponsor').value || null,
+                    coloreTestoSponsor: document.getElementById('divisaColoreTestoSponsor').value,
+                    coloreContornoTestoSponsor: document.getElementById('divisaUsaContornoSponsor').checked ? document.getElementById('divisaColoreContornoTestoSponsor').value : null,
+                    coloreSfondoTestoSponsor: document.getElementById('divisaUsaSfondoSponsor').checked ? document.getElementById('divisaColoreSfondoTestoSponsor').value : null,
+                    // PNG "cotto" dal motore di rendering (fase 4) sull'anteprima corrente —
+                    // il salvataggio fisico e l'URL finale sono responsabilità del server
+                    // (IFileStorageProvider, vedi fase 5), non di questo JS.
+                    immagineGenerataBase64: document.getElementById('divisaAnteprimaCanvas').toDataURL('image/png')
+                };
+
+                try {
+                    await apiFetch(`/area-riservata/api/squadre/${currentData.info.idSquadra}/divisa`, {
+                        method: 'PUT',
+                        body: JSON.stringify(payload)
+                    });
+                    divisaModal.hide();
+                } catch (err) {
+                    erroreEl.textContent = err.message;
+                    erroreEl.classList.remove('d-none');
+                }
+            });
 
             // Primo rendering: dati già presenti dal caricamento server-side iniziale,
             // nessuna fetch necessaria al caricamento della pagina.

@@ -1,3 +1,4 @@
+using DAMIHeadlessCMS.Admin.Data;
 using DAMIHeadlessCMS.Admin.Ffm.Data;
 using DAMIHeadlessCMS.Admin.Ffm.Models;
 using DAMIHeadlessCMS.TestHost.Models.PublicSite;
@@ -10,11 +11,13 @@ namespace DAMIHeadlessCMS.TestHost.Controllers;
 /// <summary>
 /// API JSON per le azioni "in-place" (senza reload di pagina) dell'Area
 /// Riservata: cambio squadra dal selettore, ricerca/aggiunta giocatore,
-/// modifica stato, rimozione. Consumata da fetch() in
-/// Views/AreaRiservata/Index.cshtml — <see cref="AreaRiservataController"/>
-/// resta responsabile solo del rendering iniziale delle pagine (login,
-/// caricamento server-side della propria squadra o di un'altra per URL
-/// diretto/bookmark).
+/// modifica stato, rimozione, personalizzazione divisa (fase 5 del piano
+/// "Personalizzazione divisa squadra", sviluppata e validata qui prima
+/// dell'integrazione su FFM2.0Core — vedi <c>claude/piano-divisa-squadra.md</c>).
+/// Consumata da fetch() in Views/AreaRiservata/Index.cshtml —
+/// <see cref="AreaRiservataController"/> resta responsabile solo del
+/// rendering iniziale delle pagine (login, caricamento server-side della
+/// propria squadra o di un'altra per URL diretto/bookmark).
 ///
 /// Ogni azione di scrittura ri-verifica SEMPRE lato server, tramite
 /// <see cref="AreaRiservataAuthorizationService"/>, che l'utente possa
@@ -30,15 +33,24 @@ public class AreaRiservataApiController : ControllerBase
 {
     private readonly IFfmSquadraRepository _squadre;
     private readonly IFfmGiocatoriRepository _giocatori;
+    private readonly IFfmDivisaTemplateRepository _divisaTemplate;
+    private readonly IFfmDivisaRepository _divisa;
+    private readonly IFileStorageProvider _fileStorage;
     private readonly AreaRiservataAuthorizationService _authorization;
 
     public AreaRiservataApiController(
         IFfmSquadraRepository squadre,
         IFfmGiocatoriRepository giocatori,
+        IFfmDivisaTemplateRepository divisaTemplate,
+        IFfmDivisaRepository divisa,
+        IFileStorageProvider fileStorage,
         AreaRiservataAuthorizationService authorization)
     {
         _squadre = squadre;
         _giocatori = giocatori;
+        _divisaTemplate = divisaTemplate;
+        _divisa = divisa;
+        _fileStorage = fileStorage;
         _authorization = authorization;
     }
 
@@ -155,6 +167,157 @@ public class AreaRiservataApiController : ControllerBase
 
         var model = await BuildSquadraViewModelAsync(idSquadra, ct);
         return model is null ? NotFound() : Ok(model);
+    }
+
+    /// <summary>
+    /// Catalogo template attivi + personalizzazione corrente della squadra
+    /// (fase 5, "Personalizzazione divisa squadra") — sola lettura, nessuna
+    /// verifica di CanEdit: consultare la divisa di un'altra squadra è sempre
+    /// permesso, come per <see cref="GetSquadra"/>. <see cref="DivisaConfiguratoreDto.PuoModificare"/>
+    /// riflette comunque la stessa regola di <see cref="AreaRiservataAuthorizationService.CanEdit"/>,
+    /// così la UI (fase 6) sa se mostrare i controlli di modifica.
+    /// </summary>
+    [HttpGet("squadre/{idSquadra:int}/divisa")]
+    public async Task<ActionResult<DivisaConfiguratoreDto>> GetDivisa(int idSquadra, CancellationToken ct)
+    {
+        var model = await BuildDivisaConfiguratoreAsync(idSquadra, ct);
+        return model is null
+            ? NotFound(new { error = "Squadra non trovata o nessun template divisa disponibile." })
+            : Ok(model);
+    }
+
+    /// <summary>
+    /// Crea/aggiorna la personalizzazione divisa (solo maglia) della squadra:
+    /// template scelto, 3 colori, sponsor testuale, PNG "cotto" dal motore di
+    /// rendering client-side (fase 4). Stessa autorizzazione di
+    /// <see cref="AggiornaGiocatore"/> (<see cref="CheckCanEditAsync"/>) — non
+    /// quella più stringente di <see cref="CheckCanAddOrRemoveAsync"/>,
+    /// riservata alla composizione della rosa.
+    /// </summary>
+    [HttpPut("squadre/{idSquadra:int}/divisa")]
+    [ValidateAntiForgeryToken]
+    public async Task<ActionResult<DivisaConfiguratoreDto>> AggiornaDivisa(
+        int idSquadra, [FromBody] AggiornaDivisaApiRequestDto request, CancellationToken ct)
+    {
+        var authorizationError = await CheckCanEditAsync(idSquadra, ct);
+        if (authorizationError is not null)
+        {
+            return authorizationError;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Colore1) || string.IsNullOrWhiteSpace(request.Colore2) || string.IsNullOrWhiteSpace(request.Colore3))
+        {
+            return BadRequest(new { error = "I tre colori della maglia sono obbligatori." });
+        }
+
+        var template = await _divisaTemplate.GetTemplateByIdAsync(request.IdTemplate, ct);
+        if (template is null)
+        {
+            return BadRequest(new { error = "Template selezionato non valido." });
+        }
+
+        var attuale = await _divisa.GetDivisaAsync(idSquadra, ct);
+
+        // Un template ritirato (Attivo = false) resta valido solo se è già
+        // quello che la squadra aveva selezionato in precedenza: si può
+        // continuare a usarlo, ma non passare a un template non più in
+        // catalogo — stessa logica descritta su IFfmDivisaTemplateRepository.GetTemplateByIdAsync.
+        if (!template.Attivo && (attuale is null || attuale.IdTemplate != request.IdTemplate))
+        {
+            return BadRequest(new { error = "Questo template non è più disponibile per nuove selezioni." });
+        }
+
+        var urlImmagine = attuale?.UrlImmagineGenerata;
+        if (!string.IsNullOrWhiteSpace(request.ImmagineGenerataBase64))
+        {
+            if (!TryDecodeImmagineGenerata(request.ImmagineGenerataBase64, out var bytes))
+            {
+                return BadRequest(new { error = "Immagine divisa non valida: atteso un PNG come data URL." });
+            }
+
+            await using var stream = new MemoryStream(bytes);
+            var nuovoUrl = await _fileStorage.SaveAsync(stream, "divisa.png", $"divisa/{idSquadra}", ct);
+
+            // Nome file randomizzato ad ogni salvataggio (vedi IFileStorageProvider):
+            // il vecchio PNG non serve più, va eliminato per non accumulare file
+            // orfani ad ogni ri-personalizzazione.
+            if (!string.IsNullOrWhiteSpace(urlImmagine))
+            {
+                await _fileStorage.DeleteAsync(urlImmagine, ct);
+            }
+
+            urlImmagine = nuovoUrl;
+        }
+
+        var dto = new AggiornaDivisaRequestDto
+        {
+            IdTemplate = request.IdTemplate,
+            Colore1 = request.Colore1,
+            Colore2 = request.Colore2,
+            Colore3 = request.Colore3,
+            TestoSponsor = request.TestoSponsor,
+            ColoreTestoSponsor = request.ColoreTestoSponsor,
+            ColoreContornoTestoSponsor = request.ColoreContornoTestoSponsor,
+            ColoreSfondoTestoSponsor = request.ColoreSfondoTestoSponsor,
+            UrlImmagineGenerata = urlImmagine
+        };
+
+        await _divisa.AggiornaDivisaAsync(idSquadra, dto, User.GetIdUtente(), ct);
+
+        var model = await BuildDivisaConfiguratoreAsync(idSquadra, ct);
+        return model is null ? NotFound() : Ok(model);
+    }
+
+    private const string DataUrlPngPrefix = "data:image/png;base64,";
+
+    /// <summary>Accetta sia un data URL completo (<c>"data:image/png;base64,..."</c>) sia la sola stringa base64.</summary>
+    private static bool TryDecodeImmagineGenerata(string dataUrl, out byte[] bytes)
+    {
+        var base64 = dataUrl.StartsWith(DataUrlPngPrefix, StringComparison.OrdinalIgnoreCase)
+            ? dataUrl[DataUrlPngPrefix.Length..]
+            : dataUrl;
+
+        try
+        {
+            bytes = Convert.FromBase64String(base64);
+            return true;
+        }
+        catch (FormatException)
+        {
+            bytes = [];
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Null se la squadra non esiste, oppure se il catalogo non ha nessun
+    /// template attivo da cui costruire un default (vedi
+    /// <see cref="IFfmDivisaRepository.GetDivisaAsync"/>) — entrambi i casi
+    /// limite riportati semplicemente come 404 dal chiamante.
+    /// </summary>
+    private async Task<DivisaConfiguratoreDto?> BuildDivisaConfiguratoreAsync(int idSquadra, CancellationToken ct)
+    {
+        var info = await _squadre.GetInfoSquadraAsync(idSquadra, ct);
+        if (info is null)
+        {
+            return null;
+        }
+
+        var catalogo = await _divisaTemplate.GetTemplateAttiviAsync(ct);
+        var divisa = await _divisa.GetDivisaAsync(idSquadra, ct);
+        if (divisa is null)
+        {
+            return null;
+        }
+
+        var puoModificare = _authorization.CanEdit(idSquadra, User.GetIdSquadra(), User.GetIdUtente(), info.AbilitaModifica);
+
+        return new DivisaConfiguratoreDto
+        {
+            CatalogoTemplate = catalogo,
+            Divisa = divisa,
+            PuoModificare = puoModificare
+        };
     }
 
     /// <summary>

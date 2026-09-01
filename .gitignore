@@ -16,3 +16,15 @@ src/DAMIHeadlessCMS.Data/appsettings.Development.json
 src/DAMIHeadlessCMS.Admin/ClientApp/**/node_modules/
 src/DAMIHeadlessCMS.Admin/ClientApp/**/dist/
 src/DAMIHeadlessCMS.Admin/ClientApp/**/.angular/
+
+## File generati a runtime da IFileStorageProvider/LocalFileStorageProvider
+## (nome file randomizzato ad ogni salvataggio, il precedente viene eliminato
+## fisicamente ad ogni ri-personalizzazione): non c'è nulla da preservare in
+## git, la fonte di verità resta il DB + gli asset condivisi + il motore di
+## rendering. Per ora limitato alla cartella della divisa; wwwroot/uploads/
+## già esistente (es. squadre-loghi/) resta fuori scope, da valutare a parte.
+## NB: LocalFileStorageProvider appiattisce il subFolder "divisa/{idSquadra}"
+## in "divisa_{idSquadra}" (Path.GetInvalidFileNameChars() include anche '/',
+## quindi ogni '/' nel subFolder diventa '_') — la cartella reale su disco è
+## "uploads/divisa_15", non "uploads/divisa/15": serve il glob sotto.
+src/DAMIHeadlessCMS.TestHost/wwwroot/uploads/divisa_*/
