@@ -25,11 +25,68 @@
     const usaContornoSponsorEl = document.getElementById("usaContornoSponsor");
     const usaSfondoSponsorEl = document.getElementById("usaSfondoSponsor");
 
+    // Fase 8.3 — migliorie lettering sponsor. Nessun elenco di posizioni/font
+    // duplicato qui: la galleria dei preset e la <select> dei font si
+    // popolano leggendo le chiavi direttamente da
+    // DivisaRenderEngine.POSIZIONI_TESTO_SPONSOR/window.DivisaFonts.MANIFESTO
+    // (uniche fonti di verità, vedi commenti nei rispettivi moduli).
+    const posizioneGroupEl = document.getElementById("posizioneSponsorGroup");
+    const fontTestoSponsorEl = document.getElementById("fontTestoSponsor");
+    const coloreOmbraTestoSponsorEl = document.getElementById("coloreOmbraTestoSponsor");
+    const usaOmbraSponsorEl = document.getElementById("usaOmbraSponsor");
+    const dimensioneTestoSponsorEl = document.getElementById("dimensioneTestoSponsor");
+    const dimensioneTestoSponsorValoreEl = document.getElementById("dimensioneTestoSponsorValore");
+    const autoFitTestoSponsorEl = document.getElementById("autoFitTestoSponsor");
+    const letteringAdArcoTestoSponsorEl = document.getElementById("letteringAdArcoTestoSponsor");
+
     if (!galleriaEl || typeof CATALOGO_TEMPLATE === "undefined" || CATALOGO_TEMPLATE.length === 0) {
         return;
     }
 
     let templateSelezionato = CATALOGO_TEMPLATE[0];
+    let posizioneSponsorSelezionata = "Alto";
+
+    function renderPosizioniSponsor() {
+        if (!posizioneGroupEl || typeof DivisaRenderEngine === "undefined") {
+            return;
+        }
+        const chiavi = Object.keys(DivisaRenderEngine.POSIZIONI_TESTO_SPONSOR);
+        posizioneGroupEl.innerHTML = chiavi.map(function (chiave) {
+            return (
+                '<button type="button" class="btn btn-outline-secondary btn-sm posizione-sponsor-btn" data-posizione="' + chiave + '">' +
+                chiave +
+                "</button>"
+            );
+        }).join("");
+
+        const bottoni = posizioneGroupEl.querySelectorAll(".posizione-sponsor-btn");
+        bottoni.forEach(function (btn) {
+            if (btn.dataset.posizione === posizioneSponsorSelezionata) {
+                btn.classList.add("btn-secondary", "active");
+            }
+            btn.addEventListener("click", function () {
+                posizioneSponsorSelezionata = btn.dataset.posizione;
+                bottoni.forEach(function (b) { b.classList.remove("btn-secondary", "active"); });
+                btn.classList.add("btn-secondary", "active");
+                aggiorna();
+            });
+        });
+    }
+
+    function renderFontSponsor() {
+        if (!fontTestoSponsorEl || typeof DivisaFonts === "undefined") {
+            return;
+        }
+        const chiavi = ["Predefinito"].concat(Object.keys(DivisaFonts.MANIFESTO));
+        fontTestoSponsorEl.innerHTML = chiavi.map(function (chiave) {
+            return '<option value="' + chiave + '">' + chiave + "</option>";
+        }).join("");
+    }
+
+    function aggiornaStatoDimensione() {
+        const autoFitAttivo = autoFitTestoSponsorEl.checked;
+        dimensioneTestoSponsorEl.disabled = autoFitAttivo;
+    }
 
     function renderGalleria() {
         galleriaEl.innerHTML = CATALOGO_TEMPLATE.map(function (t) {
@@ -81,7 +138,13 @@
                 testoSponsor: testoSponsorEl.value,
                 coloreTestoSponsor: coloreTestoSponsorEl.value,
                 coloreContornoTestoSponsor: usaContornoSponsorEl.checked ? coloreContornoTestoSponsorEl.value : null,
-                coloreSfondoTestoSponsor: usaSfondoSponsorEl.checked ? coloreSfondoTestoSponsorEl.value : null
+                coloreSfondoTestoSponsor: usaSfondoSponsorEl.checked ? coloreSfondoTestoSponsorEl.value : null,
+                posizioneTestoSponsor: posizioneSponsorSelezionata,
+                fontTestoSponsor: fontTestoSponsorEl ? fontTestoSponsorEl.value : "Predefinito",
+                coloreOmbraTestoSponsor: usaOmbraSponsorEl.checked ? coloreOmbraTestoSponsorEl.value : null,
+                dimensioneTestoSponsor: Number(dimensioneTestoSponsorEl.value),
+                autoFitTestoSponsor: autoFitTestoSponsorEl.checked,
+                letteringAdArcoTestoSponsor: letteringAdArcoTestoSponsorEl.checked
             });
         } catch (err) {
             erroreEl.textContent = "Errore nella composizione: " + err.message;
@@ -92,11 +155,27 @@
     [
         colore1El, colore2El, colore3El,
         testoSponsorEl, coloreTestoSponsorEl, coloreContornoTestoSponsorEl, coloreSfondoTestoSponsorEl,
-        usaContornoSponsorEl, usaSfondoSponsorEl
+        usaContornoSponsorEl, usaSfondoSponsorEl,
+        fontTestoSponsorEl, coloreOmbraTestoSponsorEl, usaOmbraSponsorEl,
+        dimensioneTestoSponsorEl, autoFitTestoSponsorEl, letteringAdArcoTestoSponsorEl
     ].forEach(function (el) {
-        el.addEventListener("input", aggiorna);
+        if (!el) {
+            return;
+        }
+        el.addEventListener("input", function () {
+            if (el === dimensioneTestoSponsorEl) {
+                dimensioneTestoSponsorValoreEl.textContent = dimensioneTestoSponsorEl.value;
+            }
+            if (el === autoFitTestoSponsorEl) {
+                aggiornaStatoDimensione();
+            }
+            aggiorna();
+        });
     });
 
     renderGalleria();
+    renderPosizioniSponsor();
+    renderFontSponsor();
+    aggiornaStatoDimensione();
     aggiorna();
 })();

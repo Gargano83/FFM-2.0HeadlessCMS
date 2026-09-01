@@ -68,6 +68,49 @@ public sealed class DivisaSquadraDto
     public string? ColoreSfondoTestoSponsor { get; set; }
 
     /// <summary>
+    /// Preset di posizionamento verticale del lettering: "Alto" (petto, sotto
+    /// il collo — posizione storica, unica esistente prima della fase 8),
+    /// "Centro" (metà busto) o "Basso" (verso il fondo maglia). Default "Alto"
+    /// per non alterare la resa delle personalizzazioni già salvate.
+    /// </summary>
+    public string PosizioneTestoSponsor { get; set; } = "Alto";
+
+    /// <summary>
+    /// Font del lettering: "Predefinito" (system-ui/sans-serif, comportamento
+    /// storico) oppure uno dei font brandizzati a licenza libera bundlati con
+    /// la libreria (es. "Anton", "BebasNeue", "Oswald", "RussoOne", "Teko" —
+    /// l'elenco esatto è definito lato motore di rendering, fase 8.2).
+    /// </summary>
+    public string FontTestoSponsor { get; set; } = "Predefinito";
+
+    /// <summary>Facoltativo — ombreggiatura del testo sponsor, indipendente da contorno e sfondo.</summary>
+    public string? ColoreOmbraTestoSponsor { get; set; }
+
+    /// <summary>
+    /// Dimensione manuale del font, in percentuale sulla dimensione base
+    /// (100 = base attuale, es. 130 = +30%). Null = dimensione base, nessuna
+    /// percentuale esplicita salvata — ignorato se <see cref="AutoFitTestoSponsor"/> è true.
+    /// </summary>
+    public int? DimensioneTestoSponsor { get; set; }
+
+    /// <summary>
+    /// Se true la dimensione del font è calcolata automaticamente dal motore
+    /// di rendering in base alla larghezza del testo, per restare sempre
+    /// nell'area stampabile della maglia (risolve anche l'assenza di
+    /// contenimento overflow del motore attuale). Ha priorità su
+    /// <see cref="DimensioneTestoSponsor"/> quando true.
+    /// </summary>
+    public bool AutoFitTestoSponsor { get; set; }
+
+    /// <summary>
+    /// Se true il lettering è disposto ad arco invece che su una riga dritta.
+    /// Funzionalità isolata nel motore di rendering (fase 8.3) per poter
+    /// essere rimossa in blocco in futuro senza impatti sulle altre migliorie,
+    /// qualora la resa finale non fosse quella desiderata.
+    /// </summary>
+    public bool LetteringAdArcoTestoSponsor { get; set; }
+
+    /// <summary>
     /// URL del PNG "cotto" una volta dal motore di rendering (composizione di
     /// tutti i layer + sponsor) e riusato staticamente come <c>&lt;img&gt;</c>
     /// ovunque la maglia va mostrata — mai ri-renderizzato live fuori dal
@@ -104,6 +147,18 @@ public sealed class AggiornaDivisaRequestDto
     public string? ColoreContornoTestoSponsor { get; set; }
 
     public string? ColoreSfondoTestoSponsor { get; set; }
+
+    public string PosizioneTestoSponsor { get; set; } = "Alto";
+
+    public string FontTestoSponsor { get; set; } = "Predefinito";
+
+    public string? ColoreOmbraTestoSponsor { get; set; }
+
+    public int? DimensioneTestoSponsor { get; set; }
+
+    public bool AutoFitTestoSponsor { get; set; }
+
+    public bool LetteringAdArcoTestoSponsor { get; set; }
 
     /// <summary>
     /// Valorizzato dal chiamante dopo che il motore di rendering ha "cotto" e
@@ -163,6 +218,18 @@ public sealed class AggiornaDivisaApiRequestDto
     public string? ColoreContornoTestoSponsor { get; set; }
 
     public string? ColoreSfondoTestoSponsor { get; set; }
+
+    public string PosizioneTestoSponsor { get; set; } = "Alto";
+
+    public string FontTestoSponsor { get; set; } = "Predefinito";
+
+    public string? ColoreOmbraTestoSponsor { get; set; }
+
+    public int? DimensioneTestoSponsor { get; set; }
+
+    public bool AutoFitTestoSponsor { get; set; }
+
+    public bool LetteringAdArcoTestoSponsor { get; set; }
 
     /// <summary>
     /// Data URL PNG generato lato client al momento del salvataggio (es.

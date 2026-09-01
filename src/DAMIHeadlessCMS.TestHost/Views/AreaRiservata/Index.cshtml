@@ -150,6 +150,48 @@
                                         <label class="form-check-label small" for="divisaUsaSfondoSponsor">Applica sfondo</label>
                                     </div>
                                 </div>
+
+                                <hr class="my-3">
+
+                                <div class="mb-3">
+                                    <label class="form-label small mb-1">Posizione</label>
+                                    <div class="btn-group w-100" role="group" id="divisaPosizioneSponsorGroup"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small mb-1" for="divisaFontTestoSponsor">Font</label>
+                                    <select id="divisaFontTestoSponsor" class="form-select"></select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label small mb-0" for="divisaColoreOmbraTestoSponsor">Ombreggiatura</label>
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input" type="checkbox" id="divisaUsaOmbraSponsor">
+                                            <label class="form-check-label small" for="divisaUsaOmbraSponsor">Applica ombra</label>
+                                        </div>
+                                    </div>
+                                    <input type="color" id="divisaColoreOmbraTestoSponsor" class="form-control form-control-color w-100">
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label small mb-0" for="divisaDimensioneTestoSponsor">
+                                            Dimensione (<span id="divisaDimensioneTestoSponsorValore">100</span>%)
+                                        </label>
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input" type="checkbox" id="divisaAutoFitTestoSponsor">
+                                            <label class="form-check-label small" for="divisaAutoFitTestoSponsor">Auto-fit</label>
+                                        </div>
+                                    </div>
+                                    <input type="range" id="divisaDimensioneTestoSponsor" class="form-range" min="60" max="140" step="5" value="100">
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="divisaLetteringAdArcoTestoSponsor">
+                                    <label class="form-check-label small" for="divisaLetteringAdArcoTestoSponsor">Lettering ad arco</label>
+                                </div>
+
                                 <div class="text-danger small mt-3 d-none" id="divisaErroreSalvataggio"></div>
                             </div>
                             <div class="d-flex justify-content-between mt-4">
@@ -182,6 +224,7 @@
 @Html.AntiForgeryToken()
 
 @section Scripts {
+    <script src="~/_content/DAMIHeadlessCMS.Admin/fonts/divisa/divisa-fonts.js"></script>
     <script src="~/js/divisa/divisa-render-engine.js"></script>
     <script>
         (function () {
@@ -203,6 +246,9 @@
             let divisaCatalogo = [];
             let divisaTemplateSelezionatoId = null;
             let divisaStepCorrente = 1;
+            // Migliorie lettering sponsor (fase 8.4) — "Alto" replica la posizione
+            // fissa storica, come per il default lato server (DivisaSquadraDto).
+            let divisaPosizioneSponsorSelezionata = 'Alto';
 
             let currentData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, jsonOptions));
             const nuoviGiocatoriIds = new Set();
@@ -555,6 +601,43 @@
                 });
             }
 
+            // Migliorie lettering sponsor (fase 8.4). Nessun elenco di posizioni/font
+            // duplicato qui: il gruppo di pulsanti e la <select> si popolano leggendo
+            // le chiavi direttamente da DivisaRenderEngine.POSIZIONI_TESTO_SPONSOR e
+            // window.DivisaFonts.MANIFESTO (uniche fonti di verità, già usate anche
+            // dalla pagina di validazione /dev/divisa-engine della fase 8.3) — statici,
+            // renderizzati una sola volta e non ad ogni apertura della modale.
+            function renderPosizioniSponsor() {
+                const groupEl = document.getElementById('divisaPosizioneSponsorGroup');
+                const chiavi = Object.keys(DivisaRenderEngine.POSIZIONI_TESTO_SPONSOR);
+                groupEl.innerHTML = chiavi.map(chiave => `
+                    <button type="button" class="btn btn-outline-secondary btn-sm divisa-posizione-sponsor-btn" data-posizione="${chiave}">${chiave}</button>`).join('');
+
+                groupEl.querySelectorAll('.divisa-posizione-sponsor-btn').forEach(btn => {
+                    btn.addEventListener('click', () => impostaPosizioneSponsor(btn.dataset.posizione, { aggiorna: true }));
+                });
+                impostaPosizioneSponsor(divisaPosizioneSponsorSelezionata, { aggiorna: false });
+            }
+
+            function impostaPosizioneSponsor(chiave, { aggiorna }) {
+                divisaPosizioneSponsorSelezionata = chiave;
+                document.querySelectorAll('.divisa-posizione-sponsor-btn').forEach(b => {
+                    b.classList.toggle('btn-secondary', b.dataset.posizione === chiave);
+                    b.classList.toggle('active', b.dataset.posizione === chiave);
+                });
+                if (aggiorna) aggiornaAnteprimaDivisa();
+            }
+
+            function renderFontSponsor() {
+                const selectEl = document.getElementById('divisaFontTestoSponsor');
+                const chiavi = ['Predefinito'].concat(Object.keys(DivisaFonts.MANIFESTO));
+                selectEl.innerHTML = chiavi.map(chiave => `<option value="${chiave}">${chiave}</option>`).join('');
+            }
+
+            function aggiornaStatoDimensioneSponsor() {
+                document.getElementById('divisaDimensioneTestoSponsor').disabled = document.getElementById('divisaAutoFitTestoSponsor').checked;
+            }
+
             async function aggiornaAnteprimaDivisa() {
                 const template = divisaCatalogo.find(t => t.id === divisaTemplateSelezionatoId);
                 const erroreMotoreEl = document.getElementById('divisaErroreMotore');
@@ -572,7 +655,13 @@
                         testoSponsor: document.getElementById('divisaTestoSponsor').value,
                         coloreTestoSponsor: document.getElementById('divisaColoreTestoSponsor').value,
                         coloreContornoTestoSponsor: document.getElementById('divisaUsaContornoSponsor').checked ? document.getElementById('divisaColoreContornoTestoSponsor').value : null,
-                        coloreSfondoTestoSponsor: document.getElementById('divisaUsaSfondoSponsor').checked ? document.getElementById('divisaColoreSfondoTestoSponsor').value : null
+                        coloreSfondoTestoSponsor: document.getElementById('divisaUsaSfondoSponsor').checked ? document.getElementById('divisaColoreSfondoTestoSponsor').value : null,
+                        posizioneTestoSponsor: divisaPosizioneSponsorSelezionata,
+                        fontTestoSponsor: document.getElementById('divisaFontTestoSponsor').value,
+                        coloreOmbraTestoSponsor: document.getElementById('divisaUsaOmbraSponsor').checked ? document.getElementById('divisaColoreOmbraTestoSponsor').value : null,
+                        dimensioneTestoSponsor: Number(document.getElementById('divisaDimensioneTestoSponsor').value),
+                        autoFitTestoSponsor: document.getElementById('divisaAutoFitTestoSponsor').checked,
+                        letteringAdArcoTestoSponsor: document.getElementById('divisaLetteringAdArcoTestoSponsor').checked
                     });
                 } catch (err) {
                     erroreMotoreEl.textContent = `Errore nella composizione: ${err.message}`;
@@ -602,6 +691,16 @@
                     document.getElementById('divisaUsaContornoSponsor').checked = !!dati.divisa.coloreContornoTestoSponsor;
                     document.getElementById('divisaUsaSfondoSponsor').checked = !!dati.divisa.coloreSfondoTestoSponsor;
 
+                    impostaPosizioneSponsor(dati.divisa.posizioneTestoSponsor ?? 'Alto', { aggiorna: false });
+                    document.getElementById('divisaFontTestoSponsor').value = dati.divisa.fontTestoSponsor ?? 'Predefinito';
+                    document.getElementById('divisaColoreOmbraTestoSponsor').value = dati.divisa.coloreOmbraTestoSponsor ?? '#000000';
+                    document.getElementById('divisaUsaOmbraSponsor').checked = !!dati.divisa.coloreOmbraTestoSponsor;
+                    document.getElementById('divisaDimensioneTestoSponsor').value = dati.divisa.dimensioneTestoSponsor ?? 100;
+                    document.getElementById('divisaDimensioneTestoSponsorValore').textContent = dati.divisa.dimensioneTestoSponsor ?? 100;
+                    document.getElementById('divisaAutoFitTestoSponsor').checked = !!dati.divisa.autoFitTestoSponsor;
+                    document.getElementById('divisaLetteringAdArcoTestoSponsor').checked = !!dati.divisa.letteringAdArcoTestoSponsor;
+                    aggiornaStatoDimensioneSponsor();
+
                     renderGalleriaDivisa();
                     mostraStepDivisa(1);
                     await aggiornaAnteprimaDivisa();
@@ -623,11 +722,27 @@
             document.getElementById('divisaAvanti').addEventListener('click', () => mostraStepDivisa(Math.min(3, divisaStepCorrente + 1)));
             document.getElementById('divisaIndietro').addEventListener('click', () => mostraStepDivisa(Math.max(1, divisaStepCorrente - 1)));
 
+            // Gruppo posizione e select font sono statici (le chiavi non cambiano da
+            // squadra a squadra): renderizzati una sola volta qui, non ad ogni apertura
+            // della modale — apriModaleDivisa si limita a impostarne il valore corrente.
+            renderPosizioniSponsor();
+            renderFontSponsor();
+
             [
                 'divisaColore1', 'divisaColore2', 'divisaColore3',
                 'divisaTestoSponsor', 'divisaColoreTestoSponsor', 'divisaColoreContornoTestoSponsor', 'divisaColoreSfondoTestoSponsor',
-                'divisaUsaContornoSponsor', 'divisaUsaSfondoSponsor'
-            ].forEach(id => document.getElementById(id).addEventListener('input', aggiornaAnteprimaDivisa));
+                'divisaUsaContornoSponsor', 'divisaUsaSfondoSponsor',
+                'divisaFontTestoSponsor', 'divisaColoreOmbraTestoSponsor', 'divisaUsaOmbraSponsor',
+                'divisaDimensioneTestoSponsor', 'divisaAutoFitTestoSponsor', 'divisaLetteringAdArcoTestoSponsor'
+            ].forEach(id => document.getElementById(id).addEventListener('input', (e) => {
+                if (id === 'divisaDimensioneTestoSponsor') {
+                    document.getElementById('divisaDimensioneTestoSponsorValore').textContent = e.target.value;
+                }
+                if (id === 'divisaAutoFitTestoSponsor') {
+                    aggiornaStatoDimensioneSponsor();
+                }
+                aggiornaAnteprimaDivisa();
+            }));
 
             document.getElementById('divisaSalva').addEventListener('click', async () => {
                 const erroreEl = document.getElementById('divisaErroreSalvataggio');
@@ -648,6 +763,12 @@
                     coloreTestoSponsor: document.getElementById('divisaColoreTestoSponsor').value,
                     coloreContornoTestoSponsor: document.getElementById('divisaUsaContornoSponsor').checked ? document.getElementById('divisaColoreContornoTestoSponsor').value : null,
                     coloreSfondoTestoSponsor: document.getElementById('divisaUsaSfondoSponsor').checked ? document.getElementById('divisaColoreSfondoTestoSponsor').value : null,
+                    posizioneTestoSponsor: divisaPosizioneSponsorSelezionata,
+                    fontTestoSponsor: document.getElementById('divisaFontTestoSponsor').value,
+                    coloreOmbraTestoSponsor: document.getElementById('divisaUsaOmbraSponsor').checked ? document.getElementById('divisaColoreOmbraTestoSponsor').value : null,
+                    dimensioneTestoSponsor: Number(document.getElementById('divisaDimensioneTestoSponsor').value),
+                    autoFitTestoSponsor: document.getElementById('divisaAutoFitTestoSponsor').checked,
+                    letteringAdArcoTestoSponsor: document.getElementById('divisaLetteringAdArcoTestoSponsor').checked,
                     // PNG "cotto" dal motore di rendering (fase 4) sull'anteprima corrente —
                     // il salvataggio fisico e l'URL finale sono responsabilità del server
                     // (IFileStorageProvider, vedi fase 5), non di questo JS.

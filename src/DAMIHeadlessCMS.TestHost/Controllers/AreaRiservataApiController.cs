@@ -259,6 +259,12 @@ public class AreaRiservataApiController : ControllerBase
             ColoreTestoSponsor = request.ColoreTestoSponsor,
             ColoreContornoTestoSponsor = request.ColoreContornoTestoSponsor,
             ColoreSfondoTestoSponsor = request.ColoreSfondoTestoSponsor,
+            PosizioneTestoSponsor = request.PosizioneTestoSponsor,
+            FontTestoSponsor = request.FontTestoSponsor,
+            ColoreOmbraTestoSponsor = request.ColoreOmbraTestoSponsor,
+            DimensioneTestoSponsor = request.DimensioneTestoSponsor,
+            AutoFitTestoSponsor = request.AutoFitTestoSponsor,
+            LetteringAdArcoTestoSponsor = request.LetteringAdArcoTestoSponsor,
             UrlImmagineGenerata = urlImmagine
         };
 

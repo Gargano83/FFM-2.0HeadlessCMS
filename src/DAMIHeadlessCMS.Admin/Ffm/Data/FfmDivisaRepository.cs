@@ -24,6 +24,8 @@ public class FfmDivisaRepository : IFfmDivisaRepository
         SELECT SM.IdSquadra, SM.IdTemplate, DT.CartellaAsset,
                SM.Colore1, SM.Colore2, SM.Colore3,
                SM.TestoSponsor, SM.ColoreTestoSponsor, SM.ColoreContornoTestoSponsor, SM.ColoreSfondoTestoSponsor,
+               SM.PosizioneTestoSponsor, SM.FontTestoSponsor, SM.ColoreOmbraTestoSponsor,
+               SM.DimensioneTestoSponsor, SM.AutoFitTestoSponsor, SM.LetteringAdArcoTestoSponsor,
                SM.UrlImmagineGenerata, SM.DataUltimaModifica
         FROM FFM.SquadreMaglia SM
         JOIN FFM.DivisaTemplate DT ON DT.Id = SM.IdTemplate
@@ -63,6 +65,12 @@ public class FfmDivisaRepository : IFfmDivisaRepository
                     ColoreTestoSponsor = reader["ColoreTestoSponsor"] as string,
                     ColoreContornoTestoSponsor = reader["ColoreContornoTestoSponsor"] as string,
                     ColoreSfondoTestoSponsor = reader["ColoreSfondoTestoSponsor"] as string,
+                    PosizioneTestoSponsor = reader["PosizioneTestoSponsor"] as string ?? "Alto",
+                    FontTestoSponsor = reader["FontTestoSponsor"] as string ?? "Predefinito",
+                    ColoreOmbraTestoSponsor = reader["ColoreOmbraTestoSponsor"] as string,
+                    DimensioneTestoSponsor = reader["DimensioneTestoSponsor"] as int?,
+                    AutoFitTestoSponsor = (bool)reader["AutoFitTestoSponsor"],
+                    LetteringAdArcoTestoSponsor = (bool)reader["LetteringAdArcoTestoSponsor"],
                     UrlImmagineGenerata = reader["UrlImmagineGenerata"] as string,
                     DataUltimaModifica = reader["DataUltimaModifica"] as DateTime?,
                     NonAncoraPersonalizzata = false
@@ -94,6 +102,15 @@ public class FfmDivisaRepository : IFfmDivisaRepository
                 ColoreTestoSponsor = null,
                 ColoreContornoTestoSponsor = null,
                 ColoreSfondoTestoSponsor = null,
+                PosizioneTestoSponsor = "Alto",
+                FontTestoSponsor = "Predefinito",
+                ColoreOmbraTestoSponsor = null,
+                DimensioneTestoSponsor = null,
+                // Auto-fit consigliato attivo di default solo per le squadre che
+                // non hanno ancora personalizzato nulla (nessuna riga esistente
+                // da preservare) — vedi piano-divisa-squadra.md, sezione 8.
+                AutoFitTestoSponsor = true,
+                LetteringAdArcoTestoSponsor = false,
                 UrlImmagineGenerata = null,
                 DataUltimaModifica = null,
                 NonAncoraPersonalizzata = true
@@ -116,6 +133,12 @@ public class FfmDivisaRepository : IFfmDivisaRepository
                 ColoreTestoSponsor = @ColoreTestoSponsor,
                 ColoreContornoTestoSponsor = @ColoreContornoTestoSponsor,
                 ColoreSfondoTestoSponsor = @ColoreSfondoTestoSponsor,
+                PosizioneTestoSponsor = @PosizioneTestoSponsor,
+                FontTestoSponsor = @FontTestoSponsor,
+                ColoreOmbraTestoSponsor = @ColoreOmbraTestoSponsor,
+                DimensioneTestoSponsor = @DimensioneTestoSponsor,
+                AutoFitTestoSponsor = @AutoFitTestoSponsor,
+                LetteringAdArcoTestoSponsor = @LetteringAdArcoTestoSponsor,
                 UrlImmagineGenerata = @UrlImmagineGenerata,
                 DataUltimaModifica = SYSUTCDATETIME(),
                 IdUtenteUltimaModifica = @IdUtenteUltimaModifica
@@ -124,9 +147,13 @@ public class FfmDivisaRepository : IFfmDivisaRepository
         ELSE
         BEGIN
             INSERT INTO FFM.SquadreMaglia
-                (IdSquadra, IdTemplate, Colore1, Colore2, Colore3, TestoSponsor, ColoreTestoSponsor, ColoreContornoTestoSponsor, ColoreSfondoTestoSponsor, UrlImmagineGenerata, DataUltimaModifica, IdUtenteUltimaModifica)
+                (IdSquadra, IdTemplate, Colore1, Colore2, Colore3, TestoSponsor, ColoreTestoSponsor, ColoreContornoTestoSponsor, ColoreSfondoTestoSponsor,
+                 PosizioneTestoSponsor, FontTestoSponsor, ColoreOmbraTestoSponsor, DimensioneTestoSponsor, AutoFitTestoSponsor, LetteringAdArcoTestoSponsor,
+                 UrlImmagineGenerata, DataUltimaModifica, IdUtenteUltimaModifica)
             VALUES
-                (@IdSquadra, @IdTemplate, @Colore1, @Colore2, @Colore3, @TestoSponsor, @ColoreTestoSponsor, @ColoreContornoTestoSponsor, @ColoreSfondoTestoSponsor, @UrlImmagineGenerata, SYSUTCDATETIME(), @IdUtenteUltimaModifica);
+                (@IdSquadra, @IdTemplate, @Colore1, @Colore2, @Colore3, @TestoSponsor, @ColoreTestoSponsor, @ColoreContornoTestoSponsor, @ColoreSfondoTestoSponsor,
+                 @PosizioneTestoSponsor, @FontTestoSponsor, @ColoreOmbraTestoSponsor, @DimensioneTestoSponsor, @AutoFitTestoSponsor, @LetteringAdArcoTestoSponsor,
+                 @UrlImmagineGenerata, SYSUTCDATETIME(), @IdUtenteUltimaModifica);
         END
         """;
 
@@ -145,6 +172,12 @@ public class FfmDivisaRepository : IFfmDivisaRepository
         command.Parameters.AddWithValue("@ColoreTestoSponsor", (object?)dto.ColoreTestoSponsor ?? DBNull.Value);
         command.Parameters.AddWithValue("@ColoreContornoTestoSponsor", (object?)dto.ColoreContornoTestoSponsor ?? DBNull.Value);
         command.Parameters.AddWithValue("@ColoreSfondoTestoSponsor", (object?)dto.ColoreSfondoTestoSponsor ?? DBNull.Value);
+        command.Parameters.AddWithValue("@PosizioneTestoSponsor", dto.PosizioneTestoSponsor);
+        command.Parameters.AddWithValue("@FontTestoSponsor", dto.FontTestoSponsor);
+        command.Parameters.AddWithValue("@ColoreOmbraTestoSponsor", (object?)dto.ColoreOmbraTestoSponsor ?? DBNull.Value);
+        command.Parameters.AddWithValue("@DimensioneTestoSponsor", (object?)dto.DimensioneTestoSponsor ?? DBNull.Value);
+        command.Parameters.AddWithValue("@AutoFitTestoSponsor", dto.AutoFitTestoSponsor);
+        command.Parameters.AddWithValue("@LetteringAdArcoTestoSponsor", dto.LetteringAdArcoTestoSponsor);
         command.Parameters.AddWithValue("@UrlImmagineGenerata", (object?)dto.UrlImmagineGenerata ?? DBNull.Value);
         command.Parameters.AddWithValue("@IdUtenteUltimaModifica", (object?)idUtente ?? DBNull.Value);
 
