@@ -106,18 +106,22 @@
                             <div id="divisaStep2" class="d-none">
                                 <p class="text-body-secondary small">Scegli i tre colori della maglia.</p>
                                 <div class="row g-3">
-                                    <div class="col-4">
-                                        <label class="form-label small mb-1" for="divisaColore1">Colore 1 — corpo</label>
+                                    <div class="col-4" id="divisaColore1Wrapper">
+                                        <label class="form-label small mb-1" for="divisaColore1">Colore 1</label>
                                         <input type="color" id="divisaColore1" class="form-control form-control-color w-100">
                                     </div>
-                                    <div class="col-4">
-                                        <label class="form-label small mb-1" for="divisaColore2">Colore 2 — maniche</label>
+                                    <div class="col-4" id="divisaColore2Wrapper">
+                                        <label class="form-label small mb-1" for="divisaColore2">Colore 2</label>
                                         <input type="color" id="divisaColore2" class="form-control form-control-color w-100">
                                     </div>
-                                    <div class="col-4">
-                                        <label class="form-label small mb-1" for="divisaColore3">Colore 3 — colletto/polsini</label>
+                                    <div class="col-4" id="divisaColore3Wrapper">
+                                        <label class="form-label small mb-1" for="divisaColore3">Colore 3</label>
                                         <input type="color" id="divisaColore3" class="form-control form-control-color w-100">
                                     </div>
+                                </div>
+                                <div class="form-text small" id="divisaPaletteNonDisponibiliNota" hidden>
+                                    Questo template non prevede tutte e 3 le palette: i colori non applicabili sono nascosti
+                                    (rilevato automaticamente dal file del template — fase 10).
                                 </div>
                             </div>
                             <div id="divisaStep3" class="d-none">
@@ -596,7 +600,7 @@
                         divisaTemplateSelezionatoId = Number(btn.dataset.id);
                         galleriaEl.querySelectorAll('.divisa-template-thumb').forEach(b => b.classList.remove('btn-secondary', 'active'));
                         btn.classList.add('btn-secondary', 'active');
-                        aggiornaAnteprimaDivisa();
+                        aggiornaVisibilitaPaletteDivisa().then(aggiornaAnteprimaDivisa);
                     });
                 });
             }
@@ -636,6 +640,31 @@
 
             function aggiornaStatoDimensioneSponsor() {
                 document.getElementById('divisaDimensioneTestoSponsor').disabled = document.getElementById('divisaAutoFitTestoSponsor').checked;
+            }
+
+            // Fase 10 — mostra/nasconde i color picker Colore2/Colore3 in base a
+            // quali canali sono realmente presenti nel base.png del template
+            // selezionato (vedi DivisaRenderEngine.analizzaPaletteDisponibili,
+            // stessa logica già applicata alla pagina di validazione tecnica
+            // /dev/divisa-engine). Chiamata solo quando cambia il template.
+            async function aggiornaVisibilitaPaletteDivisa() {
+                const template = divisaCatalogo.find(t => t.id === divisaTemplateSelezionatoId);
+                const colore2WrapperEl = document.getElementById('divisaColore2Wrapper');
+                const colore3WrapperEl = document.getElementById('divisaColore3Wrapper');
+                const notaEl = document.getElementById('divisaPaletteNonDisponibiliNota');
+                if (!template || typeof DivisaRenderEngine.analizzaPaletteDisponibili !== 'function') {
+                    return;
+                }
+                try {
+                    const palette = await DivisaRenderEngine.analizzaPaletteDisponibili(template.cartellaAsset, DIVISA_BASE_URL_TEMPLATE);
+                    if (colore2WrapperEl) colore2WrapperEl.hidden = !palette.colore2;
+                    if (colore3WrapperEl) colore3WrapperEl.hidden = !palette.colore3;
+                    if (notaEl) notaEl.hidden = !!(palette.colore2 && palette.colore3);
+                } catch (err) {
+                    // Se l'analisi fallisce mostriamo comunque tutti e 3 i color
+                    // picker: aggiornaAnteprimaDivisa riporterà l'errore vero e
+                    // proprio nel riquadro dedicato.
+                }
             }
 
             async function aggiornaAnteprimaDivisa() {
@@ -703,6 +732,7 @@
 
                     renderGalleriaDivisa();
                     mostraStepDivisa(1);
+                    await aggiornaVisibilitaPaletteDivisa();
                     await aggiornaAnteprimaDivisa();
 
                     document.getElementById('divisaCaricamento').classList.add('d-none');

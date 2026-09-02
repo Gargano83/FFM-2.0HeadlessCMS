@@ -2,12 +2,30 @@
 // (vedi piano-divisa-squadra.md, sezione "4. Motore di rendering").
 //
 // Modulo vanilla JS, senza dipendenze (niente jQuery/Fabric.js/Spectrum, a
-// differenza del vecchio configuratore FFM3.1): riceve un <canvas> e un
-// oggetto opzioni, disegna la maglia composta da 4 layer:
-//   1. base.png       (tinto Colore1 — corpo/sagoma intera)
-//   2. maniche.png    (tinto Colore2 — disegnato sopra, altera solo l'area maniche)
-//   3. colletto.png   (condiviso, tinto Colore3 — disegnato sopra, altera solo colletto/polsini)
-//   4. ombre.png      (condiviso, applicato con blend "overlay" — luci/ombre/pieghe tessuto)
+// differenza del vecchio configuratore FFM3.1). Dalla fase 10 (riprogettazione
+// "un solo file per template", ispirata al configuratore di fantacalcio.it —
+// vedi piano-divisa-squadra.md sezione fase 10) ogni template è UN SOLO file
+// (`base.png`, oltre alla sua icona di anteprima, non più coinvolta qui):
+//   - canale R  -> maschera Colore1 (sempre presente)
+//   - canale G  -> maschera Colore2 (se rilevato — vedi rilevaCanaliColore)
+//   - canale B  -> maschera Colore3 (se rilevato)
+// Non esistono più `maniche.png` né un `colletto.png` condiviso: ogni
+// template porta con sé tutte le zone colorabili che gli servono, dentro lo
+// stesso file, in tanti canali quante sono le zone reali di quel template
+// (da 1 a 3 — un template "a tinta unica" userà solo il canale R, uno con
+// zone su misura userà anche G e/o B). Il numero di canali realmente
+// presenti si rileva analizzando il file stesso a runtime (vedi
+// rilevaCanaliColore/analizzaPaletteDisponibili), non è mai dato per
+// scontato: la UI che ospita questo motore deve interrogare
+// analizzaPaletteDisponibili per sapere quante palette Colore1/2/3 mostrare
+// per il template selezionato in quel momento.
+//
+// disegna la maglia componendo:
+//   1. base.png (canale R tinto Colore1, canale G tinto Colore2 se rilevato,
+//      canale B tinto Colore3 se rilevato — vedi sopra)
+//   2. ombre.png (condiviso, applicato con blend "overlay" — luci/ombre/pieghe
+//      tessuto, invariato dalle fasi precedenti: non è una zona colorabile,
+//      è un effetto di luce comune a tutti i template)
 // più, opzionalmente, il testo sponsor.
 //
 // Non è legato a nessun host specifico: riceve gli URL base come parametro,
@@ -72,6 +90,17 @@ window.DivisaRenderEngine = (function () {
     // testo, vedi disegnaTestoAdArco).
     const LARGHEZZA_MASSIMA_SPONSOR_FRAZIONE = 0.74;
 
+    // Soglie di rilevamento canale colore (fase 10 — vedi rilevaCanaliColore).
+    // Un canale (G per Colore2, B per Colore3) è considerato "presente" solo
+    // se contiene almeno SOGLIA_AREA_PIXEL_CANALE pixel con valore >
+    // SOGLIA_VALORE_CANALE (e alpha > 0, cioè dentro la sagoma). Valori
+    // scelti e validati dall'utente su tutti i 52 template esistenti: con
+    // questa combinazione la rilevazione automatica coincide esattamente
+    // con la lettura visiva dell'utente stesso (51 template a 3 canali, il
+    // template "01" a 2 canali) — vedi piano-divisa-squadra.md, fase 10.
+    const SOGLIA_VALORE_CANALE = 40;
+    const SOGLIA_AREA_PIXEL_CANALE = 200;
+
     /**
      * Carica un'immagine da URL come Promise. crossOrigin "anonymous" non è
      * strettamente necessario per asset serviti dallo stesso host, ma non fa
@@ -112,6 +141,105 @@ window.DivisaRenderEngine = (function () {
         ctx.fillRect(0, 0, c.width, c.height);
         ctx.globalCompositeOperation = "source-over";
         return c;
+    }
+
+    /**
+     * Disegna "img" su un canvas offscreen e restituisce l'ImageData grezza
+     * (RGBA, un byte per canale) — funzione di supporto condivisa da
+     * rilevaCanaliColore ed estraiCanale, così entrambe leggono lo stesso
+     * identico canvas offscreen invece di duplicare la logica di disegno.
+     */
+    function leggiImageData(img) {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth || DIMENSIONE_CANVAS;
+        c.height = img.naturalHeight || DIMENSIONE_CANVAS;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        return ctx.getImageData(0, 0, c.width, c.height);
+    }
+
+    /**
+     * Analizza il file "base.png" di un template (fase 10) e determina quali
+     * dei 3 canali colore sono effettivamente utilizzabili come maschera:
+     *   - colore1 (canale R) è SEMPRE considerato presente — scelta
+     *     deliberata per evitare un rendering degenere completamente vuoto
+     *     se anche il canale R risultasse (per errore o per un template
+     *     futuro mal preparato) sotto soglia.
+     *   - colore2 (canale G) e colore3 (canale B) sono considerati presenti
+     *     solo se il file contiene almeno SOGLIA_AREA_PIXEL_CANALE pixel,
+     *     dentro la sagoma (alpha > 0), con quel canale > SOGLIA_VALORE_CANALE.
+     *
+     * Questa è la stessa regola "ad area" validata dall'utente a mano sui 52
+     * template esistenti (vedi piano-divisa-squadra.md, fase 10): non deriva
+     * né approssima nulla, legge semplicemente cosa il file contiene già.
+     */
+    function rilevaCanaliColore(img) {
+        const dati = leggiImageData(img);
+        const pixel = dati.data;
+        let pixelVerdi = 0;
+        let pixelBlu = 0;
+
+        for (let i = 0; i < pixel.length; i += 4) {
+            const alpha = pixel[i + 3];
+            if (alpha === 0) {
+                continue;
+            }
+            if (pixel[i + 1] > SOGLIA_VALORE_CANALE) {
+                pixelVerdi++;
+            }
+            if (pixel[i + 2] > SOGLIA_VALORE_CANALE) {
+                pixelBlu++;
+            }
+        }
+
+        return {
+            colore1: true,
+            colore2: pixelVerdi >= SOGLIA_AREA_PIXEL_CANALE,
+            colore3: pixelBlu >= SOGLIA_AREA_PIXEL_CANALE
+        };
+    }
+
+    /**
+     * Estrae dal file "base.png" un singolo canale colore (0=R, 1=G, 2=B) e
+     * lo restituisce come canvas utilizzabile direttamente da tingiSagoma:
+     * il canale scelto diventa il canale ALPHA del risultato (RGB è
+     * ininfluente, verrà comunque sovrascritto dal fillRect "source-in" di
+     * tingiSagoma), esattamente come richiede tingiSagoma per qualunque
+     * "sagoma" — non fa differenza per tingiSagoma se la maschera viene da
+     * un file .png separato (vecchio schema) o da un canale estratto qui
+     * (nuovo schema fase 10): l'interfaccia è la stessa.
+     */
+    function estraiCanale(img, indiceCanale) {
+        const dati = leggiImageData(img);
+        const pixel = dati.data;
+
+        for (let i = 0; i < pixel.length; i += 4) {
+            const valoreCanale = pixel[i + indiceCanale];
+            pixel[i] = 255;
+            pixel[i + 1] = 255;
+            pixel[i + 2] = 255;
+            pixel[i + 3] = valoreCanale;
+        }
+
+        const c = document.createElement("canvas");
+        c.width = dati.width;
+        c.height = dati.height;
+        c.getContext("2d").putImageData(dati, 0, 0);
+        return c;
+    }
+
+    /**
+     * Carica il "base.png" del template indicato e restituisce quali
+     * palette Colore1/2/3 sono effettivamente disponibili per quel
+     * template (vedi rilevaCanaliColore). Pensata per essere chiamata dalla
+     * UI ospitante nel momento in cui l'utente seleziona/cambia template,
+     * PRIMA (o indipendentemente) di comporMaglia — così la UI sa già
+     * quanti color picker mostrare senza dover disegnare l'intera maglia.
+     */
+    async function analizzaPaletteDisponibili(cartellaAssetTemplate, baseUrlTemplate) {
+        const urlBase = baseUrlTemplate + "/" + cartellaAssetTemplate + "/base.png";
+        const imgBase = await caricaImmagine(urlBase);
+        return rilevaCanaliColore(imgBase);
     }
 
     /**
@@ -305,8 +433,13 @@ window.DivisaRenderEngine = (function () {
      * opzioni:
      *   - cartellaAssetTemplate: string  (es. "02" — DivisaTemplateDto.CartellaAsset)
      *   - baseUrlTemplate: string        (es. "/img/divisa/template")
-     *   - baseUrlCondivisi: string       (es. "/img/divisa/condivisi")
-     *   - colore1, colore2, colore3: string ("#RRGGBB")
+     *   - baseUrlCondivisi: string       (es. "/img/divisa/condivisi" — dalla fase 10
+     *                                     serve solo più per "ombre.png": maniche.png e
+     *                                     colletto.png non esistono più, vedi commento
+     *                                     in testa al file)
+     *   - colore1, colore2, colore3: string ("#RRGGBB" — colore2/3 sono ignorati se
+     *                                        rilevaCanaliColore segnala il canale
+     *                                        corrispondente assente per questo template)
      *   - testoSponsor: string|null
      *   - coloreTestoSponsor: string|null
      *   - coloreContornoTestoSponsor: string|null
@@ -320,30 +453,39 @@ window.DivisaRenderEngine = (function () {
      */
     async function componiMaglia(canvasDestinazione, opzioni) {
         const urlBase = opzioni.baseUrlTemplate + "/" + opzioni.cartellaAssetTemplate + "/base.png";
-        const urlManiche = opzioni.baseUrlTemplate + "/" + opzioni.cartellaAssetTemplate + "/maniche.png";
-        const urlColletto = opzioni.baseUrlCondivisi + "/colletto.png";
         const urlOmbre = opzioni.baseUrlCondivisi + "/ombre.png";
 
-        const [imgBase, imgManiche, imgColletto, imgOmbre] = await Promise.all([
+        const [imgBase, imgOmbre] = await Promise.all([
             caricaImmagine(urlBase),
-            caricaImmagine(urlManiche),
-            caricaImmagine(urlColletto),
             caricaImmagine(urlOmbre)
         ]);
+
+        const canaliDisponibili = rilevaCanaliColore(imgBase);
 
         canvasDestinazione.width = DIMENSIONE_CANVAS;
         canvasDestinazione.height = DIMENSIONE_CANVAS;
         const ctx = canvasDestinazione.getContext("2d");
         ctx.clearRect(0, 0, DIMENSIONE_CANVAS, DIMENSIONE_CANVAS);
 
-        ctx.drawImage(tingiSagoma(imgBase, opzioni.colore1), 0, 0, DIMENSIONE_CANVAS, DIMENSIONE_CANVAS);
-        ctx.drawImage(tingiSagoma(imgManiche, opzioni.colore2), 0, 0, DIMENSIONE_CANVAS, DIMENSIONE_CANVAS);
-        ctx.drawImage(tingiSagoma(imgColletto, opzioni.colore3), 0, 0, DIMENSIONE_CANVAS, DIMENSIONE_CANVAS);
+        // Canale R -> Colore1, sempre presente (vedi rilevaCanaliColore).
+        ctx.drawImage(tingiSagoma(estraiCanale(imgBase, 0), opzioni.colore1), 0, 0, DIMENSIONE_CANVAS, DIMENSIONE_CANVAS);
+
+        // Canale G -> Colore2, solo se il template lo prevede davvero.
+        if (canaliDisponibili.colore2) {
+            ctx.drawImage(tingiSagoma(estraiCanale(imgBase, 1), opzioni.colore2), 0, 0, DIMENSIONE_CANVAS, DIMENSIONE_CANVAS);
+        }
+
+        // Canale B -> Colore3, solo se il template lo prevede davvero.
+        if (canaliDisponibili.colore3) {
+            ctx.drawImage(tingiSagoma(estraiCanale(imgBase, 2), opzioni.colore3), 0, 0, DIMENSIONE_CANVAS, DIMENSIONE_CANVAS);
+        }
 
         // Layer condiviso di ombre/pieghe: blend "overlay", non una normale
         // sovrapposizione alpha — vedi piano-divisa-squadra.md sezione 3 per
         // il motivo tecnico (si ritaglia da solo sulla sagoma appena
-        // disegnata, funziona su qualunque colore di tinta).
+        // disegnata, funziona su qualunque colore di tinta). Invariato dalle
+        // fasi precedenti: non è una zona colorabile, non ha canali da
+        // rilevare.
         ctx.globalCompositeOperation = "overlay";
         ctx.drawImage(imgOmbre, 0, 0, DIMENSIONE_CANVAS, DIMENSIONE_CANVAS);
         ctx.globalCompositeOperation = "source-over";
@@ -355,6 +497,7 @@ window.DivisaRenderEngine = (function () {
         componiMaglia,
         caricaImmagine,
         tingiSagoma,
+        analizzaPaletteDisponibili,
         POSIZIONI_TESTO_SPONSOR
     };
 })();

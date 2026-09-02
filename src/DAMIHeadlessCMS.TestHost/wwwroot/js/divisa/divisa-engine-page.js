@@ -18,6 +18,9 @@
     const colore1El = document.getElementById("colore1");
     const colore2El = document.getElementById("colore2");
     const colore3El = document.getElementById("colore3");
+    const colore2WrapperEl = document.getElementById("colore2Wrapper");
+    const colore3WrapperEl = document.getElementById("colore3Wrapper");
+    const paletteNonDisponibiliNotaEl = document.getElementById("paletteNonDisponibiliNota");
     const testoSponsorEl = document.getElementById("testoSponsor");
     const coloreTestoSponsorEl = document.getElementById("coloreTestoSponsor");
     const coloreContornoTestoSponsorEl = document.getElementById("coloreContornoTestoSponsor");
@@ -88,6 +91,34 @@
         dimensioneTestoSponsorEl.disabled = autoFitAttivo;
     }
 
+    // Fase 10 — mostra/nasconde i color picker Colore2/Colore3 in base a
+    // quali canali sono realmente presenti nel base.png del template
+    // selezionato (vedi DivisaRenderEngine.analizzaPaletteDisponibili).
+    // Chiamata solo quando cambia il template (non ad ogni cambio colore):
+    // un template "a 2 canali" come richiede il piano non deve mostrare un
+    // Colore3 che non avrebbe comunque alcun effetto sul rendering.
+    async function aggiornaVisibilitaPalette(cartellaAssetTemplate) {
+        if (typeof DivisaRenderEngine === "undefined" || typeof DivisaRenderEngine.analizzaPaletteDisponibili !== "function") {
+            return;
+        }
+        try {
+            const palette = await DivisaRenderEngine.analizzaPaletteDisponibili(cartellaAssetTemplate, BASE_URL_TEMPLATE);
+            if (colore2WrapperEl) {
+                colore2WrapperEl.hidden = !palette.colore2;
+            }
+            if (colore3WrapperEl) {
+                colore3WrapperEl.hidden = !palette.colore3;
+            }
+            if (paletteNonDisponibiliNotaEl) {
+                paletteNonDisponibiliNotaEl.hidden = !!(palette.colore2 && palette.colore3);
+            }
+        } catch (err) {
+            // Se l'analisi fallisce (asset mancante, ecc.) mostriamo comunque
+            // tutti e 3 i color picker: componiMaglia riporterà l'errore vero
+            // e proprio nel riquadro dedicato più sotto.
+        }
+    }
+
     function renderGalleria() {
         galleriaEl.innerHTML = CATALOGO_TEMPLATE.map(function (t) {
             return (
@@ -110,7 +141,7 @@
                 templateSelezionato = trovato;
                 bottoni.forEach(function (b) { b.classList.remove("btn-secondary", "active"); });
                 btn.classList.add("btn-secondary", "active");
-                aggiorna();
+                aggiornaVisibilitaPalette(templateSelezionato.cartellaAsset).then(aggiorna);
             });
         });
 
@@ -177,5 +208,5 @@
     renderPosizioniSponsor();
     renderFontSponsor();
     aggiornaStatoDimensione();
-    aggiorna();
+    aggiornaVisibilitaPalette(templateSelezionato.cartellaAsset).then(aggiorna);
 })();
