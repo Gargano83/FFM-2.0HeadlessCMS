@@ -126,6 +126,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
                VicePresidente,
                Allenatore,
                NomeStadio,
+               LivelloStadio,
                ISNULL((SELECT COUNT(*) FROM FFM.SquadreRelGiocatori
                        WHERE IdSquadra = @Id AND Stagione <= (SELECT TOP 1 StagioneAttiva FROM FFM.Lega WHERE Attiva = 1)
                          AND ISNULL(Stato, '') != 'Lista A (Pr)'), 0) AS Tesserati,
@@ -178,6 +179,7 @@ public class FfmSquadraRepository : IFfmSquadraRepository
             VicePresidente = reader["VicePresidente"] as string,
             Allenatore = reader["Allenatore"] as string,
             NomeStadio = reader["NomeStadio"] as string,
+            LivelloStadio = reader["LivelloStadio"] as string,
             Tesserati = reader.GetInt32(reader.GetOrdinal("Tesserati")),
             InPrestito = reader.GetInt32(reader.GetOrdinal("InPrestito")),
             InRosa = reader.GetInt32(reader.GetOrdinal("InRosa")),

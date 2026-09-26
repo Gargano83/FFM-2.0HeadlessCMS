@@ -14,6 +14,17 @@ public sealed class InfoSquadraDto
     public string? VicePresidente { get; set; }
     public string? Allenatore { get; set; }
     public string? NomeStadio { get; set; }
+
+    /// <summary>
+    /// Livello attuale dello stadio ("Livello 0".."Livello 3" — FFM.Squadre.LivelloStadio,
+    /// nuovo campo dal 24/09/2026). Sola lettura in questo DTO: a differenza di
+    /// Presidente/VicePresidente/Allenatore/NomeStadio, il presidente della squadra non può
+    /// modificarlo da qui — l'unico modo per farlo avanzare è l'endpoint dedicato
+    /// dell'host "aggiornalivellostadio" (FFM2.0Core), che applica anche il costo una tantum sul
+    /// FairPlayFinanziario. Non aggiunto a <see cref="AggiornaInfoSquadraRequestDto"/> di proposito.
+    /// </summary>
+    public string? LivelloStadio { get; set; }
+
     public int Tesserati { get; set; }
     public int InPrestito { get; set; }
     public int InRosa { get; set; }
